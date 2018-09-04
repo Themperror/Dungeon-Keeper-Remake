@@ -17,13 +17,21 @@ So providing you have the original game at hand the folder structure should look
 
 
 KEEPER\\
+
   -SOUND\\
+  
   -LDATA\\
+  
   -DATA\\
+  
   -SAVE\\
+  
   -LEVELS\\
+  
 DATA\\
+
   -TEXTURES\\ defaultdiffuse.dds
+  
   -SHADERS\\ (with all the .cso's)
 
 
