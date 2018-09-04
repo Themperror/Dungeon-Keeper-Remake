@@ -16,15 +16,15 @@ The current build relies on the data folder that will be created once the projec
 So providing you have the original game at hand the folder structure should look like:
 
 
-KEEPER\\
-|----SOUND\\
-|----LDATA\\  
-|----DATA\\
-|----SAVE\\
-|----LEVELS\\
+KEEPER
+|----SOUND
+|----LDATA
+|----DATA
+|----SAVE
+|----LEVELS
 |----Dungeon Keeper Remake.exe
-DATA\\
-|----TEXTURES\\ defaultdiffuse.dds
-|----SHADERS\\ (with all the .cso's)
+DATA
+|----TEXTURES  - defaultdiffuse.dds
+|----SHADERS - (with all the .cso's)
 
 
