@@ -10,3 +10,20 @@ So far I have used code from RNCTools (changed into a library) to decompress all
 Let me start of by saying this will NOT be a commercial project, I will not sell it or make money out of it in any form or shape. And in all honesty I haven't even looked at the licenses of the code I have used from the projects I mentioned above, but know that I mean no harm.
 
 The "engine" I'm using is based of my previous project ThempX11 (also on my github) which is heavily adjusted to only do forward rendering (instead of deferred) and to support whatever else the game needs (such as Audio and Video)
+
+At the current state (seeing as this project is not far in development yet):
+The current build relies on the data folder that will be created once the project is compiled, this will change as development continues
+So providing you have the original game at hand the folder structure should look like:
+
+
+KEEPER/
+  -SOUND/
+  -LDATA/
+  -DATA/
+  -SAVE/
+  -LEVELS/
+DATA/
+  -TEXTURES/defaultdiffuse.dds
+  -SHADERS/ (with all the .cso's)
+
+
