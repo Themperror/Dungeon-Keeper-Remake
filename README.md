@@ -17,21 +17,14 @@ So providing you have the original game at hand the folder structure should look
 
 
 KEEPER\\
-
-  -SOUND\\
-  
-  -LDATA\\
-  
-  -DATA\\
-  
-  -SAVE\\
-  
-  -LEVELS\\
-  
+|----SOUND\\
+|----LDATA\\  
+|----DATA\\
+|----SAVE\\
+|----LEVELS\\
+|----Dungeon Keeper Remake.exe
 DATA\\
-
-  -TEXTURES\\ defaultdiffuse.dds
-  
-  -SHADERS\\ (with all the .cso's)
+|----TEXTURES\\ defaultdiffuse.dds
+|----SHADERS\\ (with all the .cso's)
 
 
