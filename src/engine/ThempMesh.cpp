@@ -5,6 +5,8 @@
 #include "ThempMaterial.h"
 #include <d3d10.h>
 #include <d3d11.h>
+
+using namespace DirectX;
 namespace Themp
 {
 	Mesh::Mesh()
@@ -30,8 +32,8 @@ namespace Themp
 		m_VertexBuffer = Themp::Resources::TRes->m_VertexBuffers[i_VertexBuffer];
 		m_IndexBuffer = Themp::Resources::TRes->m_IndexBuffers[i_VertexBuffer];
 
-		m_BoundsMin = DirectX::XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
-		m_BoundsMax = DirectX::XMFLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		m_BoundsMin = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
+		m_BoundsMax = XMFLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 		for (size_t i = 0; i < m_NumVertices; i++)
 		{
 			Vertex& v = m_Vertices[i];

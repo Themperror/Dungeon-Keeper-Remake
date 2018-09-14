@@ -71,7 +71,7 @@ namespace Themp
 		int windowWidth = windowRect.right;
 		int windowHeight = windowRect.bottom;
 
-		scd.Windowed = !static_cast<UINT>(Themp::System::tSys->m_SVars.find("Fullscreen")->second);
+		scd.Windowed = !static_cast<UINT>(Themp::System::tSys->m_SVars.find(SVAR_FULLSCREEN)->second);
 		if (scd.Windowed)
 		{
 			scd.BufferDesc.Width = windowRect.right;
@@ -139,9 +139,9 @@ namespace Themp
 		}
 #endif
 
-		int multisample = Themp::System::tSys->m_SVars["Multisample"];
+		int multisample = Themp::System::tSys->m_SVars[SVAR_MULTISAMPLE];
 		if (multisample == 0) multisample = 1;
-		if (!CreateRenderTextures(windowWidth, windowHeight) || !CreateBackBuffer() || !CreateDepthStencil(windowWidth, windowHeight, multisample))
+		if (!CreateBackBuffer() || !CreateDepthStencil(windowWidth, windowHeight, multisample))
 		{
 			System::Print("Could not initialise all required resources, shutting down");
 			return false;
@@ -152,21 +152,21 @@ namespace Themp
 
 		//create default material's and other data
 		D3D11_SAMPLER_DESC texSamplerDesc;
-		texSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		texSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 		texSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 		texSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 		texSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 		texSamplerDesc.MipLODBias = 0.0f;
-		texSamplerDesc.MaxAnisotropy = static_cast<UINT>(Themp::System::tSys->m_SVars.find("Anisotropic_Filtering")->second);
+		texSamplerDesc.MaxAnisotropy = static_cast<UINT>(Themp::System::tSys->m_SVars.find(SVAR_ANISOTROPIC_FILTERING)->second);
 		texSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 		texSamplerDesc.BorderColor[0] = 0;
 		texSamplerDesc.BorderColor[1] = 0;
-		texSamplerDesc.BorderColor[2] = 1;
+		texSamplerDesc.BorderColor[2] = 0;
 		texSamplerDesc.BorderColor[3] = 0;
 		texSamplerDesc.MinLOD = 0;
 		texSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 		result = m_Device->CreateSamplerState(&texSamplerDesc, &D3D::DefaultTextureSampler);
-		texSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+		texSamplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 
 		result = m_Device->CreateSamplerState(&texSamplerDesc, &D3D::DefaultTextureSamplerFiltered);
 
@@ -186,6 +186,24 @@ namespace Themp
 		m_Device->CreateRasterizerState(&rDesc, &m_WireframeRasterizerState);
 
 		m_DevCon->RSSetState(m_RasterizerState);
+		
+		D3D11_BLEND_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.AlphaToCoverageEnable = false;
+		desc.RenderTarget[0].BlendEnable = true;
+		desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+		desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+		desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+		desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+		desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+		m_Device->CreateBlendState(&desc, &m_BlendState);
+		const float blend_factor[4] = { 0.f, 0.f, 0.f, 0.f };
+		m_DevCon->OMSetBlendState(m_BlendState, blend_factor, 0xffffffff);
+		
+		
+		
 		std::vector<std::string> defaultTextures = {
 			"DefaultDiffuse.dds",
 			"",
@@ -232,13 +250,6 @@ namespace Themp
 
 			// Release all outstanding references to the swap chain's buffers.
 			CLEAN(m_BackBuffer);
-			for (int i = 0; i < NUM_RENDER_TEXTURES; i++)
-			{
-				CLEAN(m_RenderTextures[i]->m_RenderTarget);
-				CLEAN(m_RenderTextures[i]->m_ShaderResourceView);
-			}
-			CLEAN(m_MainRender->m_RenderTarget);
-			CLEAN(m_MainRender->m_ShaderResourceView);
 
 			//Recreate back buffer
 			HRESULT hr;
@@ -265,81 +276,8 @@ namespace Themp
 				System::Print("failed to create rendertarget view from backbuffer");
 			}
 			pBuffer->Release();
-
-			for (int i = 0; i < NUM_RENDER_TEXTURES; i++)
-			{
-				ID3D11Texture2D* renderTex;
-				D3D11_TEXTURE2D_DESC renderTexDesc;
-				memset(&renderTexDesc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-				renderTexDesc.Usage = D3D11_USAGE_DEFAULT;
-				renderTexDesc.ArraySize = 1;
-				renderTexDesc.MipLevels = 1;
-				renderTexDesc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_RENDER_TARGET | D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-				renderTexDesc.CPUAccessFlags = 0;
-				renderTexDesc.SampleDesc.Count = 1;
-				renderTexDesc.SampleDesc.Quality = 0;
-				renderTexDesc.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-				renderTexDesc.Height = newY;
-				renderTexDesc.Width = newX;
-
-				hr = m_Device->CreateTexture2D(&renderTexDesc, nullptr, &renderTex);
-
-				if (hr != S_OK) { System::Print("Could not CreateTexture2D %i", i); return; }
-				// use the back buffer address to create the render target
-				D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-				memset(&srvDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-				srvDesc.Format = renderTexDesc.Format;
-				srvDesc.Texture2D.MipLevels = 1;
-				srvDesc.Texture2D.MostDetailedMip = 0;
-				srvDesc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D;
-
-				hr = m_Device->CreateShaderResourceView(renderTex, &srvDesc, &m_RenderTextures[i]->m_ShaderResourceView);
-				if (hr != S_OK) { System::Print("Could not CreateShaderResourceView %i", i); return; }
-
-				m_ShaderResourceViews[i] = m_RenderTextures[i]->m_ShaderResourceView;
-
-				hr = m_Device->CreateRenderTargetView(renderTex, nullptr, &m_RenderTextures[i]->m_RenderTarget);
-				if (hr != S_OK) { System::Print("Could not CreateRenderTargetView %i", i); return; }
-
-				renderTex->Release();
-				m_Rtvs[i] = m_RenderTextures[i]->m_RenderTarget;
-				m_ShaderResourceViews[i] = m_RenderTextures[i]->m_ShaderResourceView;
-			}
-
-			ID3D11Texture2D* renderTex;
-			D3D11_TEXTURE2D_DESC renderTexDesc;
-			memset(&renderTexDesc, 0, sizeof(D3D11_TEXTURE2D_DESC));
-			renderTexDesc.Usage = D3D11_USAGE_DEFAULT;
-			renderTexDesc.ArraySize = 1;
-			renderTexDesc.MipLevels = 1;
-			renderTexDesc.BindFlags = D3D11_BIND_FLAG::D3D11_BIND_RENDER_TARGET | D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-			renderTexDesc.CPUAccessFlags = 0;
-			renderTexDesc.SampleDesc.Count = 1;
-			renderTexDesc.SampleDesc.Quality = 0;
-			renderTexDesc.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-			renderTexDesc.Height = newY;
-			renderTexDesc.Width = newX;
-
-			hr = m_Device->CreateTexture2D(&renderTexDesc, nullptr, &renderTex);
-
-			if (hr != S_OK) { System::Print("Could not CreateTexture2D for Main Render Target"); return; }
-			// use the back buffer address to create the render target
-			D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-			memset(&srvDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-			srvDesc.Format = renderTexDesc.Format;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D;
-
-			hr = m_Device->CreateShaderResourceView(renderTex, &srvDesc, &m_MainRender->m_ShaderResourceView);
-			if (hr != S_OK) { System::Print("Could not CreateShaderResourceView for Main Render Target"); return; }
-
-			hr = m_Device->CreateRenderTargetView(renderTex, nullptr, &m_MainRender->m_RenderTarget);
-			if (hr != S_OK) { System::Print("Could not CreateRenderTargetView for Main Render Target"); return; }
-			renderTex->Release();
-
+			
 			CLEAN(m_DepthStencil);
-			CLEAN(m_DepthStencilSRV);
 			CLEAN(m_DepthStencilView);
 
 			D3D11_TEXTURE2D_DESC depthBufferDesc;
@@ -351,9 +289,9 @@ namespace Themp
 			depthBufferDesc.Height = newY;
 			depthBufferDesc.MipLevels = 1;
 			depthBufferDesc.ArraySize = 1;
-			depthBufferDesc.Format = DXGI_FORMAT_R32_TYPELESS; // DXGI_FORMAT_D16_UNORM;
+			depthBufferDesc.Format = DXGI_FORMAT_R24G8_TYPELESS; // DXGI_FORMAT_D16_UNORM;
 			depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-			depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+			depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 			depthBufferDesc.CPUAccessFlags = 0;
 			depthBufferDesc.MiscFlags = 0;
 			hr = m_Device->CreateTexture2D(&depthBufferDesc, NULL, &m_DepthStencil);
@@ -364,7 +302,7 @@ namespace Themp
 
 			D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
 			memset(&descDSV, 0, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
-			descDSV.Format = DXGI_FORMAT_D32_FLOAT;
+			descDSV.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 			descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
 			descDSV.Texture2D.MipSlice = 0;
 
@@ -377,22 +315,6 @@ namespace Themp
 				System::Print("Could not create Depthstencil view");
 				return;
 			}
-			D3D11_SHADER_RESOURCE_VIEW_DESC depthSRVDesc;
-			memset(&depthSRVDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-			depthSRVDesc.Format = DXGI_FORMAT_R32_FLOAT;
-			depthSRVDesc.Texture2D.MipLevels = (uint32_t)-1;
-			depthSRVDesc.Texture2D.MostDetailedMip = 0;
-			depthSRVDesc.ViewDimension = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_TEXTURE2D;
-
-			hr = m_Device->CreateShaderResourceView(m_DepthStencil, // Depth stencil texture
-				&depthSRVDesc, // Depth stencil desc
-				&m_DepthStencilSRV);  // [out] Depth stencil view
-			if (hr != S_OK)
-			{
-				System::Print("Could not create Depthstencil shader resource view");
-				return;
-			}
-			//m_DevCon->OMSetRenderTargets(1, &g_pRenderTargetView, NULL);
 
 			// Set up the viewport.
 			D3D11_VIEWPORT vp;
@@ -403,8 +325,8 @@ namespace Themp
 			vp.TopLeftX = 0.0f;
 			vp.TopLeftY = 0.0f;
 			m_DevCon->RSSetViewports(1, &vp);
-			Themp::System::tSys->m_SVars["WindowSizeX"] = vp.Width;
-			Themp::System::tSys->m_SVars["WindowSizeY"] = vp.Height;
+			Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] = vp.Width;
+			Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT] = vp.Height;
 			m_ConstantBufferData.screenHeight = vp.Width;
 			m_ConstantBufferData.screenWidth = vp.Height;
 			m_ConstantBufferData.shadow_atlas_size = 4096;
@@ -477,7 +399,7 @@ namespace Themp
 
 	void D3D::Draw(Themp::Game& game)
 	{
-		static const float ClearColor[4] = { 0.0f, 0.2f, 0.4f, 0.0f };
+		static const float ClearColor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 		m_DevCon->ClearRenderTargetView(m_BackBuffer, ClearColor);
 		m_DevCon->ClearDepthStencilView(m_DepthStencilView, D3D11_CLEAR_FLAG::D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -509,7 +431,7 @@ namespace Themp
 		DebugDraw::Destroy();
 #endif
 
-		if (Themp::System::tSys->m_SVars.find("Fullscreen")->second == 1)
+		if (Themp::System::tSys->m_SVars.find(SVAR_FULLSCREEN)->second == 1)
 		{
 			m_Swapchain->SetFullscreenState(FALSE, NULL);  // switch to windowed mode
 		}
@@ -520,11 +442,6 @@ namespace Themp
 		CLEAN(D3D::DefaultTextureSampler);
 		CLEAN(D3D::DefaultTextureSamplerFiltered);
 
-		for (size_t i = 0; i < NUM_RENDER_TEXTURES; i++)
-		{
-			delete m_RenderTextures[i];
-		}
-		delete m_MainRender;
 		VSUploadConstantBuffersToGPUNull();
 		PSUploadConstantBuffersToGPUNull();
 		GSUploadConstantBuffersToGPUNull();
@@ -535,9 +452,9 @@ namespace Themp
 		CLEAN(m_DepthStencilState);
 		CLEAN(m_SkyboxDepthStencilState);
 		CLEAN(m_ShadowClearDepthStencilState);
-		CLEAN(m_DepthStencilSRV);
 		CLEAN(m_RasterizerState);
 		CLEAN(m_ShadowRasterizerState);
+		CLEAN(m_BlendState);
 		CLEAN(m_WireframeRasterizerState);
 		CLEAN(m_InputLayout);
 		CLEAN(m_Swapchain);
@@ -642,17 +559,6 @@ namespace Themp
 		pBackBuffer->Release();
 		return true;
 	}
-	bool D3D::CreateRenderTextures(int width, int height)
-	{
-		for (int i = 0; i < NUM_RENDER_TEXTURES; i++)
-		{
-			m_RenderTextures[i] = new RenderTexture(width,height,RenderTexture::RenderTex, 1);
-			m_ShaderResourceViews[i] = m_RenderTextures[i]->m_ShaderResourceView;
-			m_Rtvs[i] = m_RenderTextures[i]->m_RenderTarget;
-		}
-		m_MainRender = new RenderTexture(width, height, RenderTexture::RenderTex, 1);
-		return true;
-	}
 	bool D3D::CreateDepthStencil(int width, int height,int multisample)
 	{
 		HRESULT result;
@@ -726,8 +632,8 @@ namespace Themp
 		if (!dirtySystemBuffer)return;
 
 		// Supply the vertex shader constant data.
-		m_ConstantBufferData.screenWidth = Themp::System::tSys->m_SVars["WindowSizeX"];
-		m_ConstantBufferData.screenHeight = Themp::System::tSys->m_SVars["WindowSizeY"];
+		m_ConstantBufferData.screenWidth = Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH];
+		m_ConstantBufferData.screenHeight = Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT];
 		if (!m_CBuffer)
 		{
 			// Fill in a buffer description.

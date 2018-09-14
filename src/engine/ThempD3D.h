@@ -56,7 +56,7 @@ namespace Themp
 		void Draw(Game& game);
 		void DrawImGUI();
 		void DrawGBufferPass(Game& game);
-		void DrawPostProcess();
+		//void DrawPostProcess();
 
 		void SetViewPort(float xPos, float yPos, float width, float height);
 		void SetViewPorts(int* nViewports, float* xPos, float* yPos, float* width, float* height);
@@ -73,19 +73,14 @@ namespace Themp
 		void GSUploadConstantBuffersToGPU();
 
 		bool CreateBackBuffer();
-		bool CreateRenderTextures(int width, int height);
 		bool CreateDepthStencil(int width, int height, int multisample);
 
 		ID3D10Blob * ReadToBlob(std::string path);
 
 		CONSTANT_BUFFER m_ConstantBufferData;
-		RenderTexture* m_RenderTextures[NUM_RENDER_TEXTURES];
-		RenderTexture* m_MainRender = nullptr;
-		ID3D11RenderTargetView* m_Rtvs[NUM_RENDER_TEXTURES];
 
 		//enough potential SRV's I won't ever go out of bounds.
 		ID3D11ShaderResourceView* m_ShaderResourceViews[32]; 
-
 		ID3D11RenderTargetView* m_BackBuffer = nullptr;
 		ID3D11BlendState* m_OMBlendState = nullptr;
 		ID3D11Texture2D* m_DepthStencil = nullptr;
@@ -93,11 +88,11 @@ namespace Themp
 		ID3D11DepthStencilState* m_SkyboxDepthStencilState = nullptr;
 		ID3D11DepthStencilState* m_ShadowClearDepthStencilState = nullptr;
 		ID3D11DepthStencilView* m_DepthStencilView = nullptr;
-		ID3D11ShaderResourceView* m_DepthStencilSRV = nullptr;
 
 		ID3D11RasterizerState* m_RasterizerState = nullptr;
 		ID3D11RasterizerState* m_WireframeRasterizerState = nullptr;
 		ID3D11RasterizerState* m_ShadowRasterizerState = nullptr;
+		ID3D11BlendState* m_BlendState = nullptr;
 		ID3D11Buffer* m_CBuffer = nullptr;      //System Constant Buffer
 		ID3D11Device* m_Device = nullptr;
 #ifdef _DEBUG

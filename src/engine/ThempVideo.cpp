@@ -9,6 +9,9 @@
 
 #pragma warning( disable : 4996) //disables warning unsafe function: freopen() fopen() .. etc
 
+//game include
+#include "ThempFileManager.h"
+
 namespace Themp
 {
 	using namespace Smacker;
@@ -16,8 +19,18 @@ namespace Themp
 	Video::Video()
 	{
 		decoder = new SmackerDecoder();
-		//SeekableReadStream* rStream = new BitStreamMemoryStream();
 	}
+
+	//override for game
+	Video::Video(FileData* file)
+	{
+		decoder = new SmackerDecoder();
+		if (Load(file->data, file->size))
+		{
+			isLoaded = true;
+		}
+	}
+
 	bool Video::Load(BYTE* data, size_t size)
 	{
 		if (decoder->loadStream(new MemoryReadStream(data, size, false)))
@@ -43,6 +56,7 @@ namespace Themp
 				sound = Themp::System::tSys->m_Audio->MakeSoundBuffer(format);
 			}
 			videoTimer.StartTime();
+			isLoaded = true;
 			return true;
 		}
 		else
@@ -60,6 +74,7 @@ namespace Themp
 	int timeInFrames = 0;
 	int Video::Play()
 	{
+		if (!isLoaded)return 0;
 		double dif = videoTimer.GetDeltaTimeReset();
 		totalTime += dif;
 		const float frameMS = 1.0 / m_Fps;

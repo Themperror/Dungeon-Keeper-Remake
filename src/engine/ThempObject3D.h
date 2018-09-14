@@ -19,7 +19,7 @@ namespace Themp
 		void Update(float dt);
 		void SetMaterial(Material* m, int MeshIndex = 0);
 		//pass is a enum Themp::Mesh::DrawPass type;
-		void Draw(D3D & d3d);
+		void Draw(D3D& d3d);
 		void ForceBufferUpdate();
 		void CreateCube(std::string shader,  bool geometryShader);
 		void CreateTriangle(std::string shader, bool geometryShader);
@@ -30,7 +30,14 @@ namespace Themp
 
 		std::vector<Themp::Mesh*> m_Meshes;
 		XMFLOAT3 m_Position, m_Rotation, m_Scale;
-		
+
+		void SetPosition(float x, float y, float z);
+		void SetPosition(XMFLOAT3& pos);
+		void SetScale(float x, float y, float z);
+		void SetScale(XMFLOAT3& scale);
+		void SetRotation(float x, float y, float z);
+		void SetRotation(XMFLOAT3& rot);
+
 		//axis aligned
 		XMFLOAT3 m_BoundsMin, m_BoundsMax;
 		ID3D11Buffer* m_ConstantBuffer = nullptr;

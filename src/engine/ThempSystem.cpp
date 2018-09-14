@@ -67,6 +67,8 @@ namespace Themp
 		ImGuiIO& io = ImGui::GetIO();
 		double totalDelta = 0;
 		double time = 0;
+
+		ShowCursor(false);
 		while (!tSys->m_Quitting)
 		{
 			double delta = mainTimer.GetDeltaTimeReset();
@@ -115,24 +117,25 @@ namespace Themp
 					{
 						m_Game->m_Keys[257] = 2;
 					}
-					if (m_CursorShown)
-					{
-						SetCursorPos(windowRect.left + (windowRect.right - windowRect.left) / 2, windowRect.top + (windowRect.bottom - windowRect.top) / 2);
-						m_CursorShown = false;
-						ShowCursor(m_CursorShown);
-					}
+					//if (m_CursorShown)
+					//{
+					//	//SetCursorPos(windowRect.left + (windowRect.right - windowRect.left) / 2, windowRect.top + (windowRect.bottom - windowRect.top) / 2);
+					//	m_CursorShown = false;
+					//	ShowCursor(m_CursorShown);
+					//}
 				}
 				if (msg.message == WM_RBUTTONUP)
 				{
 					m_Game->m_Keys[257] = -1;
-					if (!m_CursorShown)
-					{
-						m_CursorShown = true;
-						ShowCursor(m_CursorShown);
-					}
+					//if (!m_CursorShown)
+					//{
+					//	m_CursorShown = true;
+					//	ShowCursor(m_CursorShown);
+					//}
 				}
 				if (msg.message == WM_KEYDOWN)
 				{
+					if (msg.wParam > 256)continue;
 					if (m_Game->m_Keys[msg.wParam] <= 0)
 					{
 						m_Game->m_Keys[msg.wParam] = 2;
@@ -140,11 +143,12 @@ namespace Themp
 				}
 				if (msg.message == WM_KEYUP)
 				{
+					if (msg.wParam > 256)continue;
 					m_Game->m_Keys[msg.wParam] = -1;
 				}
 			}
-			//if (totalDelta > 1.0 / (float)dm.dmDisplayFrequency)
-			if (totalDelta > 1.0 / (float)dm.dmDisplayFrequency)
+			const float targetFPS = dm.dmDisplayFrequency;
+			if (totalDelta > 1.0 / targetFPS)
 			{
 				GetWindowRect(m_Window, &windowRect);
 				io = ImGui::GetIO();
@@ -154,13 +158,14 @@ namespace Themp
 				GetCursorPos(&m_Game->m_CursorPos);
 				int windowDiffX = (windowRect.right - windowRect.left - clientRect.right) / 2;
 				int windowDiffY = (int)((windowRect.bottom - windowRect.top - clientRect.bottom) * 0.75);
-
+				int WindowedMouseX = m_Game->m_CursorPos.x - windowRect.left - windowDiffX;
+				int WindowedMouseY = m_Game->m_CursorPos.y - windowRect.top - windowDiffY;
 				io.DeltaTime = (float)totalDelta;
-				m_Game->m_CursorDeltaX = (float)((windowRect.left + (windowRect.right - windowRect.left) / 2) - m_Game->m_CursorPos.x);
-				m_Game->m_CursorDeltaY = (float)((windowRect.top + (windowRect.bottom - windowRect.top) / 2) - m_Game->m_CursorPos.y);
+				m_Game->m_CursorDeltaX = WindowedMouseX;
+				m_Game->m_CursorDeltaY = WindowedMouseY;
 
 				//windows Title bar messes up the actual mouse position for collision testing with the UI, so I adjust it to fit "good enough" since getting exact measurements from top and bottom is a pain
-				io.MousePos = ImVec2((float)(m_Game->m_CursorPos.x - windowRect.left - windowDiffX), (float)(m_Game->m_CursorPos.y - windowRect.top - windowDiffY));
+				io.MousePos = ImVec2(WindowedMouseX, WindowedMouseY);
 				io.DisplaySize = ImVec2((float)clientRect.right, (float)clientRect.bottom);
 
 				ImGui_PrepareFrame();
@@ -170,10 +175,6 @@ namespace Themp
 				tickTimer.StartTime();
 				m_Game->Update(totalDelta);
 				tickTimeAdd += tickTimer.GetDeltaTimeReset();
-				if (!m_CursorShown)
-				{
-					SetCursorPos(windowRect.left + (windowRect.right - windowRect.left) / 2, windowRect.top + (windowRect.bottom - windowRect.top) / 2);
-				}
 				for (size_t i = 0; i < 258; i++)
 				{
 					int8_t currentKey = m_Game->m_Keys[i];
@@ -206,13 +207,13 @@ namespace Themp
 					tickTimeAdd = 0;
 					numSamples = 0;
 				}
-				totalDelta = totalDelta - (1.0 / (float)dm.dmDisplayFrequency);
+				totalDelta = totalDelta - (1.0 / targetFPS);
 			}
 		}
 
 		GetWindowRect(m_Window, &windowRect);
-		m_SVars["WindowSizeX"] = windowRect.right - windowRect.left;
-		m_SVars["WindowSizeY"] = windowRect.bottom - windowRect.top;
+		m_SVars[SVAR_SCREENWIDTH] = windowRect.right - windowRect.left;
+		m_SVars[SVAR_SCREENHEIGHT] = windowRect.bottom - windowRect.top;
 
 
 		m_Game->Stop();
@@ -226,7 +227,6 @@ namespace Themp
 		delete m_D3D;
 		m_D3D = nullptr;
 		ShowCursor(true);
-		m_CursorShown = true;
 		ImGui::DestroyContext();
 	}
 }
@@ -295,23 +295,23 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 
 			nConfig.close();
 		}
-		tSys->m_SVars[std::string("Fullscreen")] = 0;
-		tSys->m_SVars[std::string("WindowPosX")] = 0;
-		tSys->m_SVars[std::string("WindowPosY")] = 0;
-		tSys->m_SVars[std::string("WindowSizeX")] = 1024;
-		tSys->m_SVars[std::string("WindowSizeY")] = 800;
-		tSys->m_SVars[std::string("Anisotropic_Filtering")] = 1;
-		tSys->m_SVars[std::string("Multisample")] = 1;
+		tSys->m_SVars[std::string(SVAR_FULLSCREEN)] = 0;
+		tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = 0;
+		tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = 0;
+		tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024;
+		tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800;
+		tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1;
+		tSys->m_SVars[std::string(SVAR_MULTISAMPLE)] = 1;
 	}
 	
 	//check whether all values exist: (in case of outdated config.ini)
-	if (tSys->m_SVars.find("Fullscreen") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("Fullscreen")] = 0; }
-	if (tSys->m_SVars.find("WindowPosX") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("WindowPosX")] = 0; }
-	if (tSys->m_SVars.find("WindowPosY") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("WindowPosY")] = 0; }
-	if (tSys->m_SVars.find("WindowSizeX") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("WindowSizeX")] = 1024; }
-	if (tSys->m_SVars.find("WindowSizeY") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("WindowSizeY")] = 800; }
-	if (tSys->m_SVars.find("Anisotropic_Filtering") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("Anisotropic_Filtering")] = 1; }
-	if (tSys->m_SVars.find("Multisample") == tSys->m_SVars.end()) { tSys->m_SVars[std::string("Multisample")] = 1; }
+	if (tSys->m_SVars.find(SVAR_FULLSCREEN) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_FULLSCREEN)] = 0; }
+	if (tSys->m_SVars.find(SVAR_WINDOWPOSX) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = 0; }
+	if (tSys->m_SVars.find(SVAR_WINDOWPOSY) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = 0; }
+	if (tSys->m_SVars.find(SVAR_SCREENWIDTH) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024; }
+	if (tSys->m_SVars.find(SVAR_SCREENHEIGHT) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800; }
+	if (tSys->m_SVars.find(SVAR_ANISOTROPIC_FILTERING) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1; }
+	if (tSys->m_SVars.find(SVAR_MULTISAMPLE) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_MULTISAMPLE)] = 1; }
 	
 	ImGui::CreateContext();
 	WNDCLASSEX wc;
@@ -323,20 +323,20 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-	if(tSys->m_SVars.find("Fullscreen")->second == 1)
+	if(tSys->m_SVars.find(SVAR_FULLSCREEN)->second == 1)
 		wc.hbrBackground = (HBRUSH)COLOR_WINDOW;
 	wc.lpszClassName = L"Dungeon Keeper";
 
 	RegisterClassEx(&wc);
 
-	if (tSys->m_SVars.find("Fullscreen")->second == 1)
+	if (tSys->m_SVars.find(SVAR_FULLSCREEN)->second == 1)
 	{
 		HWND desktop = GetDesktopWindow();
 		RECT bSize;
 		GetWindowRect(desktop, &bSize);
 
-		tSys->m_SVars.find("WindowSizeX")->second = static_cast<float>(bSize.right);
-		tSys->m_SVars.find("WindowSizeY")->second = static_cast<float>(bSize.bottom);
+		tSys->m_SVars.find(SVAR_SCREENWIDTH)->second = static_cast<float>(bSize.right);
+		tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second = static_cast<float>(bSize.bottom);
 		tSys->m_Window = CreateWindowEx(NULL,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
@@ -353,16 +353,16 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
 			WS_OVERLAPPEDWINDOW,
-			static_cast<int>(tSys->m_SVars.find("WindowPosX")->second ),
-			static_cast<int>(tSys->m_SVars.find("WindowPosY")->second ),
-			static_cast<int>(tSys->m_SVars.find("WindowSizeX")->second),
-			static_cast<int>(tSys->m_SVars.find("WindowSizeY")->second),
+			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSX)->second ),
+			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSY)->second ),
+			static_cast<int>(tSys->m_SVars.find(SVAR_SCREENWIDTH)->second),
+			static_cast<int>(tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second),
 			NULL, NULL, hInstance, NULL);
 	}
 	RECT winRect;
 
-	newWindowSizeX = static_cast<int>(tSys->m_SVars.find("WindowSizeX")->second);
-	newWindowSizeY = static_cast<int>(tSys->m_SVars.find("WindowSizeY")->second);
+	newWindowSizeX = static_cast<int>(tSys->m_SVars.find(SVAR_SCREENWIDTH)->second);
+	newWindowSizeY = static_cast<int>(tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second);
 
 	winRect.left = 0;
 	winRect.right = newWindowSizeX;
@@ -371,7 +371,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 
 	//We have to recalculate and rescale the window because window size doesn't equal render (client) size, so windows will rescale the render targets
 	AdjustWindowRect(&winRect, WS_OVERLAPPEDWINDOW, true);
-	SetWindowPos(tSys->m_Window, 0, static_cast<int>(tSys->m_SVars.find("WindowPosX")->second), static_cast<int>(tSys->m_SVars.find("WindowPosY")->second), winRect.right, winRect.bottom, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+	SetWindowPos(tSys->m_Window, 0, static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSX)->second), static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSY)->second), winRect.right, winRect.bottom, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 	ShowWindow(tSys->m_Window, nCmdShow);
 
 	//reset all values again
@@ -465,8 +465,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	{
 		if (wParam == SIZE_MAXIMIZED)
 		{
-			Themp::System::tSys->m_SVars[std::string("WindowPosX")] = 0;
-			Themp::System::tSys->m_SVars[std::string("WindowPosY")] = 0;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = 0;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = 0;
 		}
 		if (wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED)
 		{
@@ -518,8 +518,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		case WM_MOVING:
 		{
 			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
-			Themp::System::tSys->m_SVars[std::string("WindowPosX")] = windowRect.left;
-			Themp::System::tSys->m_SVars[std::string("WindowPosY")] = windowRect.top;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = windowRect.left;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = windowRect.top;
 		}break;
 		case WM_PAINT:
 			if (Themp::System::tSys->m_D3D && Themp::System::tSys->m_D3D->m_DevCon)

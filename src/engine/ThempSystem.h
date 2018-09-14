@@ -13,6 +13,15 @@
 #define LOG_MISSING_MATERIALS 0
 #define CLEAN(x) if(x){x->Release();x=nullptr;}
 
+
+#define SVAR_SCREENWIDTH "WindowSizeX"
+#define SVAR_SCREENHEIGHT "WindowSizeY"
+#define SVAR_FULLSCREEN "Fullscreen"
+#define SVAR_WINDOWPOSX "WindowPosX"
+#define SVAR_WINDOWPOSY "WindowPosY"
+#define SVAR_ANISOTROPIC_FILTERING "Anisotropic_Filtering"
+#define SVAR_MULTISAMPLE "Multisample"
+
 namespace Themp
 {
 	struct Timer

@@ -99,7 +99,7 @@ namespace Themp
 		devcon->IASetInputLayout(DefaultLineMaterial->m_InputLayout);
 		devcon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 		devcon->OMSetDepthStencilState(D3D::s_D3D->m_DepthStencilState, 1);
-		devcon->OMSetRenderTargets(NUM_RENDER_TEXTURES, D3D::s_D3D->m_Rtvs, D3D::s_D3D->m_DepthStencilView);
+		devcon->OMSetRenderTargets(1, &D3D::s_D3D->m_BackBuffer, D3D::s_D3D->m_DepthStencilView);
 
 		devcon->PSSetShaderResources(0, 0, nullptr);
 		devcon->PSSetShader(DefaultLineMaterial->m_PixelShader, 0, 0);

@@ -296,11 +296,11 @@ namespace Themp
 	}
 	void Texture::Create(int width, int height, DXGI_FORMAT format, bool keepCPUTexture, void* data)
 	{
+		m_Width = width;
+		m_Height = height;
 		if (keepCPUTexture)
 		{
 			m_Data = new char[width*height * 4];//BUG: will not support formats more than 32 bits per pixel, less SHOULD be ok
-			m_Width = width;
-			m_Height = height;
 			if (data)
 			{
 				memcpy(m_Data, data, width*height * 4);
@@ -324,7 +324,7 @@ namespace Themp
 		subResource.pSysMem = keepCPUTexture ? m_Data : data;
 		subResource.SysMemPitch = desc.Width * 4;
 		subResource.SysMemSlicePitch = 0;
-		Themp::System::tSys->m_D3D->m_Device->CreateTexture2D(&desc, &subResource, &m_Texture2D);
+		HRESULT res = Themp::System::tSys->m_D3D->m_Device->CreateTexture2D(&desc, &subResource, &m_Texture2D);
 
 		// Create texture view
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -333,7 +333,6 @@ namespace Themp
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = desc.MipLevels;
 		srvDesc.Texture2D.MostDetailedMip = 0;
-		HRESULT res = 0;
 		if (m_Texture2D != nullptr)
 		{
 			res = Themp::System::tSys->m_D3D->m_Device->CreateShaderResourceView(m_Texture2D, &srvDesc, &m_View);

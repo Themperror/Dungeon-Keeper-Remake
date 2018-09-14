@@ -16,6 +16,8 @@ namespace Themp
 		m_Position = XMFLOAT3(0, 0, 0);
 		m_Scale = XMFLOAT3(1,1,1);
 		m_Rotation = XMFLOAT3(0, 0, 0);
+		ForceBufferUpdate();
+		Resources::TRes->m_3DObjects.push_back(this);
 	}
 	Object3D::~Object3D()
 	{
@@ -27,8 +29,7 @@ namespace Themp
 	}
 	void Object3D::Update(float dt)
 	{
-		m_Rotation.y += dt*0.2;
-		isDirty = true;
+
 	}
 	void Object3D::SetMaterial(Material * m, int MeshIndex)
 	{
@@ -49,25 +50,6 @@ namespace Themp
 
 			XMStoreFloat4x4(&m_ConstantBufferData.worldMatrix, (WorldMatrix));
 
-			if (!m_ConstantBuffer)
-			{
-				// Fill in a buffer description.
-				D3D11_BUFFER_DESC cbDesc;
-				cbDesc.ByteWidth = sizeof(Object3DConstantBufferData);
-				cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-				cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-				cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-				cbDesc.MiscFlags = 0;
-				cbDesc.StructureByteStride = 0;
-
-				// Fill in the subresource data.
-				D3D11_SUBRESOURCE_DATA InitData;
-				InitData.pSysMem = &m_ConstantBufferData;
-				InitData.SysMemPitch = 0;
-				InitData.SysMemSlicePitch = 0;
-				// Create the buffer.
-				Themp::System::tSys->m_D3D->m_Device->CreateBuffer(&cbDesc, &InitData, &m_ConstantBuffer);
-			}
 			D3D11_MAPPED_SUBRESOURCE ms;
 			d3d.m_DevCon->Map(m_ConstantBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
 			memcpy(ms.pData, &m_ConstantBufferData, sizeof(Object3DConstantBufferData));
@@ -152,7 +134,6 @@ namespace Themp
 		mesh->ConstructVertexBuffer();
 		mesh->m_Material = Themp::System::tSys->m_Resources->GetMaterial("","DefaultDiffuse.dds", shader, geometryShader);
 		m_Meshes.push_back(mesh);
-		Themp::System::tSys->m_Resources->m_3DObjects.push_back(this);
 	}
 	void Object3D::CreateTriangle(std::string shader, bool geometryShader)
 	{
@@ -197,8 +178,6 @@ namespace Themp
 		mesh->ConstructVertexBuffer();
 		mesh->m_Material = Themp::System::tSys->m_Resources->GetMaterial("", "DefaultDiffuse.dds", shader, geometryShader);
 		m_Meshes.push_back(mesh);
-
-		Themp::System::tSys->m_Resources->m_3DObjects.push_back(this);
 	}
 	void Object3D::Construct()
 	{
@@ -239,5 +218,35 @@ namespace Themp
 			m_BoundsMin.y = min.y < m_BoundsMin.y ? min.y : m_BoundsMin.y;
 			m_BoundsMin.z = min.z < m_BoundsMin.z ? min.z : m_BoundsMin.z;
 		}
+	}
+	void Object3D::SetPosition(float x, float y, float z)
+	{
+		m_Position = XMFLOAT3(x, y, z);
+		isDirty = true;
+	}
+	void Object3D::SetPosition(XMFLOAT3 & pos)
+	{
+		m_Position = pos;
+		isDirty = true;
+	}
+	void Object3D::SetScale(float x, float y, float z)
+	{
+		m_Scale = XMFLOAT3(x, y, z);
+		isDirty = true;
+	}
+	void Object3D::SetScale(XMFLOAT3 & scale)
+	{
+		m_Scale = scale;
+		isDirty = true;
+	}
+	void Object3D::SetRotation(float x, float y, float z)
+	{
+		m_Rotation = XMFLOAT3(x, y, z);
+		isDirty = true;
+	}
+	void Object3D::SetRotation(XMFLOAT3 & rot)
+	{
+		m_Rotation = rot;
+		isDirty = true;
 	}
 }
