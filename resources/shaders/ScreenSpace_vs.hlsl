@@ -1,5 +1,9 @@
 #include "Defines.hlsl"
 
+cbuffer ObjectBuffer : register(b0)
+{
+    float4x4 modelMatrix; //64
+};
 struct VS_OUTPUT
 {
     float4 positionVS : SV_POSITION;
@@ -16,7 +20,14 @@ struct VS_INPUT
 VS_OUTPUT VShader(VS_INPUT input)
 {
     VS_OUTPUT output;
-    output.positionVS = float4(input.position, 1.0f);
+
+    float4 mPos = float4(modelMatrix._41_42_43_44);
+    float4x4 scaleMatrix = modelMatrix;
+    scaleMatrix._41_42_43_44 = float4(0, 0, 0, 1);
+
+    output.positionVS = mul(scaleMatrix, float4(input.position, 1.0f)); //scaling
+    output.positionVS += mPos; //positioning
+
     output.uv = float2(input.uv);
     return output;
 }
