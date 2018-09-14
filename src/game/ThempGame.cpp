@@ -13,7 +13,6 @@
 #include "../Engine/ThempDebugDraw.h"
 #include "../Engine/ThempVideo.h"
 #include <DirectXMath.h>
-//#include "..\..\include\AccidentalNoise\anl_noise.h"
 
 float totalMouseX = 0, totalMouseY = -20;
 float mouseSensitivity = 0.15f;
@@ -24,7 +23,7 @@ void Themp::Game::Start()
 	m_Camera->SetPosition(-0.100051 , 43.199852, -273.101563);
 	m_Camera->SetTarget(XMFLOAT3(-0.100051, 43.199852, -273.101563));
 	m_Camera->Rotate(0, -20);
-	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars["WindowSizeX"] / Themp::System::tSys->m_SVars["WindowSizeY"]);
+	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] / Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT]);
 	m_Camera->SetFoV(75);
 	m_Camera->SetNear(0.1f);
 	m_Camera->SetFar(1000.0f);
@@ -37,7 +36,7 @@ void Themp::Game::Start()
 void Themp::Game::Update(double dt)
 {
 	DebugDraw::Update((float)dt);
-	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars["WindowSizeX"] / Themp::System::tSys->m_SVars["WindowSizeY"]);
+	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] / Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT]);
 	
 	if (!m_MainMenu->m_IsDone)
 	{
@@ -129,6 +128,7 @@ void Themp::Game::Stop()
 	m_MainMenu->Stop();
 	delete m_MainMenu;
 	delete m_Camera;
+	delete m_FileManager;
 	m_Camera = nullptr;
 	for (int i = 0; i < m_Objects3D.size(); i++)
 	{

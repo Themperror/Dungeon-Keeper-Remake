@@ -21,7 +21,7 @@ namespace Themp
 		FileManager* m_FileManager;
 		MainMenu* m_MainMenu = nullptr;
 
-		signed char m_Keys[1024];//Keeping track of input;
+		signed char m_Keys[258];//Keeping track of input;
 		POINT m_CursorPos;
 		float m_CursorDeltaX, m_CursorDeltaY;
 	};
