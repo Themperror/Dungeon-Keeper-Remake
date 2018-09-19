@@ -4,22 +4,26 @@ namespace Themp
 {
 	class D3D;
 	class Object3D;
+	class Material;
 	struct Texture;
 	struct GUITexture;
 	class Object2D
 	{
 	public:
-		enum Source{FILE,LEVEL_MISC,LEVEL_PANE,MENU_MAIN,MENU_CURSOR};
+		enum Source{sFILE,sLEVEL_MISC,sLEVEL_PANE,sMENU_MAIN,sMENU_CURSOR,sCUSTOM};
 		~Object2D();
+		Object2D();
 		Object2D(std::wstring path, std::wstring ext);
 		Object2D(Source textureSource, int textureIndex, bool hiRes);
 		
 		void SetVisibility(bool val);
-		void SetSprite(int offX, int offY, int W, int H, int MAXW, int MAXH);
+		void SetScale(float W, float H);
+		//void SetSprite(int offX, int offY, int W, int H, int MAXW, int MAXH);
 		Texture* m_Tex = nullptr;
+		Material* m_Material = nullptr;
 		GUITexture* m_GUITex = nullptr;
 		Object3D* m_Renderable = nullptr;
-		Source m_Source = FILE;
+		Source m_Source = sFILE;
 
 	};
 };

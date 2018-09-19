@@ -12,6 +12,7 @@
 #include "../Engine/ThempVideo.h"
 #include "ThempFileManager.h"
 #include "ThempGUIButton.h"
+#include "ThempFont.h"
 #include <imgui.h>
 #include <DirectXMath.h>
 
@@ -49,19 +50,36 @@ void Themp::MainMenu::Start()
 	//Load map files
 	wchar_t buf[8];
 	m_MapFiles[0] = new Object2D(L"LDATA\\DKMAP00", L".RAW");
+	m_MapFiles[0]->SetVisibility(false);
+	m_MapWindowFiles[0] = new Object2D(L"LDATA\\DKWIND00", L".DAT");
+	m_MapWindowFiles[0]->SetVisibility(false);
+	Themp::System::tSys->m_Game->AddObject3D(m_MapFiles[0]->m_Renderable);
+	Themp::System::tSys->m_Game->AddObject3D(m_MapWindowFiles[0]->m_Renderable);
 	for (size_t i = 1; i < 22; i++)
 	{
 		std::wstring path = L"LDATA\\DKMAP";
+		std::wstring pathwnd = L"LDATA\\DKWIND";
+
 		memset(buf, 0, 8);
 		_itow(i, buf, 10);
+
 		if (i < 10)
 		{
 			path.append(1, L'0');
+			pathwnd.append(1, L'0');
 		}
+
 		path.append(buf);
+		pathwnd.append(buf);
+
 		m_MapFiles[i] = new Object2D(path, L".RAW");
 		m_MapFiles[i]->SetVisibility(false);
+
+		m_MapWindowFiles[i] = new Object2D(pathwnd, L".DAT");
+		m_MapWindowFiles[i]->SetVisibility(false);
+
 		Themp::System::tSys->m_Game->AddObject3D(m_MapFiles[i]->m_Renderable);
+		//Themp::System::tSys->m_Game->AddObject3D(m_MapWindowFiles[i]->m_Renderable);
 	}
 	//Load Loading screen 
 	m_LoadingScreenTexture = new Object2D(L"LDATA\\LOADING", L".RAW");
@@ -81,38 +99,51 @@ void Themp::MainMenu::Start()
 	m_TortureTexture->SetVisibility(false);
 	Themp::System::tSys->m_Game->AddObject3D(m_TortureTexture->m_Renderable);
 
+	m_MainMenuBar[0] = new Object2D(Object2D::sMENU_MAIN, 13, true);
+	m_MainMenuBar[1] = new Object2D(Object2D::sMENU_MAIN, 14, true);
+	m_MainMenuBar[2] = new Object2D(Object2D::sMENU_MAIN, 15, true);
+	Themp::System::tSys->m_Game->AddObject3D(m_MainMenuBar[2]->m_Renderable);
+	Themp::System::tSys->m_Game->AddObject3D(m_MainMenuBar[1]->m_Renderable);
+	Themp::System::tSys->m_Game->AddObject3D(m_MainMenuBar[0]->m_Renderable);
 
+	m_MainMenuBar[0]->m_Renderable->SetPosition(-0.75f, 1.645, 0.5);
+	m_MainMenuBar[1]->m_Renderable->SetPosition(0, 1.645, 0.5);
+	m_MainMenuBar[2]->m_Renderable->SetPosition(0.75f, 1.645, 0.5);
+
+	std::string buttonTexts[7] = { "Start New Game", "Continue Game", "Load Game", "Multiplayer", "Options", "High Score Table", "Quit" };
+	bool disabled[7] = { false,true,true,true,false,false,false };
 	for (size_t i = 0; i < 7; i++)
 	{
 		int normal[3] = {13, 14, 15 };
-		int hover[3] = { 4, 5, 6 };
-		int click[3] = { 7, 8, 9 };
+		int hover[3] = { 1, 2, 3 };
+		int click[3] = { 1, 2, 3 };
 		float xOffsets[3] = { -0.75f,0,0.75f };
 		float yOffsets[3] = { 0,0,0 };
 		float zOffsets[3] = { 0.05,0,0 }; //this is such a shitty hack, but I NEED the other buttons to draw over the first one..
-		float xSizes[3] = { 0.19,0.19 ,0.19 };
-		float ySizes[3] = { 0.075 ,0.075 ,0.075 };
-		m_GUIButtons[i] = new GUIButton(Object2D::MENU_MAIN, normal,hover,click,xOffsets,yOffsets,zOffsets, 3, true);
+		m_GUIButtons[i] = new GUIButton(Object2D::sMENU_MAIN, normal,hover,click,xOffsets,yOffsets,zOffsets, 3, true, buttonTexts[i], Font::MENU_NORMAL1, Font::MENU_NORMAL2, Font::MENU_NORMAL3);
 		for (size_t j = 0; j < 3; j++)
 		{
-			m_GUIButtons[i]->SetSize(xSizes[j], ySizes[j],j);
+			//m_GUIButtons[i]->SetSize(xSizes[j], ySizes[j], j);
+			m_GUIButtons[i]->SetSize(1,1,1,1, j);
 		}
 		m_GUIButtons[i]->SetPosition(0, 0.945 - (i * 0.415),0.5);
 		m_GUIButtons[i]->SetVisibility(true);
+		m_GUIButtons[i]->m_IsDisabled = disabled[i];
 	}
-	//m_GUIButtons[0]->SetVisibility(false);
 
+	m_TextObject = new Font("Main Menu", Font::FontTexID::MENU_NORMAL0,false, XMFLOAT3(0, 1.65, 0.4));
 
 	//Load cursor sprite
-	cursor = new Object2D(Object2D::MENU_CURSOR,0,true);
+	cursor = new Object2D(Object2D::sMENU_MAIN,94,true);
 	cursor->m_Renderable->SetScale(0.2, 0.2, 0.2);
 	cursor->SetVisibility(false);
 	System::tSys->m_Game->AddObject3D(cursor->m_Renderable);
 
 	//skip video
-	//m_DoPlayVideo = false;
-	//m_VideoObject->isVisible = false;
-	//m_State = MenuState::Loading;
+	m_DoPlayVideo = false;
+	m_VideoObject->isVisible = false;
+	m_SplashScreenTexture->SetVisibility(false);
+	m_State = MenuState::Loading;
 }
 
 void TranslateMousePos(int inX, int inY, float& outX, float& outY)
@@ -136,6 +167,7 @@ void Themp::MainMenu::Update(double dt)
 
 	float uiMouseX = 0, uiMouseY = 0;
 	TranslateMousePos(g->m_CursorDeltaX, g->m_CursorDeltaY, uiMouseX, uiMouseY);
+	cursor->m_Renderable->SetPosition(uiMouseX + 0.2, uiMouseY - 0.2, 0.1);
 	//System::Print("Cursor X: %f, Cursor Y: %f", g->m_CursorDeltaX, g->m_CursorDeltaY);
 	switch (m_State)
 	{
@@ -199,13 +231,11 @@ void Themp::MainMenu::Update(double dt)
 		cursor->SetVisibility(true);
 		m_MenuBackgroundTexture->SetVisibility(true);
 
-		cursor->m_Renderable->SetPosition(uiMouseX+0.2, uiMouseY-0.2, 0.1);
 		for (size_t i = 0; i < 7; i++)
 		{
-			if (m_GUIButtons[i])
+			if (m_GUIButtons[i]->m_IsVisible)
 			{
-				m_GUIButtons[i]->SetVisibility(true);
-				if (m_GUIButtons[i]->Update(uiMouseX, uiMouseY, g->m_Keys[256], InitialClick))
+				if (m_GUIButtons[i]->Update(dt, uiMouseX, uiMouseY, g->m_Keys[256], InitialClick))
 				{
 					if (g->m_Keys[256] == 2)
 					{
@@ -215,7 +245,49 @@ void Themp::MainMenu::Update(double dt)
 					{
 						if (InitialClick == m_GUIButtons[i])
 						{
-							Themp::System::Print("Clicked on the button!");
+							switch (i)
+							{
+							case 0: //Start New Game
+								m_State = MenuState::CampaignSelect;
+								m_CurrentLevel = 0;
+								m_MapFiles[m_CurrentLevel]->SetVisibility(true);
+								m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
+								m_MapFiles[0]->SetScale(0.7, 0.7);
+								m_MapWindowFiles[0]->SetVisibility(true);
+								m_MapWindowFiles[0]->m_Renderable->SetPosition(0, 0, 0.8);
+								m_MapWindowFiles[0]->SetScale(0.8,0.8);
+								for (size_t j = 0; j < 7; j++)
+								{
+									m_GUIButtons[j]->SetVisibility(false);
+								}
+								for (size_t j = 0; j < 3; j++)
+								{
+									m_MainMenuBar[j]->SetVisibility(false);
+								}
+								m_MenuBackgroundTexture->SetVisibility(false);
+								m_TextObject->SetVisibility(false);
+								break;
+							case 1: //Continue
+								m_State = MenuState::CampaignSelect;
+								//m_CurrentLevel = LastCompletedLevel+1;
+								//continueing = true;
+								break;
+							case 2: //Load Game
+								m_State = MenuState::LoadGame;
+								break;
+							case 3: //Multiplayer
+								//Nothing Happens, We're not gonna do MP until we're completely done
+								break;
+							case 4: //Options
+								m_State = MenuState::Options;
+								break;
+							case 5: //High Score Table
+								m_State = MenuState::HighScore;
+								break;
+							case 6: //Quit
+								System::tSys->m_Quitting = true;
+								break;
+							}
 						}
 						else
 						{
@@ -227,25 +299,11 @@ void Themp::MainMenu::Update(double dt)
 		}
 		if (ImGui::Button("Next GUI"))
 		{
-			cursor->m_Renderable->m_Meshes[0]->m_Material->SetTexture(FileManager::GetMenuCursorTexture(cursorIndex++)->texture);
+			Texture* tex = FileManager::GetMenuCursorTexture((cursorIndex++))->texture;
+			cursor->m_Renderable->m_Meshes[0]->m_Material->SetTexture(tex);
+			cursor->m_Tex = tex;
+			Themp::System::Print("Cursor Tex Index: %i",cursorIndex);
 		}
-		//spriteTest->NextFrame();
-
-		
-
-		//render Main Menu layout
-		//-Start New Game - > CampaignSelect;
-
-		//-Continue Game - > Load most recent save;
-
-		//-Load Game - > LoadGame
-
-		//-Multiplayer - > disabled
-
-		//-Options - > Options
-
-
-		//ifbutton presses - set state to that button menu or quite
 		break;
 	case MenuState::CampaignSelect:
 		//show campaign stuff to visible
@@ -295,6 +353,10 @@ void Themp::MainMenu::Stop()
 			{
 				delete m_MapFiles[i];
 			}
+			if (m_MapWindowFiles[i])
+			{
+				delete m_MapWindowFiles[i];
+			}
 		}
 		for (size_t i = 0; i < 7; i++)
 		{
@@ -303,7 +365,10 @@ void Themp::MainMenu::Stop()
 				delete m_GUIButtons[i];
 			}
 		}
-		
+		if (m_TextObject)
+		{
+			delete m_TextObject;
+		}
 		delete cursor;
 		m_VideoObject->isVisible = false;
 		m_IsDone = true;

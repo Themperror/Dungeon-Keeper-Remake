@@ -1,20 +1,26 @@
 #pragma once
 #include <vector>
+#include <DirectXMath.h>
 namespace Themp
 {
 	class D3D;
-	class Object3D;
+	class Object2D;
 	struct Texture;
+	struct GUITexture;
 	class Font
 	{
 	public:
-		enum FontTexID{INGAME,MENU_NORMAL,MENU_HOVER,MENU_CLICK};
+		enum FontTexID{INGAME= 0,MENU_NORMAL0 = 2, MENU_NORMAL1, MENU_NORMAL2, MENU_NORMAL3};
 		~Font();
-		Font(std::string text, FontTexID fontTexture, bool hiRes);
+		Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position);
 		
 		void SetVisibility(bool val);
-		Object3D* m_Renderable = nullptr;
-		FontTexID m_TexID = MENU_NORMAL;
+		void SetScale(float x, float y, float z);
+		Object2D* m_ScreenObj = nullptr;
+		FontTexID m_TexID = MENU_NORMAL0;
+		std::string m_Text;
+		std::vector<GUITexture>* m_Font = nullptr;
+		GUITexture* m_Texture;
 
 	};
 };

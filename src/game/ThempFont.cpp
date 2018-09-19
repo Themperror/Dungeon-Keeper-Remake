@@ -17,275 +17,158 @@
 
 using namespace Themp;
 
-
-uint8_t FontMap[256] =
-{
-	0,
-	1,
-	2,
-	3,
-	4,
-	5,
-	6,
-	7,
-	8,
-	9,
-	10,
-	11,
-	12,
-	13,
-	14,
-	15,
-	16,
-	17,
-	18,
-	19,
-	20,
-	21,
-	22,
-	23,
-	24,
-	25,
-	26,
-	27,
-	28,
-	29,
-	30,
-	31,
-	32,
-	33,
-	34,
-	35,
-	36,
-	37,
-	38,
-	39,
-	40,
-	41,
-	42,
-	43,
-	44,
-	45,
-	46,
-	47,
-	48,
-	49,
-	50,
-	51,
-	52,
-	53,
-	54,
-	55,
-	56,
-	57,
-	58,
-	59,
-	60,
-	61,
-	62,
-	63,
-	64,
-	65,
-	66,
-	67,
-	68,
-	69,
-	70,
-	71,
-	72,
-	73,
-	74,
-	75,
-	76,
-	77,
-	78,
-	79,
-	80,
-	81,
-	82,
-	83,
-	84,
-	85,
-	86,
-	87,
-	88,
-	89,
-	90,
-	91,
-	92,
-	93,
-	94,
-	95,
-	96,
-	97,
-	98,
-	99,
-	100,
-	101,
-	102,
-	103,
-	104,
-	105,
-	106,
-	107,
-	108,
-	109,
-	110,
-	111,
-	112,
-	113,
-	114,
-	115,
-	116,
-	117,
-	118,
-	119,
-	120,
-	121,
-	122,
-	123,
-	124,
-	125,
-	126,
-	127,
-	128,
-	129,
-	130,
-	131,
-	132,
-	133,
-	134,
-	135,
-	136,
-	137,
-	138,
-	139,
-	140,
-	141,
-	142,
-	143,
-	144,
-	145,
-	146,
-	147,
-	148,
-	149,
-	150,
-	151,
-	152,
-	153,
-	154,
-	155,
-	156,
-	157,
-	158,
-	159,
-	160,
-	161,
-	162,
-	163,
-	164,
-	165,
-	166,
-	167,
-	168,
-	169,
-	170,
-	171,
-	172,
-	173,
-	174,
-	175,
-	176,
-	177,
-	178,
-	179,
-	180,
-	181,
-	182,
-	183,
-	184,
-	185,
-	186,
-	187,
-	188,
-	189,
-	190,
-	191,
-	192,
-	193,
-	194,
-	195,
-	196,
-	197,
-	198,
-	199,
-	200,
-	201,
-	202,
-	203,
-	204,
-	205,
-	206,
-	207,
-	208,
-	209,
-	210,
-	211,
-	212,
-	213,
-	214,
-	215,
-	216,
-	217,
-	218,
-	219,
-	220,
-	221,
-	222,
-	223,
-	224,
-	225,
-	226,
-	227,
-	228,
-	229,
-	230,
-	231,
-	232,
-	233,
-	234,
-	235,
-	236,
-	237,
-	238,
-	239,
-	240,
-	241,
-	242,
-	243,
-	244,
-	245,
-	246,
-	247,
-	248,
-	249,
-	250,
-	251,
-	252,
-	253,
-	254,
-	255,
-};
-
 Themp::Font::~Font()
 {
+	//for (size_t i = 0; i < m_Text.size(); i++)
+	//{
+	//	if (m_Renderables[i] == nullptr)continue;
+	//	delete m_Renderables[i];
+	//	m_Renderables[i] = nullptr;
+	//}
+	if (m_ScreenObj != nullptr)
+	{
+		delete m_ScreenObj; 
+		m_ScreenObj = nullptr;
+	}
+	delete m_Texture->texture;
+	delete m_Texture;
 }
 
-Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes)
+//Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position)
+//{
+//	m_Position = position;
+//	m_Font = FileManager::GetFont(fontTexture + (fontTexture == FontTexID::INGAME && hiRes ? 1 : 0));
+//	m_Text = text;
+//	m_Renderables = new Object2D*[text.size()];
+//	float scrWidth = System::tSys->m_SVars[SVAR_SCREENWIDTH];
+//	float scrHeight = System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+//	float lastX = position.x;
+//	float lastY = position.y;
+//	for (size_t i = 0; i < text.size(); i++)
+//	{
+//		m_Renderables[i] = nullptr;
+//
+//		int textID = (uint8_t)text[i] - 32;
+//		if (text[i] == ' ')
+//		{
+//			lastX += 1.0 / 800.0 * 20.0;
+//			continue;
+//		}
+//		else if (text[i] == '\n')
+//		{
+//			lastX = m_Position.x;
+//			lastY -= 1.0 / 800 * 64.0f;
+//			continue;
+//		}
+//		if (textID < 0)continue;
+//		Object2D* obj = new Object2D();
+//		m_Renderables[i] = obj;
+//		obj->m_GUITex = &m_Font->at(textID);
+//		obj->m_Material->SetTexture(obj->m_GUITex->texture);
+//
+//		obj->m_Renderable->m_Position.x = lastX;
+//		obj->m_Renderable->m_Position.y = lastY;
+//		obj->m_Renderable->m_Position.z = position.z - i*0.00001;
+//
+//		lastX += obj->m_GUITex->width / 800.0 + (1.0 / 800.0 * 10.0);
+//		obj->m_Renderable->SetScale(obj->m_GUITex->width / 800.0, obj->m_GUITex->height / 600.0, 1);
+//		obj->SetVisibility(true);
+//		System::tSys->m_Game->AddObject3D(obj->m_Renderable);
+//	}
+//}
+Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position)
 {
-}
+	m_Font = FileManager::GetFont(fontTexture + (fontTexture == FontTexID::INGAME && hiRes ? 1 : 0));
+	m_Text = text;
+	m_ScreenObj = new Object2D();
+	m_ScreenObj->m_Renderable->SetPosition(position);
+	System::tSys->m_Game->AddObject3D(m_ScreenObj->m_Renderable);
+	int dataWidth = 0;
+	int dataHeight = 0;
+	int numLines = 0;
+	int biggestYTex = 0;
 
+	int spacing = 0;
+	int spaceSize = 10;
+	for (size_t i = 0; i < text.size(); i++)
+	{
+		int textID = (uint8_t)text[i] - 32;
+		if (text[i] == ' ')
+		{
+			dataWidth += spaceSize;
+			continue;
+		}
+		else if (text[i] == '\n')
+		{
+			numLines++;
+			continue;
+		}
+		if (textID < 0)continue;
+		GUITexture* tex = &m_Font->at(textID);
+		if (biggestYTex < tex->height)biggestYTex = tex->height;
+		dataWidth += tex->width + spacing;
+		if (dataHeight < biggestYTex + numLines*64) dataHeight = biggestYTex + numLines * 64;
+	}
+	BYTE* imageData = (BYTE*)malloc(dataWidth * dataHeight * 4);
+	memset(imageData, 0, dataWidth*dataHeight * 4);
+	int lastX = 0;
+	int lastY = 0;
+	for (size_t i = 0; i < text.size(); i++)
+	{
+		int textID = (uint8_t)text[i] - 32;
+		if (text[i] == ' ')
+		{
+			lastX += spaceSize;
+			continue;
+		}
+		else if (text[i] == '\n')
+		{
+			lastX = 0;
+			lastY += 64;
+			continue;
+		}
+		if (textID < 0)continue;
+		GUITexture* tex = &m_Font->at(textID);
+		BYTE* texData = (BYTE*)tex->texture->m_Data;
+		for (size_t y = 0; y < tex->height; y++)
+		{
+			for (size_t x = 0; x < tex->width; x++)
+			{
+				int posX = lastX + x;
+				int posY = lastY + y;
+				int writePos = posX + posY * dataWidth;
+				imageData[(writePos * 4)] = texData[(x+y * tex->width)*4];
+				imageData[(writePos * 4 + 1)] = texData[(x+y * tex->width) *4 + 1];
+				imageData[(writePos * 4 + 2)] = texData[(x+y * tex->width) *4 + 2];
+				imageData[(writePos * 4 + 3)] = texData[(x+y * tex->width) *4 + 3];
+			}
+		}
+
+		lastX += tex->width + spacing;
+	}
+	
+	m_Texture = new GUITexture();
+	m_Texture->height = dataHeight;
+	m_Texture->width = dataWidth;
+	m_Texture->texture = new Texture();
+	m_Texture->texture->Create(dataWidth, dataHeight, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, imageData);
+	free(imageData);
+	m_ScreenObj->m_GUITex = m_Texture;
+	m_ScreenObj->m_Tex = m_Texture->texture;
+	m_ScreenObj->m_Material->SetTexture(m_Texture->texture);
+	SetScale(1, 1, 1);
+}
 void Themp::Font::SetVisibility(bool val)
 {
+	m_ScreenObj->SetVisibility(val);
+}
+void Themp::Font::SetScale(float x, float y, float z)
+{
+	Texture* t = m_Texture->texture;
+	float originalW = (float)t->m_Width / 640.0; //original screen width
+	float originalH = (float)t->m_Height / 480.0; //original screen height
+	float newW = originalW * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENWIDTH];
+	float newH = originalH * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+
+	m_ScreenObj->m_Renderable->SetScale(x * newW, y * newH, z);
 }
