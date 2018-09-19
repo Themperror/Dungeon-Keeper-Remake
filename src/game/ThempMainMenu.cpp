@@ -135,7 +135,7 @@ void Themp::MainMenu::Start()
 
 	//Load cursor sprite
 	cursor = new Object2D(Object2D::sMENU_MAIN,94,true);
-	cursor->m_Renderable->SetScale(0.2, 0.2, 0.2);
+	//cursor->m_Renderable->SetScale(0.2, 0.2, 0.2);
 	cursor->SetVisibility(false);
 	System::tSys->m_Game->AddObject3D(cursor->m_Renderable);
 
@@ -161,14 +161,17 @@ void TranslateMousePos(int inX, int inY, float& outX, float& outY)
 Themp::GUIButton* InitialClick = nullptr;
 int cursorIndex = 0;
 float waitingTime = 0;
+XMFLOAT2 mouseOffset = XMFLOAT2(0.166, 0.18);
 void Themp::MainMenu::Update(double dt)
 {
 	Game* g = Themp::System::tSys->m_Game;
 
 	float uiMouseX = 0, uiMouseY = 0;
 	TranslateMousePos(g->m_CursorDeltaX, g->m_CursorDeltaY, uiMouseX, uiMouseY);
-	cursor->m_Renderable->SetPosition(uiMouseX + 0.2, uiMouseY - 0.2, 0.1);
-	//System::Print("Cursor X: %f, Cursor Y: %f", g->m_CursorDeltaX, g->m_CursorDeltaY);
+	cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01);
+
+	const float scrollSpeed = 0.8; //map scroll speed
+
 	switch (m_State)
 	{
 	case MenuState::Splash:
@@ -252,10 +255,10 @@ void Themp::MainMenu::Update(double dt)
 								m_CurrentLevel = 0;
 								m_MapFiles[m_CurrentLevel]->SetVisibility(true);
 								m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
-								m_MapFiles[0]->SetScale(0.7, 0.7);
-								m_MapWindowFiles[0]->SetVisibility(true);
-								m_MapWindowFiles[0]->m_Renderable->SetPosition(0, 0, 0.8);
-								m_MapWindowFiles[0]->SetScale(0.8,0.8);
+								//m_MapFiles[0]->SetScale(0.7, 0.7);
+								m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
+								m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
+								//m_MapWindowFiles[0]->SetScale(0.8,0.8);
 								for (size_t j = 0; j < 7; j++)
 								{
 									m_GUIButtons[j]->SetVisibility(false);
@@ -266,9 +269,15 @@ void Themp::MainMenu::Update(double dt)
 								}
 								m_MenuBackgroundTexture->SetVisibility(false);
 								m_TextObject->SetVisibility(false);
+								cursor->SetTexture(FileManager::GetMenuCursorTexture(0));
+								cursor->SetScale(1, 1);
+								mouseOffset.x = 0.03;
+								mouseOffset.y = 0;
+
 								break;
 							case 1: //Continue
 								m_State = MenuState::CampaignSelect;
+								
 								//m_CurrentLevel = LastCompletedLevel+1;
 								//continueing = true;
 								break;
@@ -299,9 +308,8 @@ void Themp::MainMenu::Update(double dt)
 		}
 		if (ImGui::Button("Next GUI"))
 		{
-			Texture* tex = FileManager::GetMenuCursorTexture((cursorIndex++))->texture;
-			cursor->m_Renderable->m_Meshes[0]->m_Material->SetTexture(tex);
-			cursor->m_Tex = tex;
+			cursor->SetTexture(FileManager::GetMenuCursorTexture((cursorIndex++)));
+			cursor->SetScale(1, 1);
 			Themp::System::Print("Cursor Tex Index: %i",cursorIndex);
 		}
 		break;
@@ -309,6 +317,50 @@ void Themp::MainMenu::Update(double dt)
 		//show campaign stuff to visible
 		//enable clickboxes
 		//if clicked - stop menu -> load level
+		XMFLOAT3 borderPos = m_MapWindowFiles[m_CurrentLevel]->m_Renderable->m_Position;
+		XMFLOAT3 mapPos = m_MapFiles[m_CurrentLevel]->m_Renderable->m_Position;
+		if (uiMouseX < -1.8)
+		{
+			borderPos.x += dt * scrollSpeed  * 0.5;
+			mapPos.x += dt * scrollSpeed;
+			if (borderPos.x > 0.99)
+			{
+				borderPos.x = 0.99;
+				mapPos.x = 1.99;
+			}
+		}
+		else if (uiMouseX > 1.8)
+		{
+			borderPos.x -= dt * scrollSpeed * 0.5;
+			mapPos.x -= dt * scrollSpeed;
+			if (borderPos.x < -0.99)
+			{
+				borderPos.x = -0.99;
+				mapPos.x = -1.99;
+			}
+		}
+		if (uiMouseY > 1.8)
+		{
+			borderPos.y -= dt * scrollSpeed * 0.75;
+			mapPos.y -= dt * scrollSpeed;
+			if (borderPos.y < -0.99)
+			{
+				borderPos.y = -0.99;
+				mapPos.y = -1.33;
+			}
+		}
+		else if (uiMouseY < -1.8)
+		{
+			borderPos.y += dt * scrollSpeed * 0.75;
+			mapPos.y += dt * scrollSpeed;
+			if (borderPos.y > 0.99)
+			{
+				borderPos.y = 0.99;
+				mapPos.y = 1.33;
+			}
+		}
+		m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(borderPos);
+		m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(mapPos);
 		break;
 	case MenuState::LoadGame:
 		//show save slots

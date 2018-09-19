@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <DirectXMath.h>
 namespace Themp
 {
 	class D3D;
@@ -17,7 +18,9 @@ namespace Themp
 		Object2D(Source textureSource, int textureIndex, bool hiRes);
 		
 		void SetVisibility(bool val);
+		void SetTexture(GUITexture * tex);
 		void SetScale(float W, float H);
+		DirectX::XMFLOAT2 GetSizeinScreenPercentage(int screenWidth, int screenHeight);
 		//void SetSprite(int offX, int offY, int W, int H, int MAXW, int MAXH);
 		Texture* m_Tex = nullptr;
 		Material* m_Material = nullptr;

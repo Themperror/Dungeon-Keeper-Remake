@@ -267,6 +267,12 @@ void Object2D::SetVisibility(bool val)
 {
 	m_Renderable->isVisible = val;
 }
+void Object2D::SetTexture(GUITexture* tex)
+{
+	m_Tex = tex->texture;
+	m_GUITex = tex;
+	m_Renderable->m_Meshes[0]->m_Material->SetTexture(m_Tex);
+}
 void Object2D::SetScale(float W, float H)
 {
 	if (m_Tex)
@@ -278,6 +284,14 @@ void Object2D::SetScale(float W, float H)
 		float newH = originalH * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
 		m_Renderable->SetScale(W * newW, H * newH, 1);
 	}
+}
+DirectX::XMFLOAT2 Object2D::GetSizeinScreenPercentage(int screenWidth, int screenHeight)
+{
+	XMFLOAT2 res; //result
+	XMFLOAT3& cScale = m_Renderable->m_Scale;
+	res.x = 100.0 * cScale.x / 2.0;
+	res.y = 100.0 * cScale.y / 2.0;
+	return res;
 }
 //void Object2D::SetSprite(int offX, int offY, int W, int H, int MAXW, int MAXH)
 //{
