@@ -11,7 +11,7 @@ namespace Themp
 	class Object2D
 	{
 	public:
-		enum Source{sFILE,sLEVEL_MISC,sLEVEL_PANE,sMENU_MAIN,sMENU_CURSOR,sCUSTOM};
+		enum Source{sFILE,sLEVEL_MISC,sLEVEL_PANE,sMENU_MAIN,sMENU_CURSOR, sMENU_LEVELFLAG,sCUSTOM};
 		~Object2D();
 		Object2D();
 		Object2D(std::wstring path, std::wstring ext);
@@ -20,6 +20,7 @@ namespace Themp
 		void SetVisibility(bool val);
 		void SetTexture(GUITexture * tex);
 		void SetScale(float W, float H);
+		GUITexture * GetTexture(Object2D::Source source, int index);
 		DirectX::XMFLOAT2 GetSizeinScreenPercentage(int screenWidth, int screenHeight);
 		//void SetSprite(int offX, int offY, int W, int H, int MAXW, int MAXH);
 		Texture* m_Tex = nullptr;
@@ -27,6 +28,7 @@ namespace Themp
 		GUITexture* m_GUITex = nullptr;
 		Object3D* m_Renderable = nullptr;
 		Source m_Source = sFILE;
+		bool m_IsHiRes = true;
 
 	};
 };

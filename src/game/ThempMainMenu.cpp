@@ -16,17 +16,40 @@
 #include <imgui.h>
 #include <DirectXMath.h>
 
+using namespace Themp;
 Themp::Material* videoMat = nullptr;
 Themp::Material* loadingMat = nullptr;
 
-Themp::Object2D* cursor = nullptr;
-
+XMFLOAT2 levelFlagPositions[22] =
+{
+	{ -10,0 },
+	{ 1.0f,-0.83f },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+	{ 0,0 },
+};
 void Themp::MainMenu::Start()
 {
 	memset(m_MapFiles, 0, sizeof(Object2D*) * 22);
 
 	m_SplashScreenTexture = new Object2D(L"DATA\\LEGAL", L".RAW");
-	m_SplashScreenTexture->SetVisibility(true);
 	m_SplashScreenTexture->m_Renderable->m_Scale = XMFLOAT3(2, 2, 2);
 	Themp::System::tSys->m_Game->AddObject3D(m_SplashScreenTexture->m_Renderable);
 
@@ -46,13 +69,12 @@ void Themp::MainMenu::Start()
 	std::vector<std::uint8_t> types = { Material::DIFFUSE };
 	videoMat = Themp::System::tSys->m_Resources->GetMaterial(std::string("Video"), textures, types, "ScreenSpace", false);
 	m_VideoObject->SetMaterial(videoMat);
+	videoMat->SetTexture(m_Video->m_Tex);
 
 	//Load map files
 	wchar_t buf[8];
 	m_MapFiles[0] = new Object2D(L"LDATA\\DKMAP00", L".RAW");
-	m_MapFiles[0]->SetVisibility(false);
 	m_MapWindowFiles[0] = new Object2D(L"LDATA\\DKWIND00", L".DAT");
-	m_MapWindowFiles[0]->SetVisibility(false);
 	Themp::System::tSys->m_Game->AddObject3D(m_MapFiles[0]->m_Renderable);
 	Themp::System::tSys->m_Game->AddObject3D(m_MapWindowFiles[0]->m_Renderable);
 	for (size_t i = 1; i < 22; i++)
@@ -73,30 +95,25 @@ void Themp::MainMenu::Start()
 		pathwnd.append(buf);
 
 		m_MapFiles[i] = new Object2D(path, L".RAW");
-		m_MapFiles[i]->SetVisibility(false);
 
 		m_MapWindowFiles[i] = new Object2D(pathwnd, L".DAT");
-		m_MapWindowFiles[i]->SetVisibility(false);
 
 		Themp::System::tSys->m_Game->AddObject3D(m_MapFiles[i]->m_Renderable);
-		//Themp::System::tSys->m_Game->AddObject3D(m_MapWindowFiles[i]->m_Renderable);
+		Themp::System::tSys->m_Game->AddObject3D(m_MapWindowFiles[i]->m_Renderable);
 	}
 	//Load Loading screen 
 	m_LoadingScreenTexture = new Object2D(L"LDATA\\LOADING", L".RAW");
-	m_LoadingScreenTexture->SetVisibility(false);
 	m_LoadingScreenTexture->m_Renderable->m_Scale = XMFLOAT3(2, 2, 2);
 	Themp::System::tSys->m_Game->AddObject3D(m_LoadingScreenTexture->m_Renderable);
 
 	//Load Main Menu texture
 	m_MenuBackgroundTexture = new Object2D(L"LDATA\\FRONT", L".RAW");
 	m_MenuBackgroundTexture->m_Renderable->m_Scale = XMFLOAT3(2, 2, 2);
-	m_MenuBackgroundTexture->SetVisibility(false);
 	m_MenuBackgroundTexture->m_Renderable->m_Position.z = 1.0;
 	Themp::System::tSys->m_Game->AddObject3D(m_MenuBackgroundTexture->m_Renderable);
 
 	//Load Torture texture
 	m_TortureTexture = new Object2D(L"LDATA\\TORTURE", L".RAW");
-	m_TortureTexture->SetVisibility(false);
 	Themp::System::tSys->m_Game->AddObject3D(m_TortureTexture->m_Renderable);
 
 	m_MainMenuBar[0] = new Object2D(Object2D::sMENU_MAIN, 13, true);
@@ -130,32 +147,26 @@ void Themp::MainMenu::Start()
 		m_GUIButtons[i]->SetVisibility(true);
 		m_GUIButtons[i]->m_IsDisabled = disabled[i];
 	}
-
+	m_LevelSelectFlag = new GUIButton(Object2D::sMENU_LEVELFLAG, 1,6,1, true);
 	m_TextObject = new Font("Main Menu", Font::FontTexID::MENU_NORMAL0,false, XMFLOAT3(0, 1.65, 0.4));
 
 	//Load cursor sprite
-	cursor = new Object2D(Object2D::sMENU_MAIN,94,true);
+	m_Cursor = new Object2D(Object2D::sMENU_MAIN,94,true);
 	//cursor->m_Renderable->SetScale(0.2, 0.2, 0.2);
-	cursor->SetVisibility(false);
-	System::tSys->m_Game->AddObject3D(cursor->m_Renderable);
+	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
+
+	SetEverythingHidden();
+	GoToSplash();
+	//GoToMenu();
 
 	//skip video
-	m_DoPlayVideo = false;
-	m_VideoObject->isVisible = false;
-	m_SplashScreenTexture->SetVisibility(false);
-	m_State = MenuState::Loading;
+	//m_DoPlayVideo = false;
+	//m_VideoObject->isVisible = false;
+	//m_SplashScreenTexture->SetVisibility(false);
+	//m_State = MenuState::Loading;
 }
 
-void TranslateMousePos(int inX, int inY, float& outX, float& outY)
-{
-	outX = (float)inX / (float)Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH];
-	outX *= 4;
-	outX -= 2;
-	outY = (float)inY / (float)Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT];
-	outY *= 4;
-	outY -= 2;
-	outY = -outY;
-}
+
 
 
 Themp::GUIButton* InitialClick = nullptr;
@@ -167,20 +178,19 @@ void Themp::MainMenu::Update(double dt)
 	Game* g = Themp::System::tSys->m_Game;
 
 	float uiMouseX = 0, uiMouseY = 0;
-	TranslateMousePos(g->m_CursorDeltaX, g->m_CursorDeltaY, uiMouseX, uiMouseY);
-	cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01);
+	Game::TranslateMousePos(g->m_CursorDeltaX, g->m_CursorDeltaY, uiMouseX, uiMouseY);
+	m_Cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01);
 
-	const float scrollSpeed = 0.8; //map scroll speed
+	const float scrollSpeed = 2.0; //map scroll speed
 
 	switch (m_State)
 	{
 	case MenuState::Splash:
 		waitingTime+=dt;
-		if (waitingTime > 5.0 || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
+		if (waitingTime > 3.0 || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
 		{
-			m_State = MenuState::Intro;
+			GoToIntro();
 			waitingTime = 0;
-			m_SplashScreenTexture->SetVisibility(false);
 			m_Video->videoTimer.GetDeltaTimeReset();
 		}
 		break;
@@ -189,51 +199,29 @@ void Themp::MainMenu::Update(double dt)
 		if (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2)
 		{
 			m_DoPlayVideo = false;
-			m_VideoObject->isVisible = false;
-			m_State = MenuState::Loading;
+			GoToLoading();
 		}
 		if (m_DoPlayVideo && m_Video)
 		{
 			int videoStatus = m_Video->Play();
-			if (m_Video->m_Tex)
-			{
-				videoMat->SetTexture(m_Video->m_Tex);
-			}
 			if (videoStatus == 2) //video done
 			{
-				m_State = MenuState::Loading;
+				GoToLoading();
 				m_DoPlayVideo = false;
-				m_VideoObject->isVisible = false;
 			}
 		}
 		break;
 	case MenuState::Loading:
-		if (!m_IsLoaded)
+		//can possibly remove? No need for an actual "Loading" screen
+		waitingTime += dt;
+		if (waitingTime > 1.5 || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
 		{
-			//loading screen and render
-			m_LoadingScreenTexture->m_Renderable->isVisible = true;
 			m_IsLoaded = true;
-			//load assets
-
-			//create Main Menu layout
-		}
-		else
-		{
-			//can possibly remove? No need for an actual "Loading" screen
-			waitingTime += dt;
-			if (waitingTime > 3000 || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
-			{
-				m_LoadingScreenTexture->m_Renderable->isVisible = false;
-				m_State = MenuState::Menu;
-				waitingTime = 0;
-			}
+			GoToMenu();
+			waitingTime = 0;
 		}
 		break;
 	case MenuState::Menu:
-
-		cursor->SetVisibility(true);
-		m_MenuBackgroundTexture->SetVisibility(true);
-
 		for (size_t i = 0; i < 7; i++)
 		{
 			if (m_GUIButtons[i]->m_IsVisible)
@@ -246,52 +234,31 @@ void Themp::MainMenu::Update(double dt)
 					}
 					if (g->m_Keys[256] == -1) // just up
 					{
-						if (InitialClick == m_GUIButtons[i])
+						if (InitialClick == m_GUIButtons[i] && !m_GUIButtons[i]->m_IsDisabled)
 						{
 							switch (i)
 							{
 							case 0: //Start New Game
-								m_State = MenuState::CampaignSelect;
-								m_CurrentLevel = 0;
-								m_MapFiles[m_CurrentLevel]->SetVisibility(true);
-								m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
-								//m_MapFiles[0]->SetScale(0.7, 0.7);
-								m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
-								m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
-								//m_MapWindowFiles[0]->SetScale(0.8,0.8);
-								for (size_t j = 0; j < 7; j++)
-								{
-									m_GUIButtons[j]->SetVisibility(false);
-								}
-								for (size_t j = 0; j < 3; j++)
-								{
-									m_MainMenuBar[j]->SetVisibility(false);
-								}
-								m_MenuBackgroundTexture->SetVisibility(false);
-								m_TextObject->SetVisibility(false);
-								cursor->SetTexture(FileManager::GetMenuCursorTexture(0));
-								cursor->SetScale(1, 1);
-								mouseOffset.x = 0.03;
-								mouseOffset.y = 0;
-
+								m_CurrentLevel = 1;
+								GoToCampaignSelect();
 								break;
 							case 1: //Continue
-								m_State = MenuState::CampaignSelect;
-								
+								GoToContinue();
 								//m_CurrentLevel = LastCompletedLevel+1;
 								//continueing = true;
 								break;
 							case 2: //Load Game
-								m_State = MenuState::LoadGame;
+								GoToLoadGame();
 								break;
 							case 3: //Multiplayer
+								GoToMultiplayer();
 								//Nothing Happens, We're not gonna do MP until we're completely done
 								break;
 							case 4: //Options
-								m_State = MenuState::Options;
+								GoToOptions();
 								break;
 							case 5: //High Score Table
-								m_State = MenuState::HighScore;
+								GoToHighScore();
 								break;
 							case 6: //Quit
 								System::tSys->m_Quitting = true;
@@ -308,17 +275,42 @@ void Themp::MainMenu::Update(double dt)
 		}
 		if (ImGui::Button("Next GUI"))
 		{
-			cursor->SetTexture(FileManager::GetMenuCursorTexture((cursorIndex++)));
-			cursor->SetScale(1, 1);
+			m_Cursor->SetTexture(FileManager::GetLevelFlagTexture((cursorIndex++)));
+			m_Cursor->SetScale(1, 1);
 			Themp::System::Print("Cursor Tex Index: %i",cursorIndex);
 		}
 		break;
 	case MenuState::CampaignSelect:
+		if (ImGui::Button("Next Level"))
+		{
+			for (size_t i = 0; i < 22; i++)
+			{
+				m_MapWindowFiles[i]->SetVisibility(false);
+				m_MapFiles[i]->SetVisibility(false);
+			}
+			m_CurrentLevel++;
+			if (m_CurrentLevel >= 22)
+			{
+				m_CurrentLevel = 0;
+			}
+			m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
+			m_MapFiles[m_CurrentLevel]->SetVisibility(true);
+			m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
+			m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
+			m_LevelSelectFlag->SetPosition(0, 0, 0.85f);
+		}
+		if (g->m_Keys[VK_ESCAPE] == 2)
+		{
+			GoToMenu();
+			return;
+		}
 		//show campaign stuff to visible
 		//enable clickboxes
 		//if clicked - stop menu -> load level
 		XMFLOAT3 borderPos = m_MapWindowFiles[m_CurrentLevel]->m_Renderable->m_Position;
 		XMFLOAT3 mapPos = m_MapFiles[m_CurrentLevel]->m_Renderable->m_Position;
+		borderPos.z = 0.8;
+		mapPos.z = 0.9;
 		if (uiMouseX < -1.8)
 		{
 			borderPos.x += dt * scrollSpeed  * 0.5;
@@ -361,6 +353,24 @@ void Themp::MainMenu::Update(double dt)
 		}
 		m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(borderPos);
 		m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(mapPos);
+		m_LevelSelectFlag->SetPosition(mapPos.x + levelFlagPositions[m_CurrentLevel].x, mapPos.y + levelFlagPositions[m_CurrentLevel].y, 0.75f);
+		if (m_LevelSelectFlag->Update(dt, uiMouseX, uiMouseY, g->m_Keys[256], InitialClick))
+		{
+			if (g->m_Keys[256] == 2)
+			{
+				InitialClick = m_LevelSelectFlag;
+			}
+			if (g->m_Keys[256] == -1 && InitialClick == m_LevelSelectFlag) // just up
+			{
+				Stop();
+				g->LoadLevel(m_CurrentLevel);
+				System::Print("Clicked the flag!");
+			}
+		}
+		else
+		{
+			InitialClick = nullptr;
+		}
 		break;
 	case MenuState::LoadGame:
 		//show save slots
@@ -374,40 +384,141 @@ void Themp::MainMenu::Update(double dt)
 		break;
 	}
 }
+void MainMenu::GoToSplash()
+{
+	SetEverythingHidden();
+	m_SplashScreenTexture->SetVisibility(true);
+	m_State = MenuState::Splash;
+}
+void MainMenu::GoToCampaignSelect()
+{
+	SetEverythingHidden();
+	m_State = MenuState::CampaignSelect;
+	m_MapFiles[m_CurrentLevel]->SetVisibility(true);
+	m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
+	m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
+	m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
+	m_LevelSelectFlag->SetVisibility(true);
+	m_Cursor->SetVisibility(true);
+	m_Cursor->SetTexture(FileManager::GetMenuCursorTexture(0));
+	m_Cursor->SetScale(1, 1);
+	mouseOffset = XMFLOAT2(0.03, 0);
+}
+void MainMenu::GoToContinue()
+{
 
-void Themp::MainMenu::Stop()
+}
+void MainMenu::GoToLoadGame()
+{
+
+}
+void MainMenu::GoToMultiplayer()
+{
+
+}
+void MainMenu::GoToHighScore()
+{
+
+}
+void MainMenu::GoToOptions()
+{
+
+}
+void MainMenu::GoToLoading()
+{
+	SetEverythingHidden();
+	m_State = MenuState::Loading;
+	m_LoadingScreenTexture->SetVisibility(true);
+}
+void MainMenu::GoToIntro()
+{
+	SetEverythingHidden();
+	m_State = MenuState::Intro;
+	m_VideoObject->isVisible = true;
+}
+void MainMenu::GoToMenu()
+{
+	SetEverythingHidden();
+	m_State = MenuState::Menu;
+	m_MenuBackgroundTexture->SetVisibility(true);
+	m_Cursor->SetVisibility(true);
+	m_Cursor->SetTexture(FileManager::GetMenuGUITexture(94));
+	m_Cursor->SetScale(1, 1);
+	for (size_t i = 0; i < 7; i++)
+	{
+		m_GUIButtons[i]->SetVisibility(true);
+	}
+	for (size_t i = 0; i < 3; i++)
+	{
+		m_MainMenuBar[i]->SetVisibility(true);
+	}
+	m_TextObject->SetVisibility(true);
+	mouseOffset = XMFLOAT2(0.166, 0.18);
+}
+void MainMenu::SetEverythingHidden()
+{
+	m_VideoObject->isVisible = false;
+	m_LoadingScreenTexture->SetVisibility(false);
+	m_TortureTexture->SetVisibility(false);
+	m_MenuBackgroundTexture->SetVisibility(false);
+	m_SplashScreenTexture->SetVisibility(false);
+	m_LevelSelectFlag->SetVisibility(false);
+	m_TextObject->SetVisibility(false);
+	m_Cursor->SetVisibility(false);
+	for (size_t i = 0; i < 22; i++)
+	{
+		m_MapWindowFiles[i]->SetVisibility(false);
+		m_MapFiles[i]->SetVisibility(false);
+	}
+	for (size_t j = 0; j < 7; j++)
+	{
+		m_GUIButtons[j]->SetVisibility(false);
+	}
+	for (size_t j = 0; j < 3; j++)
+	{
+		m_MainMenuBar[j]->SetVisibility(false);
+	}
+}
+void MainMenu::Stop()
 {
 	if (!m_IsDone)
 	{
 		if (m_Video)
 		{
 			delete m_Video;
+			m_Video = nullptr;
 		}
 		if (m_LoadingScreenTexture)
 		{
 			delete m_LoadingScreenTexture;
+			m_LoadingScreenTexture = nullptr;
 		}
 		if (m_TortureTexture)
 		{
 			delete m_TortureTexture;
+			m_TortureTexture = nullptr;
 		}
 		if (m_MenuBackgroundTexture)
 		{
 			delete m_MenuBackgroundTexture;
+			m_MenuBackgroundTexture = nullptr;
 		}
 		if (m_SplashScreenTexture)
 		{
 			delete m_SplashScreenTexture;
+			m_SplashScreenTexture = nullptr;
 		}
 		for (size_t i = 0; i < 22; i++)
 		{
 			if (m_MapFiles[i])
 			{
 				delete m_MapFiles[i];
+				m_MapFiles[i] = nullptr;
 			}
 			if (m_MapWindowFiles[i])
 			{
 				delete m_MapWindowFiles[i];
+				m_MapWindowFiles[i] = nullptr;
 			}
 		}
 		for (size_t i = 0; i < 7; i++)
@@ -415,13 +526,25 @@ void Themp::MainMenu::Stop()
 			if (m_GUIButtons[i])
 			{
 				delete m_GUIButtons[i];
+				m_GUIButtons[i] = nullptr;
 			}
+		}
+		if (m_LevelSelectFlag)
+		{
+			delete m_LevelSelectFlag;
+			m_LevelSelectFlag = nullptr;
 		}
 		if (m_TextObject)
 		{
 			delete m_TextObject;
+			m_TextObject = nullptr;
 		}
-		delete cursor;
+		if (m_Cursor)
+		{
+			delete m_Cursor;
+			m_Cursor = nullptr;
+		}
+		System::tSys->m_Game->m_Objects3D.clear();
 		m_VideoObject->isVisible = false;
 		m_IsDone = true;
 	}

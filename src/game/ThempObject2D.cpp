@@ -231,23 +231,9 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 }
 Themp::Object2D::Object2D(Source textureSource, int textureIndex, bool hiRes)
 {
+	m_IsHiRes = hiRes;
 	m_Source = textureSource;
-	switch (m_Source)
-	{
-	case sLEVEL_MISC:
-		m_GUITex = FileManager::GetLevelMiscGUITexture(textureIndex, hiRes);
-	break;
-	case sLEVEL_PANE:
-		m_GUITex = FileManager::GetLevelPaneGUITexture(textureIndex,hiRes);
-	break;
-	case sMENU_MAIN:
-		m_GUITex = FileManager::GetMenuGUITexture(textureIndex);
-		break;
-	case sMENU_CURSOR:
-		m_GUITex = FileManager::GetMenuCursorTexture(textureIndex);
-	break;
-	default: assert(false); assert(true); break; //I can never remember if it asserts on true or false.. So why not both ¯\_(O_O)_/¯
-	}
+	m_GUITex = GetTexture(textureSource, textureIndex);
 	m_Tex = m_GUITex->texture;
 	if (m_Tex)
 	{
@@ -284,6 +270,29 @@ void Object2D::SetScale(float W, float H)
 		float newH = originalH * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
 		m_Renderable->SetScale(W * newW, H * newH, 1);
 	}
+}
+GUITexture* Object2D::GetTexture(Object2D::Source source, int index)
+{
+	switch (m_Source)
+	{
+	case sLEVEL_MISC:
+		return FileManager::GetLevelMiscGUITexture(index, m_IsHiRes);
+		break;
+	case sLEVEL_PANE:
+		return FileManager::GetLevelPaneGUITexture(index, m_IsHiRes);
+		break;
+	case sMENU_MAIN:
+		return FileManager::GetMenuGUITexture(index);
+		break;
+	case sMENU_CURSOR:
+		return FileManager::GetMenuCursorTexture(index);
+		break;
+	case sMENU_LEVELFLAG:
+		return FileManager::GetLevelFlagTexture(index);
+		break;
+	default: assert(false); assert(true); break; //I can never remember if it asserts on true or false.. So why not both I guess
+	}
+	return nullptr;
 }
 DirectX::XMFLOAT2 Object2D::GetSizeinScreenPercentage(int screenWidth, int screenHeight)
 {

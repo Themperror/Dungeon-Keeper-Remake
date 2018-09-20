@@ -26,39 +26,29 @@ std::vector<Sprite> CreatureSprites;
 ////////Level UI
 
 //Esc menu + creature stuff
-std::vector<GUITab> Misc_LowGUITextureData; 
-std::vector<GUITexture> Misc_LowGUITextures;
-std::vector<GUITab> Misc_HiGUITextureData;
-std::vector<GUITexture> Misc_HiGUITextures;
+std::vector<GUITexture> Level_MiscLowGUITextures;
+std::vector<GUITexture> Level_MiscHiGUITextures;
 
 //Side pane + Possession elements
-std::vector<GUITab> Pane_LowGUITextureData;
-std::vector<GUITexture> Pane_LowGUITextures;
-std::vector<GUITab> Pane_HiGUITextureData;
-std::vector<GUITexture> Pane_HiGUITextures;
+std::vector<GUITexture> Level_PaneLowGUITextures;
+std::vector<GUITexture> Level_PaneHiGUITextures;
+
+std::vector<GUITexture> Level_HandTextures;
 ////////
 
 //Menu UI
-std::vector<GUITab> Menu_GUITextureData;
 std::vector<GUITexture> Menu_GUITextures;
-
-std::vector<GUITab> Menu_CursorTextureData;
 std::vector<GUITexture> Menu_CursorTextures;
+std::vector<GUITexture> Menu_LevelFlagTextures;
 ///////
 
 //Fonts
 
-std::vector<GUITab> Font_IngameLowTextureData;
 std::vector<GUITexture> Font_IngameLowTextures;
-std::vector<GUITab> Font_IngameHiTextureData;
 std::vector<GUITexture> Font_IngameHiTextures;
-std::vector<GUITab> Font_Menu0TextureData;
 std::vector<GUITexture> Font_Menu0Textures;
-std::vector<GUITab> Font_Menu1TextureData;
 std::vector<GUITexture> Font_Menu1Textures;
-std::vector<GUITab> Font_Menu2TextureData;
 std::vector<GUITexture> Font_Menu2Textures;
-std::vector<GUITab> Font_Menu3TextureData;
 std::vector<GUITexture> Font_Menu3Textures;
 
 //Localized Text
@@ -75,10 +65,11 @@ FileManager::~FileManager()
 	}
 
 	for (auto i : CreatureSprites)			delete[] i.textures; //animated textures; these keep an array instead of single ones
-	for (auto i : Misc_LowGUITextures)		delete i.texture;
-	for (auto i : Misc_HiGUITextures)		delete i.texture;
-	for (auto i : Pane_LowGUITextures)		delete i.texture;
-	for (auto i : Pane_HiGUITextures)		delete i.texture;
+	for (auto i : Level_MiscLowGUITextures)	delete i.texture;
+	for (auto i : Level_MiscHiGUITextures)	delete i.texture;
+	for (auto i : Level_PaneLowGUITextures)	delete i.texture;
+	for (auto i : Level_PaneHiGUITextures)	delete i.texture;
+	for (auto i : Level_HandTextures)		delete i.texture;
 	for (auto i : Menu_GUITextures)			delete i.texture;
 	for (auto i : Menu_CursorTextures)		delete i.texture;
 	for (auto i : Font_IngameLowTextures)	delete i.texture;
@@ -87,6 +78,7 @@ FileManager::~FileManager()
 	for (auto i : Font_Menu1Textures)		delete i.texture;
 	for (auto i : Font_Menu2Textures)		delete i.texture;
 	for (auto i : Font_Menu3Textures)		delete i.texture;
+	for (auto i : Menu_LevelFlagTextures)	delete i.texture;
 }
 FileData usedPalFile;
 
@@ -174,8 +166,8 @@ FileManager::FileManager()
 
 	//Load specific data from previous files
 	LoadCreatures();
-	LoadGUITextures(L"DATA\\GUI.DAT", L"DATA\\GUI.TAB",		Misc_LowGUITextureData, Misc_LowGUITextures);
-	LoadGUITextures(L"DATA\\GUIHI.DAT", L"DATA\\GUIHI.TAB", Misc_HiGUITextureData , Misc_HiGUITextures);
+	LoadGUITextures(L"DATA\\GUI.DAT", L"DATA\\GUI.TAB", Level_MiscLowGUITextures);
+	LoadGUITextures(L"DATA\\GUIHI.DAT", L"DATA\\GUIHI.TAB" , Level_MiscHiGUITextures);
 	//LoadGUITextures(L"DATA\\GUI2-0-0.DAT", L"DATA\\GUI2-0-0.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
 	//LoadGUITextures(L"DATA\\GUI2-0-1.DAT", L"DATA\\GUI2-0-1.TAB", Pane_HiGUITextureData, Pane_HiGUITextures);
 
@@ -271,31 +263,30 @@ FileManager::FileManager()
 	//LoadGUITextures(L"LDATA\\DOOR04.DAT", L"LDATA\\DOOR04.TAB", Pane_HiGUITextureData, Pane_HiGUITextures);
 
 	//Flag thats on the level select screen
-	//usedPalFile = GetFileData(L"LDATA\\DKMAP00.PAL");
-	//LoadGUITextures(L"LDATA\\DKFLAG00.DAT", L"LDATA\\DKFLAG00.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
-	//LoadGUITextures(L"LDATA\\DKFLAG00.DAT", L"LDATA\\DKFLAG00.TAB", Pane_HiGUITextureData, Pane_HiGUITextures);
+	usedPalFile = GetFileData(L"LDATA\\DKMAP00.PAL");
+	LoadGUITextures(L"LDATA\\DKFLAG00.DAT", L"LDATA\\DKFLAG00.TAB", Menu_LevelFlagTextures);
 
 	//MAIN MENU TEXTURE FILES!!
 	usedPalFile = GetFileData(L"LDATA\\FRONT.PAL");
 	
 	//main UI textures
-	LoadGUITextures(L"LDATA\\FRONTBIT.DAT", L"LDATA\\FRONTBIT.TAB", Menu_GUITextureData, Menu_GUITextures);
+	LoadGUITextures(L"LDATA\\FRONTBIT.DAT", L"LDATA\\FRONTBIT.TAB", Menu_GUITextures);
 	//menu UI font comes in 4 colors RED, WHITE, RED, DARK RED
-	LoadGUITextures(L"LDATA\\FRONTFT1.DAT", L"LDATA\\FRONTFT1.TAB", Font_Menu0TextureData, Font_Menu0Textures,true);
-	LoadGUITextures(L"LDATA\\FRONTFT2.DAT", L"LDATA\\FRONTFT2.TAB", Font_Menu1TextureData, Font_Menu1Textures,true);
-	LoadGUITextures(L"LDATA\\FRONTFT3.DAT", L"LDATA\\FRONTFT3.TAB", Font_Menu2TextureData, Font_Menu2Textures,true);
-	LoadGUITextures(L"LDATA\\FRONTFT4.DAT", L"LDATA\\FRONTFT4.TAB", Font_Menu3TextureData, Font_Menu3Textures,true);
+	LoadGUITextures(L"LDATA\\FRONTFT1.DAT", L"LDATA\\FRONTFT1.TAB", Font_Menu0Textures,true);
+	LoadGUITextures(L"LDATA\\FRONTFT2.DAT", L"LDATA\\FRONTFT2.TAB", Font_Menu1Textures,true);
+	LoadGUITextures(L"LDATA\\FRONTFT3.DAT", L"LDATA\\FRONTFT3.TAB", Font_Menu2Textures,true);
+	LoadGUITextures(L"LDATA\\FRONTFT4.DAT", L"LDATA\\FRONTFT4.TAB", Font_Menu3Textures,true);
 
 	//"bigger" font, low res completely unreadable, uses a different palette because these are dark/grey with MAIN.PAL
-	LoadGUITextures(L"DATA\\LOFONT.DAT", L"DATA\\LOFONT.TAB", Font_IngameLowTextureData, Font_IngameLowTextures,true);
-	LoadGUITextures(L"DATA\\HIFONT.DAT", L"DATA\\HIFONT.TAB", Font_IngameHiTextureData, Font_IngameHiTextures,true);
+	LoadGUITextures(L"DATA\\LOFONT.DAT", L"DATA\\LOFONT.TAB", Font_IngameLowTextures,true);
+	LoadGUITextures(L"DATA\\HIFONT.DAT", L"DATA\\HIFONT.TAB", Font_IngameHiTextures,true);
 
 	usedPalFile = GetFileData(L"LDATA\\TORTURE.PAL");
 	//usedPalFile = GetFileData(L"DATA\\MAIN.PAL");
 	//LoadGUITextures(L"LDATA\\MAPHAND.DAT", L"LDATA\\MAPHAND.TAB", Menu_CursorTextureData, Menu_CursorTextures);
 	//LoadGUITextures(L"LDATA\\FRONTTOR.DAT", L"LDATA\\FRONTTOR.TAB", Menu_CursorTextureData, Menu_CursorTextures);
 	usedPalFile = GetFileData(L"DATA\\MAIN.PAL");
-	LoadGUITextures(L"DATA\\HPOINTER.DAT", L"DATA\\HPOINTER.TAB", Menu_CursorTextureData, Menu_CursorTextures);
+	LoadGUITextures(L"DATA\\HPOINTER.DAT", L"DATA\\HPOINTER.TAB", Menu_CursorTextures);
 
 	//Create INSTALLED entry, this is how the game looks at the "current" language, it overwrites the file with the one you install as language
 	LoadStrings(L"DATA\\TEXT.DAT", L"INSTALLED");
@@ -419,26 +410,26 @@ GUITexture* Themp::FileManager::GetLevelMiscGUITexture(int index, bool hiRes)
 {
 	if (hiRes)
 	{
-		index = index % Misc_HiGUITextures.size();
-		return &Misc_HiGUITextures[index];
+		index = index % Level_MiscHiGUITextures.size();
+		return &Level_MiscHiGUITextures[index];
 	}
 	else
 	{
-		index = index % Misc_LowGUITextures.size();
-		return &Misc_LowGUITextures[index];
+		index = index % Level_MiscLowGUITextures.size();
+		return &Level_MiscLowGUITextures[index];
 	}
 }
 GUITexture* Themp::FileManager::GetLevelPaneGUITexture(int index, bool hiRes)
 {
 	if (hiRes)
 	{
-		index = index % Pane_HiGUITextures.size();
-		return &Pane_HiGUITextures[index];
+		index = index % Level_PaneHiGUITextures.size();
+		return &Level_PaneHiGUITextures[index];
 	}
 	else
 	{
-		index = index % Pane_LowGUITextures.size();
-		return &Pane_LowGUITextures[index];
+		index = index % Level_PaneLowGUITextures.size();
+		return &Level_PaneLowGUITextures[index];
 	}
 }
 GUITexture* Themp::FileManager::GetMenuGUITexture(int index)
@@ -450,6 +441,11 @@ GUITexture* Themp::FileManager::GetMenuCursorTexture(int index)
 {
 	index = index % Menu_CursorTextures.size();
 	return &Menu_CursorTextures[index];
+}
+GUITexture* Themp::FileManager::GetLevelFlagTexture(int index)
+{
+	index = index % Menu_LevelFlagTextures.size();
+	return &Menu_LevelFlagTextures[index];
 }
 std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 {
@@ -575,11 +571,11 @@ void FileManager::LoadCreatures()
 	}
 	System::Print("Done Creating Sprites!!");
 }
-void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, std::vector<GUITab>& tabVector, std::vector<GUITexture>& guiTexVector, bool keepCPUData)
+void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, std::vector<GUITexture>& guiTexVector, bool keepCPUData)
 {
 	FileData guiData = GetFileData(datFile);
 	FileData guiTab = GetFileData(tabFile);
-
+	std::vector<GUITab> tabVector;
 	{
 		int i = 0;
 		GUITab tab;
