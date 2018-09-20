@@ -57,6 +57,9 @@ namespace Themp
 			}
 			videoTimer.StartTime();
 			isLoaded = true;
+
+			m_Tex = new Texture();
+			m_Tex->Create(m_Width, m_Height, DXGI_FORMAT_R8G8B8A8_UNORM, true, m_DePalettizedImage);
 			return true;
 		}
 		else
@@ -105,15 +108,8 @@ namespace Themp
 				m_DePalettizedImage[(i * 4 + 3)] = 255;
 			}
 
-			if (!m_Tex)
-			{
-				m_Tex = new Texture();
-				m_Tex->Create(m_Width, m_Height, DXGI_FORMAT_R8G8B8A8_UNORM, true, m_DePalettizedImage);
-			}
-			else
-			{
-				m_Tex->Load((void*)m_DePalettizedImage, m_Width * m_Height * 4);
-			}
+			m_Tex->Load((void*)m_DePalettizedImage, m_Width * m_Height * 4);
+			
 			if (decoder->_header.audioInfo[0].hasAudio)
 			{
 				Themp::System::tSys->m_Audio->AddSoundData(sound, (void*)decoder->audio[0]->_buffer, decoder->audio[0]->_bufferSize,!(m_CurrentFrame == decoder->video->getFrameCount()));
