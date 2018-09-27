@@ -217,6 +217,7 @@
     <ClCompile Include="src\Game\ThempLevel.cpp" />
     <ClCompile Include="src\Game\ThempMainMenu.cpp" />
     <ClCompile Include="src\Game\ThempObject2D.cpp" />
+    <ClCompile Include="src\Game\ThempVoxelObject.cpp" />
     <ClCompile Include="src\Library\imgui.cpp" />
     <ClCompile Include="src\Library\imgui_demo.cpp" />
     <ClCompile Include="src\Library\imgui_draw.cpp" />
@@ -245,6 +246,8 @@
     <ClInclude Include="src\Game\ThempLevel.h" />
     <ClInclude Include="src\Game\ThempMainMenu.h" />
     <ClInclude Include="src\Game\ThempObject2D.h" />
+    <ClInclude Include="src\Game\ThempTileArrays.h" />
+    <ClInclude Include="src\Game\ThempVoxelObject.h" />
     <ClInclude Include="src\Library\BitStream.h" />
     <ClInclude Include="src\Library\imconfig.h" />
     <ClInclude Include="src\Library\imgui.h" />
