@@ -24,7 +24,6 @@ KEEPER\\
 |----LEVELS\\   
 |----Dungeon Keeper Remake.exe   
 DATA\\   
-|----TEXTURES\\defaultdiffuse.dds   
 |----SHADERS\\(with all the .cso's)   
 
 
