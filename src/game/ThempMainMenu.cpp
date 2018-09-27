@@ -156,8 +156,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	GoToSplash();
-	//GoToMenu();
+	//GoToSplash();
+	GoToMenu();
 
 	//skip video
 	//m_DoPlayVideo = false;
@@ -171,6 +171,7 @@ void Themp::MainMenu::Start()
 
 Themp::GUIButton* InitialClick = nullptr;
 int cursorIndex = 0;
+int blockType = 0;
 float waitingTime = 0;
 XMFLOAT2 mouseOffset = XMFLOAT2(0.166, 0.18);
 void Themp::MainMenu::Update(double dt)
@@ -178,7 +179,7 @@ void Themp::MainMenu::Update(double dt)
 	Game* g = Themp::System::tSys->m_Game;
 
 	float uiMouseX = 0, uiMouseY = 0;
-	Game::TranslateMousePos(g->m_CursorDeltaX, g->m_CursorDeltaY, uiMouseX, uiMouseY);
+	Game::TranslateMousePos(g->m_CursorWindowedX, g->m_CursorWindowedY, uiMouseX, uiMouseY);
 	m_Cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01);
 
 	const float scrollSpeed = 2.0; //map scroll speed
@@ -273,11 +274,15 @@ void Themp::MainMenu::Update(double dt)
 				}
 			}
 		}
-		if (ImGui::Button("Next GUI"))
+		if (ImGui::Button("Next Tex"))
 		{
-			m_Cursor->SetTexture(FileManager::GetLevelFlagTexture((cursorIndex++)));
+			m_Cursor->SetTexture(FileManager::GetBlockTexture(blockType));
 			m_Cursor->SetScale(1, 1);
-			Themp::System::Print("Cursor Tex Index: %i",cursorIndex);
+		}
+		if(ImGui::SliderInt("Block Type", &blockType, 0, 7))
+		{
+			m_Cursor->SetTexture(FileManager::GetBlockTexture(blockType));
+			m_Cursor->SetScale(1, 1);
 		}
 		break;
 	case MenuState::CampaignSelect:

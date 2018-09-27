@@ -27,6 +27,7 @@ namespace Themp
 
 		signed char m_Keys[258];//Keeping track of input;
 		POINT m_CursorPos;
+		float m_CursorWindowedX, m_CursorWindowedY;
 		float m_CursorDeltaX, m_CursorDeltaY;
 	};
 };

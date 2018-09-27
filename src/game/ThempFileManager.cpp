@@ -36,6 +36,9 @@ std::vector<GUITexture> Level_PaneHiGUITextures;
 std::vector<GUITexture> Level_HandTextures;
 ////////
 
+////////Level Block Textures
+std::vector<Texture*> Level_BlockTextures;
+
 //Menu UI
 std::vector<GUITexture> Menu_GUITextures;
 std::vector<GUITexture> Menu_CursorTextures;
@@ -79,6 +82,7 @@ FileManager::~FileManager()
 	for (auto i : Font_Menu2Textures)		delete i.texture;
 	for (auto i : Font_Menu3Textures)		delete i.texture;
 	for (auto i : Menu_LevelFlagTextures)	delete i.texture;
+	for (auto i : Level_BlockTextures)	delete i;
 }
 FileData usedPalFile;
 
@@ -251,6 +255,17 @@ FileManager::FileManager()
 	//Same icons as above but.. fewer of them?
 	//LoadGUITextures(L"DATA\\LPOINTS.DAT", L"DATA\\LPOINTS.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
 	//LoadGUITextures(L"DATA\\HPOINTS.DAT", L"DATA\\HPOINTS.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
+
+	usedPalFile = GetFileData(L"DATA\\PALETTE.DAT");
+	LoadBlockTextures(L"DATA\\TMAPA000.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA001.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA002.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA003.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA004.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA005.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA006.DAT", Level_BlockTextures);
+	LoadBlockTextures(L"DATA\\TMAPA007.DAT", Level_BlockTextures);
+	//LoadBlockTextures(L"DATA\\TMAPA000.DAT", );
 
 
 	//////LDATA stuff now
@@ -446,6 +461,11 @@ GUITexture* Themp::FileManager::GetLevelFlagTexture(int index)
 {
 	index = index % Menu_LevelFlagTextures.size();
 	return &Menu_LevelFlagTextures[index];
+}
+Texture* Themp::FileManager::GetBlockTexture(int index)
+{
+	index = index % Level_BlockTextures.size();
+	return Level_BlockTextures[index];
 }
 std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 {
@@ -661,6 +681,40 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 		guiTexVector.push_back(guiTex);
 	}
 }
+void FileManager::LoadBlockTextures(std::wstring datFile, std::vector<Texture*>& TexVector)
+{
+	FileData guiData = GetFileData(datFile);
+	FileData palData = usedPalFile;
+
+	int width = 256; //each seperate texture is 32x32, there's 8 in 1 row so that leaves 2176 pixels vertically
+	int height = 2176; //resulting in 8*68 textures
+
+	Texture* Tex = new Texture();
+	BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
+	memset(textureData, 0, width * height * 4);
+	int xRead = 0;
+	int yRead = 0;
+	BYTE* startOff = (guiData.data);
+	while((xRead + yRead*256) < guiData.size)
+	{
+		int readPos = xRead + yRead*width;
+		textureData[readPos * 4] = palData.data[startOff[readPos] * 3] * 4;
+		textureData[readPos * 4 + 1] = palData.data[startOff[readPos] * 3 + 1] * 4;
+		textureData[readPos * 4 + 2] = palData.data[startOff[readPos] * 3 + 2] * 4;
+		textureData[readPos * 4 + 3] = 255;
+
+		xRead++;
+		if (xRead == 256)
+		{
+			xRead = 0;
+			yRead ++;
+		}
+	}
+	Tex->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, textureData);
+	TexVector.push_back(Tex);
+	free(textureData);
+}
+
 void FileManager::LoadStrings(std::wstring datFile, std::wstring language)
 {
 	FileData stringFile = GetFileData(datFile);

@@ -50,12 +50,14 @@ namespace Themp
 		static GUITexture* GetMenuGUITexture(int index);
 		static GUITexture * GetMenuCursorTexture(int index);
 		static GUITexture * GetLevelFlagTexture(int index);
+		static Texture* GetBlockTexture(int index);
 		static std::vector<GUITexture>* GetFont(int source);
 	private:
 		void LoadFilesFromDirectory(std::wstring dir);
 		FileData LoadFileData(std::wstring& path);
 		void LoadCreatures();
 		void LoadGUITextures(std::wstring datFile, std::wstring tabFile, std::vector<GUITexture>& guiTexVector, bool keepCPUData = false);
+		void LoadBlockTextures(std::wstring datFile, std::vector<Texture*>& TexVector);
 		void LoadStrings(std::wstring datFile, std::wstring language);
 	};
 };

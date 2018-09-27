@@ -19,6 +19,7 @@ namespace Themp
 		
 		void SetVisibility(bool val);
 		void SetTexture(GUITexture * tex);
+		void SetTexture(Texture * tex);
 		void SetScale(float W, float H);
 		GUITexture * GetTexture(Object2D::Source source, int index);
 		DirectX::XMFLOAT2 GetSizeinScreenPercentage(int screenWidth, int screenHeight);

@@ -95,10 +95,7 @@ Themp::Object2D::Object2D()
 	m_Source = sCUSTOM;
 	m_Renderable = new Object3D();
 	m_Renderable->CreateQuad("ScreenSpace", false);
-	size_t uniqueMatID = (size_t)this;
-	char buf[16] = { 0 };
-	_i64toa(uniqueMatID, buf, 16);
-	m_Material = Resources::TRes->GetMaterial(buf, "", "ScreenSpace", false);
+	m_Material = Resources::TRes->GetUniqueMaterial("", "ScreenSpace");
 	//material->SetTexture(m_Tex);
 	m_Renderable->SetMaterial(m_Material);
 	SetScale(1, 1);
@@ -220,10 +217,7 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 	{
 		m_Renderable = new Object3D();
 		m_Renderable->CreateQuad("ScreenSpace", false);
-		size_t uniqueMatID = (size_t)this;
-		char buf[16] = { 0 };
-		_i64toa(uniqueMatID, buf, 16);
-		m_Material = Resources::TRes->GetMaterial(buf, "", "ScreenSpace", false);
+		m_Material = Resources::TRes->GetUniqueMaterial("", "ScreenSpace");
 		m_Material->SetTexture(m_Tex);
 		m_Renderable->SetMaterial(m_Material);
 		SetScale(1, 1);
@@ -239,10 +233,7 @@ Themp::Object2D::Object2D(Source textureSource, int textureIndex, bool hiRes)
 	{
 		m_Renderable = new Object3D();
 		m_Renderable->CreateQuad("ScreenSpace", false);
-		size_t uniqueMatID = (size_t)this;
-		char buf[16] = { 0 };
-		_i64toa(uniqueMatID, buf, 16);
-		m_Material = Resources::TRes->GetMaterial(buf, "", "ScreenSpace", false);
+		m_Material = Resources::TRes->GetUniqueMaterial("", "ScreenSpace");
 		m_Material->SetTexture(m_Tex);
 		m_Renderable->SetMaterial(m_Material);
 		SetScale(1, 1);
@@ -257,6 +248,11 @@ void Object2D::SetTexture(GUITexture* tex)
 {
 	m_Tex = tex->texture;
 	m_GUITex = tex;
+	m_Renderable->m_Meshes[0]->m_Material->SetTexture(m_Tex);
+}
+void Object2D::SetTexture(Texture* tex)
+{
+	m_Tex = tex;
 	m_Renderable->m_Meshes[0]->m_Material->SetTexture(m_Tex);
 }
 void Object2D::SetScale(float W, float H)
@@ -290,7 +286,7 @@ GUITexture* Object2D::GetTexture(Object2D::Source source, int index)
 	case sMENU_LEVELFLAG:
 		return FileManager::GetLevelFlagTexture(index);
 		break;
-	default: assert(false); assert(true); break; //I can never remember if it asserts on true or false.. So why not both I guess
+	default: assert(false); break;
 	}
 	return nullptr;
 }
