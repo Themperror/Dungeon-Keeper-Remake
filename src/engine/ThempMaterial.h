@@ -45,7 +45,6 @@ namespace Themp
 		struct MaterialConstantBuffer
 		{
 			int hasNormal, hasPBR, dummy1, isEmissive; //16 bytes
-			float Metallic, Roughness, EmissiveStrength, F0; //16
 		};//32
 
 		//This is from Assimp, and also what we import.
@@ -90,10 +89,8 @@ namespace Themp
 		ID3D10Blob* ReadToBlob(std::string path);
 		void ReadTexture(std::string path);
 		void ReadTextures(std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes);
-		void GetMaterialProperties(std::string matName, std::string* outPBRTexture = nullptr);
 		void SetTexture(Texture* tex, int TextureIndex = 0);
 		void UpdateBuffer();
-		static void GetGBufferShaderName(std::string matName, std::string& outShaderPath, bool& outHasGeometryShader);
 		//void ReadTextures(std::vector<std::string>& textures);
 	};
 }

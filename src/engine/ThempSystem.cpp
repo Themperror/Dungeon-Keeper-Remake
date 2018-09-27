@@ -14,7 +14,7 @@
 #include <chrono>
 #include <cstdarg>
 #include <sys/timeb.h>
-
+#include <shellapi.h>
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 IMGUI_API LRESULT ImGui_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -30,7 +30,6 @@ namespace Themp
 
 	System* System::tSys = nullptr;
 	FILE* System::logFile = nullptr;
-	
 	void System::Start()
 	{
 		m_D3D = new Themp::D3D();
@@ -161,8 +160,8 @@ namespace Themp
 				int WindowedMouseX = m_Game->m_CursorPos.x - windowRect.left - windowDiffX;
 				int WindowedMouseY = m_Game->m_CursorPos.y - windowRect.top - windowDiffY;
 				io.DeltaTime = (float)totalDelta;
-				m_Game->m_CursorDeltaX = WindowedMouseX;
-				m_Game->m_CursorDeltaY = WindowedMouseY;
+				m_Game->m_CursorWindowedX = WindowedMouseX;
+				m_Game->m_CursorWindowedY = WindowedMouseY;
 
 				//windows Title bar messes up the actual mouse position for collision testing with the UI, so I adjust it to fit "good enough" since getting exact measurements from top and bottom is a pain
 				io.MousePos = ImVec2(WindowedMouseX, WindowedMouseY);

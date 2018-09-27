@@ -8,8 +8,6 @@ namespace Themp
 	{
 		float x, y, z;
 		float nx, ny, nz;
-		float tx, ty, tz;
-		float btx, bty, btz;
 		float u, v;
 	};
 	class Material;

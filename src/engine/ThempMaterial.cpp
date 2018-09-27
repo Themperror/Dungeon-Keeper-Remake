@@ -56,7 +56,7 @@ namespace Themp
 	void Material::ReadTexture(std::string path)
 	{
 		std::vector<std::string> defaultTextures = {
-			"DefaultDiffuse.dds",
+			"",
 			"",
 			"",
 			"",
@@ -76,7 +76,7 @@ namespace Themp
 			numTextures = MAX_TEXTURES;
 		}
 		std::string defaultTextures[4] = {
-			"DefaultDiffuse.dds",
+			"",
 			"",
 			"",
 			"",
@@ -88,16 +88,19 @@ namespace Themp
 			case Material::DIFFUSE:
 				defaultTextures[0] = textures[i];
 				break;
-			case Material::PBR: defaultTextures[2] = textures[i];
-				m_MaterialConstantBufferData.hasPBR = textures[i] != "DefaultPBR.dds" ? true : false;
+			case Material::PBR:
+				defaultTextures[2] = textures[i];
+				m_MaterialConstantBufferData.hasPBR = false;
 				break;
 			case Material::AMBIENT: 
 				defaultTextures[0] = textures[i]; 
 				break;
-			case Material::NORMALS: defaultTextures[1] = textures[i];
+			case Material::NORMALS: 
+				defaultTextures[1] = textures[i];
 				m_MaterialConstantBufferData.hasNormal = true;
 				break;
-			case Material::UNKNOWN: defaultTextures[3] = textures[i];
+			case Material::UNKNOWN: 
+				defaultTextures[3] = textures[i];
 				m_MaterialConstantBufferData.dummy1 = true;
 				break;
 			case Material::UNUSED: break;
@@ -157,98 +160,13 @@ namespace Themp
 		}
 
 	}
-	void Material::GetMaterialProperties(std::string matName, std::string* outPBRTexture)
-	{
-		if (matName != "")
-		{
-			matName.append(".mat");
-			std::ifstream input(BASE_MATERIAL_PATH + matName);
-			if (input.good())
-			{
-				std::string line;
-				std::string a0, a1, a2;
-				while (getline(input, line))
-				{
-					std::stringstream stream(line);
-					if (line.size() > 0)
-					{
-						stream >> a0 >> a1 >> a2;
-						if (a0 == "PBRTexture")
-						{
-							if (outPBRTexture)
-							{
-								outPBRTexture->clear();
-								outPBRTexture->append(a1);
-							}
-						}
-						if (a0 == "Metallic")
-						{
-							m_MaterialConstantBufferData.Metallic = std::stof(a1);
-						}
-						if (a0 == "Roughness")
-						{
-							m_MaterialConstantBufferData.Roughness = std::stof(a1);
-						}
-						if (a0 == "IsEmissive")
-						{
-							m_MaterialConstantBufferData.isEmissive = (a1 == "true");
-						}
-						if (a0 == "EmissiveStrength")
-						{
-							m_MaterialConstantBufferData.EmissiveStrength = std::stof(a1);
-						}
-					}
-				}
-				input.close();
-			}
-			else
-			{
-#if LOG_MISSING_MATERIALS==1
-				System::Print("Could not find Material: %s", (BASE_MATERIAL_PATH + matName).c_str());
-#endif
-			}
-		}
-	}
 	void Material::SetTexture(Texture * tex, int TextureIndex)
 	{
 		if (TextureIndex < MAX_TEXTURES)
 		{
 			m_Views[TextureIndex] = tex->m_View;
 			m_Textures[TextureIndex] = tex;
-		}
-	}
-	void Material::GetGBufferShaderName(std::string matName, std::string& outShaderPath, bool& outHasGeometryShader)
-	{
-		if (matName != "")
-		{
-			matName.append(".mat");
-			
-			std::ifstream input(BASE_MATERIAL_PATH + matName);
-			if (input.good())
-			{
-				std::string line;
-				std::string a0, a1, a2;
-				while (getline(input, line))
-				{
-					std::stringstream stream(line);
-					if (line.size() > 0)
-					{
-						stream >> a0 >> a1 >> a2;
-						if (a0 == "Shader")
-						{
-							outShaderPath = a1;
-							outHasGeometryShader = (a2 == "true");
-						}
-					}
-				}
-				input.close();
-			}
-			else
-			{
-#if LOG_MISSING_MATERIALS==1
-				System::Print("Could not find Material: %s", (BASE_MATERIAL_PATH + matName).c_str());
-#endif
-			}
+			numTextures = TextureIndex+1 > numTextures ? TextureIndex+1 : numTextures;
 		}
 	}
 	void Material::UpdateBuffer()

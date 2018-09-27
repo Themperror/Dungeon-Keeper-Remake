@@ -137,121 +137,80 @@ namespace Themp
 	{
 		if (path == "")
 		{
-			return nullptr;
+			std::unordered_map<std::string, Texture*>::iterator s = m_Textures.find(path);
+			if (s != m_Textures.end()) return s->second;
+
+			Texture* tex = new Texture();
+			tex->Create(32, 32, DXGI_FORMAT_R8G8B8A8_UNORM);
+			m_Textures[""] = tex;
+
+			return tex;
 		}
 		std::string basePath = BASE_TEXTURE_PATH;
 		basePath = basePath.append(path);
 		std::unordered_map<std::string, Texture*>::iterator s = m_Textures.find(basePath);
 		if (s != m_Textures.end()) return s->second;
 
-		Texture* tex = new Texture();
-		memset(tex, 0, sizeof(Texture));
 		std::string wPath = std::string(basePath.begin(), basePath.end());
 		FILE* t = fopen(wPath.c_str(), "r");
 		if (t == nullptr)
 		{
 			return nullptr;
 		}
+
+		Texture* tex = new Texture();
+		memset(tex, 0, sizeof(Texture));
+
 		unsigned int width = 0;
 		unsigned int height = 0;
 		fread(&width, 4, 1, t);
 		fread(&height,4, 1, t);
+
 		unsigned int* pixels = (unsigned int*)malloc(width*height * 4);
 		fread(pixels, width*height * 4, 1, t);
 
-		D3D11_TEXTURE2D_DESC desc;
-		ZeroMemory(&desc, sizeof(desc));
-		desc.Width = width;
-		desc.Height = height;
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.SampleDesc.Count = 1;
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		desc.CPUAccessFlags = 0;
-
-		ID3D11Texture2D *pTexture = NULL;
-		D3D11_SUBRESOURCE_DATA subResource;
-		subResource.pSysMem = pixels;
-		subResource.SysMemPitch = desc.Width * 4;
-		subResource.SysMemSlicePitch = 0;
-		Themp::System::tSys->m_D3D->m_Device->CreateTexture2D(&desc, &subResource, &pTexture);
-
-		// Create texture view
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = desc.MipLevels;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		HRESULT res = 0;
-		if (pTexture != nullptr)
-		{
-			res = Themp::System::tSys->m_D3D->m_Device->CreateShaderResourceView(pTexture, &srvDesc, &tex->m_View);
-			pTexture->Release();
-		}
-		else
-		{
-			System::Print("Could not load texture");
-		}
+		tex->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, pixels);
 
 		free(pixels);
 		fclose(t);
-		// DirectX::CreateDDSTextureFromFileEx(Themp::System::tSys->m_D3D->m_Device, wPath.c_str(), UINT64_MAX, d3d11_CPU_ACCESS_FLAG == 0 ? D3D11_USAGE_DEFAULT : D3D11_USAGE_STAGING, d3d11_CPU_ACCESS_FLAG == 0 ? D3D11_BIND_SHADER_RESOURCE : 0, d3d11_CPU_ACCESS_FLAG, 0, false, &tex->m_Resource, d3d11_CPU_ACCESS_FLAG == D3D11_CPU_ACCESS_READ ? nullptr : &tex->m_View);
-		
-		if(res != S_OK) 
-		{
-			System::Print("DirectTK couldn't load the texture: %s , Returning Default Texture instead!!  \n",basePath.c_str());
-			delete tex; 
-			return GetTexture("DefaultDiffuse.dds", true); 
-		}
 
 		m_Textures[basePath] = tex;
 		return tex;
 	}
 
-	Texture* Resources::GetTexture(std::string path, bool isDefaulted, int d3d11_CPU_ACCESS_FLAG)
-	{
-		std::string basePath = BASE_TEXTURE_PATH;
-		basePath.append(path);
-		std::unordered_map<std::string, Texture*>::iterator s = m_Textures.find(basePath);
-		if (s != m_Textures.end()) return s->second;
-
-		Texture* tex = new Texture();
-		memset(tex, 0, sizeof(Texture));
-		std::wstring wPath = std::wstring(basePath.begin(), basePath.end());
-		HRESULT res = 0;// DirectX::CreateDDSTextureFromFile(Themp::System::tSys->m_D3D->m_Device, wPath.c_str(), &tex->m_Resource, &tex->m_View);
-
-		if (res != S_OK) 
-		{ 
-			System::Print("DirectTK couldn't load the default texture: %s!!!\n", basePath.c_str());
-			delete tex; 
-			return nullptr; 
-		}
-
-		m_Textures[basePath] = tex;
-		return tex;
-	}
 	Themp::Material* Resources::GetMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
 	{
-		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find(materialName);
+		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find("_" + materialName);
 		if (s != m_Materials.end()) return s->second;
 		if (shaderPath == "")
 		{
 			shaderPath = "default";
 		}
-		return LoadMaterial(materialName, texture, shaderPath, geometryShader, nonDefaultIED, numElements, multisample);
+		return LoadMaterial("_" + materialName, texture, shaderPath, geometryShader, nonDefaultIED, numElements, multisample);
 	}
 	Themp::Material* Resources::GetMaterial(std::string materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, std::string shaderPath, bool geometryShader, bool multisample)
 	{
-		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find(materialName);
+		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find("_" + materialName);
 		if (s != m_Materials.end()) return s->second;
 		if (shaderPath == "")
 		{
 			shaderPath = "default";
 		}
-		return LoadMaterial(materialName, textures, textureTypes, shaderPath, geometryShader, multisample);
+		return LoadMaterial("_" + materialName, textures, textureTypes, shaderPath, geometryShader, multisample);
+	}
+	Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath)
+	{
+		char buf[64] = { 0 };
+		_ui64toa(currentUniqueMatIndex, buf, 10);
+		std::string uniqueName = std::string("Unique") + buf;
+		currentUniqueMatIndex++;
+		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find(uniqueName);
+		if (s != m_Materials.end()) return s->second;
+		if (shaderPath == "")
+		{
+			shaderPath = "default";
+		}
+		return LoadMaterial(uniqueName, texture, shaderPath,false);
 	}
 	Themp::Object3D* Resources::GetModel(std::string path, bool uniqueMesh)
 	{
@@ -321,6 +280,10 @@ namespace Themp
 		}
 		System::Print("Could not create vertex buffer!");
 		return 0;
+	}
+	bool Resources::EditVertexBuffer(Vertex* vertices, size_t numVertices)
+	{
+		return true;
 	}
 	size_t Resources::CreateIndexBuffer(uint32_t* indices, size_t numIndices)
 	{
@@ -402,10 +365,6 @@ namespace Themp
 	Themp::Material* Resources::LoadMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
 	{
 		std::string tempPath = shaderPath;
-		if (shaderPath == "default" && materialName != "")
-		{
-			Material::GetGBufferShaderName(materialName, shaderPath, geometryShader);
-		}
 		std::unordered_map<std::string, Material*>::iterator s = m_Materials.find(materialName);
 		if (s != m_Materials.end()) return s->second;
 
@@ -483,10 +442,8 @@ namespace Themp
 			material->m_GeometryShader = Resources::TRes->GetGeometryShader(tempPath);
 			if (!material->m_GeometryShader)System::Print("Couldn't find Geometry shader: %s", tempPath.c_str());
 		}
-		std::vector<std::string> textures = { texture, "" };
-		std::vector<std::uint8_t> textureTypes = { Material::DIFFUSE, Material::PBR};
-		material->GetMaterialProperties(materialName,&textures[1]);
-		if (textures[1] == "")textureTypes[1] = Material::UNUSED;
+		std::vector<std::string> textures = { texture };
+		std::vector<std::uint8_t> textureTypes = { Material::DIFFUSE};
 		material->ReadTextures(textures, textureTypes);
 		m_Materials[materialName] = material;
 		return material;
@@ -494,10 +451,6 @@ namespace Themp
 
 	Themp::Material* Resources::LoadMaterial(std::string materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, std::string shaderPath, bool geometryShader, bool multisample)
 	{
-		if (shaderPath == "default")
-		{
-			Material::GetGBufferShaderName(materialName,shaderPath, geometryShader);
-		}
 		std::string tempPath = shaderPath;
 
 		std::unordered_map<std::string, Material*>::iterator s = m_Materials.find(materialName);
@@ -564,55 +517,6 @@ namespace Themp
 			if (!material->m_GeometryShader)System::Print( "Couldn't find Geometry shader: %s" , tempPath.c_str());
 		}
 
-		std::string PBRTex = "";
-		material->GetMaterialProperties(materialName,&PBRTex);
-		if (PBRTex != "")
-		{
-			bool replacedSpec = false;
-			for (size_t i = 0; i < textureTypes.size(); i++)
-			{
-				//detect "specular textures", we don't use them so replace them with the PBR texture
-				if (textureTypes[i] == Material::PBR || textureTypes[i] == 7)
-				{
-					replacedSpec = true;
-					textureTypes[i] = Material::PBR;
-					while(textures.size()-1 < i)
-					{
-						textures.push_back("");
-					}
-					textures[i] = PBRTex;
-					break;
-				}
-			}
-			if (!replacedSpec)
-			{
-				if (textures.size() < MAX_TEXTURES)
-				{
-					textures.push_back(PBRTex);
-					textureTypes.push_back(Material::PBR);
-				}
-				else
-				{
-					bool emptySlot = false;
-					for (size_t i = 0; i < textureTypes.size(); i++)
-					{
-						if (textureTypes[i] == Material::UNUSED)
-						{
-							emptySlot = true;
-							textures[i] = PBRTex;
-							textureTypes[i] = Material::PBR;
-							break;
-						}
-					}
-					if (!emptySlot)
-					{
-						//Well shit son, this shouldn't ever happen..
-						assert(false);
-						System::Print("Tried to load PBR Texture but textures.size was >= MAX_TEXTURES");
-					}
-				}
-			}
-		}
 		material->ReadTextures(textures,textureTypes);
 		m_Materials[materialName] = material;
 		return material;

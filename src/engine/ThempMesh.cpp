@@ -17,10 +17,16 @@ namespace Themp
 
 	Mesh::~Mesh()
 	{
-		delete[] m_Vertices;
-		m_Vertices = nullptr;
-		delete[] m_Indices;
-		m_Indices = nullptr;
+		if (m_Vertices)
+		{
+			delete[] m_Vertices;
+			m_Vertices = nullptr;
+		}
+		if (m_Indices)
+		{
+			delete[] m_Indices;
+			m_Indices = nullptr;
+		}
 		m_Material = nullptr;
 		m_VertexBuffer = nullptr;
 		m_IndexBuffer = nullptr;
@@ -32,18 +38,18 @@ namespace Themp
 		m_VertexBuffer = Themp::Resources::TRes->m_VertexBuffers[i_VertexBuffer];
 		m_IndexBuffer = Themp::Resources::TRes->m_IndexBuffers[i_VertexBuffer];
 
-		m_BoundsMin = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
-		m_BoundsMax = XMFLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-		for (size_t i = 0; i < m_NumVertices; i++)
-		{
-			Vertex& v = m_Vertices[i];
-			if (v.x < m_BoundsMin.x) m_BoundsMin.x = v.x;
-			if (v.x > m_BoundsMax.x) m_BoundsMax.x = v.x;
-			if (v.y < m_BoundsMin.y) m_BoundsMin.y = v.y;
-			if (v.y > m_BoundsMax.y) m_BoundsMax.y = v.y;
-			if (v.z < m_BoundsMin.z) m_BoundsMin.z = v.z;
-			if (v.z > m_BoundsMax.z) m_BoundsMax.z = v.z;
-		}
+		//m_BoundsMin = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
+		//m_BoundsMax = XMFLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		//for (size_t i = 0; i < m_NumVertices; i++)
+		//{
+		//	Vertex& v = m_Vertices[i];
+		//	if (v.x < m_BoundsMin.x) m_BoundsMin.x = v.x;
+		//	if (v.x > m_BoundsMax.x) m_BoundsMax.x = v.x;
+		//	if (v.y < m_BoundsMin.y) m_BoundsMin.y = v.y;
+		//	if (v.y > m_BoundsMax.y) m_BoundsMax.y = v.y;
+		//	if (v.z < m_BoundsMin.z) m_BoundsMin.z = v.z;
+		//	if (v.z > m_BoundsMax.z) m_BoundsMax.z = v.z;
+		//}
 	}
 	
 	void Mesh::Draw(Themp::D3D& d3d)

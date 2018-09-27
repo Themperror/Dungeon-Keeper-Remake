@@ -19,22 +19,7 @@ namespace Themp
 		float screenWidth;
 		float screenHeight;
 		float visualType;
-		float SkyboxLerp;
-
-		float shadowType;
-		float globalRoughness = 0.05f;
-		float globalMetallic;
-		float MSAAValue = 1.0;
-
 		float time;
-		float F0x;
-		float F0y;
-		float F0z;
-
-		float num_cascades = 4.0;
-		float shadow_atlas_size;
-		float PCF_size;
-		float d7;
 	};
 	
 	class RenderTexture;
@@ -51,7 +36,6 @@ namespace Themp
 		~D3D();
 		bool Init();
 		void ResizeWindow(int newX, int newY);
-		bool SetMultiSample( int num);
 		void PrepareSystemBuffer();
 		void Draw(Game& game);
 		void DrawImGUI();
@@ -59,7 +43,6 @@ namespace Themp
 		//void DrawPostProcess();
 
 		void SetViewPort(float xPos, float yPos, float width, float height);
-		void SetViewPorts(int* nViewports, float* xPos, float* yPos, float* width, float* height);
 		void SetObject3DConstantBuffer(ID3D11Buffer* buf);
 		void SetCameraConstantBuffer(ID3D11Buffer* buf);
 		void SetSystemConstantBuffer(ID3D11Buffer* buf);
@@ -79,8 +62,6 @@ namespace Themp
 
 		CONSTANT_BUFFER m_ConstantBufferData;
 
-		//enough potential SRV's I won't ever go out of bounds.
-		ID3D11ShaderResourceView* m_ShaderResourceViews[32]; 
 		ID3D11RenderTargetView* m_BackBuffer = nullptr;
 		ID3D11BlendState* m_OMBlendState = nullptr;
 		ID3D11Texture2D* m_DepthStencil = nullptr;

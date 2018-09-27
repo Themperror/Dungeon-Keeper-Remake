@@ -33,14 +33,12 @@ namespace Themp
 	{
 		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "BITANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
 	D3D* D3D::s_D3D = nullptr;
 
-	uint32_t D3D::DefaultInputLayoutNumElements = 5;
+	uint32_t D3D::DefaultInputLayoutNumElements = 3;
 	Material* D3D::DefaultMaterial;
 	ID3D11SamplerState* D3D::DefaultTextureSampler;
 	ID3D11SamplerState* D3D::DefaultTextureSamplerFiltered;
@@ -173,7 +171,7 @@ namespace Themp
 		D3D11_RASTERIZER_DESC rDesc;
 		memset(&rDesc, 0, sizeof(D3D11_RASTERIZER_DESC));
 		rDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID; //change for Wireframe
-		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK; //Backface culling yes/no/inverted
+		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE; //Backface culling yes/no/inverted
 		rDesc.DepthClipEnable = true; //default true
 
 		m_Device->CreateRasterizerState(&rDesc, &m_RasterizerState);
@@ -205,22 +203,13 @@ namespace Themp
 		
 		
 		std::vector<std::string> defaultTextures = {
-			"DefaultDiffuse.dds",
+			"",
 			"",
 			"",
 			"",
 		};
 		std::vector<uint8_t> defaultTypes = { 1,((uint8_t)(-1)),((uint8_t)(-1)),((uint8_t)(-1)) };
 		D3D::DefaultMaterial = Resources::TRes->GetMaterial("G-Buffer", defaultTextures, defaultTypes, "",  false);
-
-		defaultTypes[0] = Material::DIFFUSE;
-		defaultTypes[1] = Material::NORMALS;
-		defaultTypes[2] = Material::PBR;
-		defaultTypes[3] = Material::UNKNOWN;
-		defaultTextures[0] = "DefaultDiffuse.dds";
-		defaultTextures[1] = "DefaultNormal.dds";
-		defaultTextures[2] = "DefaultPBR.dds";
-		defaultTextures[3] = "DefaultMisc.dds";
 
 		System::Print("D3D11 Initialisation success!");
 
@@ -238,7 +227,6 @@ namespace Themp
 		//m_ShadowVariance = new ShadowVariance();
 		//m_ShadowMoment = new ShadowMoment();
 
-		SetMultiSample(multisample);
 		return true;
 	}
 
@@ -329,37 +317,8 @@ namespace Themp
 			Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT] = vp.Height;
 			m_ConstantBufferData.screenHeight = vp.Width;
 			m_ConstantBufferData.screenWidth = vp.Height;
-			m_ConstantBufferData.shadow_atlas_size = 4096;
 			dirtySystemBuffer = true;
 		}
-	}
-
-	
-	bool D3D::SetMultiSample(int num)
-	{
-		if (num != 0 && num != 1 && num != 2 && num != 4 && num != 8)
-		{
-			System::Print("Multiplesample value (\"num\") has to be 0, 1, 2, 4 or 8, given: %i. Nothing has changed", num);
-			return false;
-		}
-		if (num == 0)
-		{
-			System::Print("Multisample value (\"num\") == 0, this is allowed because it's set to 1, but no real MS value of 0 exists");
-			num = 1;
-		}
-		if (m_Swapchain)
-		{
-			m_DevCon->OMSetRenderTargets(0, 0, 0);
-			dirtySystemBuffer = true;
-		}
-		else
-		{
-			return false;
-		}
-		m_ConstantBufferData.MSAAValue = num;
-		dirtySystemBuffer = true;
-
-		return true;
 	}
 	
 	void D3D::DrawGBufferPass(Game & game)
@@ -411,11 +370,6 @@ namespace Themp
 		VSUploadConstantBuffersToGPUNull();
 		PSUploadConstantBuffersToGPUNull();
 		GSUploadConstantBuffersToGPUNull();
-		for (size_t i = 0; i < 32; i++)
-		{
-			m_ShaderResourceViews[i] = nullptr;
-		}
-		m_DevCon->PSSetShaderResources(0, 32, m_ShaderResourceViews);
 	}
 	void D3D::DrawImGUI()
 	{
@@ -562,7 +516,6 @@ namespace Themp
 	bool D3D::CreateDepthStencil(int width, int height,int multisample)
 	{
 		HRESULT result;
-		SetMultiSample(multisample);
 		
 		D3D11_DEPTH_STENCIL_DESC dsDesc;
 
