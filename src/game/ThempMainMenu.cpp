@@ -156,14 +156,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	//GoToSplash();
-	GoToMenu();
-
-	//skip video
-	//m_DoPlayVideo = false;
-	//m_VideoObject->isVisible = false;
-	//m_SplashScreenTexture->SetVisibility(false);
-	//m_State = MenuState::Loading;
+	GoToSplash();
+	//GoToMenu();
 }
 
 
