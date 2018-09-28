@@ -1,5 +1,5 @@
-#include "Defines.hlsl"
-#include "Structs.hlsl"
+#include "defines.hlsl"
+#include "structs.hlsl"
 
 VS_OUTPUT VShader(VS_INPUT input)
 {

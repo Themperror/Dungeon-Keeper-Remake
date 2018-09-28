@@ -1,6 +1,6 @@
-#include "Defines.hlsl"
-#include "Functions.hlsl"
-#include "Structs.hlsl"
+#include "defines.hlsl"
+#include "functions.hlsl"
+#include "structs.hlsl"
 
 //Texture2D shaderTexture[4];
 Texture2D TextureAtlas : register(t0);
@@ -31,5 +31,5 @@ float4 PShader(VS_OUTPUT input) : SV_TARGET
 
     float4 face = float4(TextureAtlas.Sample(diffSampler, float2(input.uv.x, input.uv.y)).xyz, 1.0);
     return face;
-    //return float4(input.uv.x*3.0, input.uv.y*3.0, 0.5, 1);
+   // return float4(input.uv.x*3.0, input.uv.y*3.0, 0.5, 1);
 }
