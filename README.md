@@ -11,9 +11,7 @@ Let me start of by saying this will NOT be a commercial project, I will not sell
 
 The "engine" I'm using is based of my previous project ThempX11 (also on my github) which is heavily adjusted to only do forward rendering (instead of deferred) and to support whatever else the game needs (such as Audio and Video)
 
-At the current state (seeing as this project is not far in development yet):
-The current build relies on the data folder that will be created once the project is compiled, this will change as development continues
-So providing you have the original game at hand the folder structure should look like:
+Providing you have the original game at hand the folder structure should look like:
 
 
 KEEPER\\   
@@ -22,8 +20,6 @@ KEEPER\\
 |----DATA\\   
 |----SAVE\\   
 |----LEVELS\\   
-|----Dungeon Keeper Remake.exe   
-DATA\\   
-|----SHADERS\\(with all the .cso's)   
+|----Dungeon Keeper Remake.exe
 
 
