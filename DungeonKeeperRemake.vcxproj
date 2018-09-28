@@ -35,7 +35,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -48,7 +48,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -75,6 +75,10 @@
     <TargetName>$(ProjectName)d</TargetName>
     <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Debug;</LibraryPath>
+    <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>bin\</OutDir>
@@ -82,6 +86,12 @@
     <TargetName>$(ProjectName)</TargetName>
     <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Release;</LibraryPath>
+    <LinkIncremental>
+    </LinkIncremental>
+    <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>bin\</OutDir>
@@ -89,6 +99,10 @@
     <TargetName>$(ProjectName)d</TargetName>
     <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Debug;</LibraryPath>
+    <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>bin\</OutDir>
@@ -96,6 +110,12 @@
     <TargetName>$(ProjectName)</TargetName>
     <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Release;</LibraryPath>
+    <LinkIncremental>
+    </LinkIncremental>
+    <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
+    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -120,6 +140,25 @@
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)\data\shaders\%(Filename)_d.cso</ObjectFileOutput>
     </FxCompile>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <CustomBuildStep>
+      <Command>$(SolutionDir)ConvertShadersToHeaders.bat</Command>
+      <TreatOutputAsContent>
+      </TreatOutputAsContent>
+      <Message>RUNNING SHADER CONVERSION!!</Message>
+      <Outputs>src\shaders\debugline_ps.h</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -144,6 +183,25 @@
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)\data\shaders\%(Filename)_d.cso</ObjectFileOutput>
     </FxCompile>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <CustomBuildStep>
+      <Command>$(SolutionDir)ConvertShadersToHeaders.bat</Command>
+      <TreatOutputAsContent>
+      </TreatOutputAsContent>
+      <Message>RUNNING SHADER CONVERSION!!</Message>
+      <Outputs>src\shaders\debugline_ps.h</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -169,6 +227,25 @@
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)\data\shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <CustomBuildStep>
+      <Command>$(SolutionDir)ConvertShadersToHeaders.bat</Command>
+      <TreatOutputAsContent>
+      </TreatOutputAsContent>
+      <Message>RUNNING SHADER CONVERSION!!</Message>
+      <Outputs>src\shaders\debugline_ps.h</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -194,6 +271,25 @@
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(ProjectDir)\data\shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <CustomBuildStep>
+      <Command>$(SolutionDir)ConvertShadersToHeaders.bat</Command>
+      <TreatOutputAsContent>
+      </TreatOutputAsContent>
+      <Message>RUNNING SHADER CONVERSION!!</Message>
+      <Outputs>src\shaders\debugline_ps.h</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine\ThempCamera.cpp" />
@@ -259,13 +355,13 @@
     <ClInclude Include="src\Library\stb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="resources\shaders\DebugLine_ps.hlsl">
+    <FxCompile Include="resources\shaders\debugline_ps.hlsl">
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ProjectDir)\data\shaders\%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)\data\shaders\%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectDir)\data\shaders\%(Filename)_d.cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)\data\shaders\%(Filename)_d.cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="resources\shaders\DebugLine_vs.hlsl">
+    <FxCompile Include="resources\shaders\debugline_vs.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">VShader</EntryPointName>
@@ -296,20 +392,20 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="resources\shaders\Defines.hlsl">
+    <FxCompile Include="resources\shaders\defines.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="resources\shaders\Functions.hlsl">
+    <FxCompile Include="resources\shaders\functions.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="resources\shaders\GUI_ps.hlsl" />
-    <FxCompile Include="resources\shaders\GUI_vs.hlsl">
+    <FxCompile Include="resources\shaders\gui_ps.hlsl" />
+    <FxCompile Include="resources\shaders\gui_vs.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">VShader</EntryPointName>
@@ -319,8 +415,8 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="resources\shaders\ScreenSpace_ps.hlsl" />
-    <FxCompile Include="resources\shaders\ScreenSpace_vs.hlsl">
+    <FxCompile Include="resources\shaders\screenspace_ps.hlsl" />
+    <FxCompile Include="resources\shaders\screenspace_vs.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">VShader</EntryPointName>
@@ -330,7 +426,7 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="resources\shaders\Structs.hlsl">
+    <FxCompile Include="resources\shaders\structs.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
