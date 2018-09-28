@@ -22,8 +22,8 @@ float mouseSensitivity = 0.15f;
 void Themp::Game::Start()
 {
 	m_Camera = new Themp::Camera();
-	m_Camera->SetPosition(0 , 1, 0);
-	m_Camera->SetTarget(XMFLOAT3(0,0, 0));
+	m_Camera->SetPosition(0,10,0);
+	m_Camera->SetTarget(XMFLOAT3(0,0,0));
 	m_Camera->Rotate(0, 0);
 	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] / Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT]);
 	m_Camera->SetFoV(75);

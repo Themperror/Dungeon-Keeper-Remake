@@ -136,7 +136,7 @@ void Themp::MainMenu::Start()
 		int click[3] = { 1, 2, 3 };
 		float xOffsets[3] = { -0.75f,0,0.75f };
 		float yOffsets[3] = { 0,0,0 };
-		float zOffsets[3] = { 0.05,0,0 }; //this is such a shitty hack, but I NEED the other buttons to draw over the first one..
+		float zOffsets[3] = { 0.05f,0,0 }; //this is such a shitty hack, but I NEED the other buttons to draw over the first one..
 		m_GUIButtons[i] = new GUIButton(Object2D::sMENU_MAIN, normal,hover,click,xOffsets,yOffsets,zOffsets, 3, true, buttonTexts[i], Font::MENU_NORMAL1, Font::MENU_NORMAL2, Font::MENU_NORMAL3);
 		for (size_t j = 0; j < 3; j++)
 		{
@@ -156,8 +156,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	GoToSplash();
-	//GoToMenu();
+	//GoToSplash();
+	GoToMenu();
 }
 
 

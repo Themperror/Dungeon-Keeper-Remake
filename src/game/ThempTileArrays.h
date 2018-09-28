@@ -5,7 +5,7 @@ using namespace DirectX;
 #define MAP_SIZE_HEIGHT (8)
 #define MAP_SIZE_SUBTILES (85 * 3 + 1)
 #define MAP_SIZE_TILES (85)
-
+#define MAP_SIZE_SUBTILES_RENDER (85 * 3)
 namespace Themp
 {
 	struct Block
@@ -40,9 +40,100 @@ namespace Themp
 		uint16_t type;
 		SubTile sub[3][3];
 	};
-
+	const int Tile_ROCK = 0;
+	const int Tile_FULLBLOCK = 1;
+	const int Tile_GROUND = 2;
+	const int Tile_LIQUID = 3;
+	const int Tile_DUNGEON_HEART = 4;
+	const int Tile_PORTAL = 13;
 	const RenderTile RenderTileMap[] =
 	{
+		//Rock
+		{
+			{
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+			},
+			8 * 3 * 3,
+		},
 		//FullBlock
 		{
 			{
@@ -301,7 +392,7 @@ namespace Themp
 			},
 			3*3*1,
 		},
-		//3
+		//4
 		//Dungeon Heart Corner LU
 		{
 			{
@@ -1076,7 +1167,7 @@ namespace Themp
 			},
 			33,
 		},
-		//12
+		//13
 		//Portal LU
 		{
 			{

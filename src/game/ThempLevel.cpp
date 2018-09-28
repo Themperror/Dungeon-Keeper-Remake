@@ -33,7 +33,6 @@ Level::Level(int levelIndex)
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 	LoadLevelData();
 	m_MapObject = new VoxelObject();
-	m_MapObject->ConstructFromLevel(this);
 	m_MapObject->m_Obj3D->m_Meshes[0]->m_Material->SetTexture(FileManager::GetBlockTexture(0));
 	Themp::System::tSys->m_Game->AddObject3D(m_MapObject->m_Obj3D);
 }
@@ -89,7 +88,8 @@ void Level::Update(float delta)
 	Game::TranslateMousePos(g->m_CursorWindowedX, g->m_CursorWindowedY, uiMouseX, uiMouseY);
 	m_Cursor->m_Renderable->SetPosition(uiMouseX + cursorOffset.x, uiMouseY - cursorOffset.y, 0.01);
 
-	//Cull();
+	XMFLOAT3 camPos = g->m_Camera->GetPosition();
+	m_MapObject->ConstructFromLevel(this,camPos.x,camPos.z);
 }
 void Level::LoadLevelData()
 {
