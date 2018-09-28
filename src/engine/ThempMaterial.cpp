@@ -199,19 +199,6 @@ namespace Themp
 			Themp::System::tSys->m_D3D->m_DevCon->Unmap(m_MaterialConstantBuffer, NULL);
 		}
 	}
-	ID3D10Blob* Material::ReadToBlob(std::string path)
-	{
-		ID3D10Blob* nBlob;
-		std::ifstream ifs(path, std::ios::binary | std::ios::ate);
-		if (!ifs.good()) return nullptr;
-		std::ifstream::pos_type pos = ifs.tellg();
-		size_t length = pos;
-		D3D10CreateBlob(length, &nBlob);
-		ifs.seekg(0, std::ios::beg);
-		ifs.read((char*)nBlob->GetBufferPointer(), length);
-		ifs.close();
-		return nBlob;
-	}
 	void Texture::Create(int width, int height, DXGI_FORMAT format, bool keepCPUTexture, void* data)
 	{
 		m_Width = width;

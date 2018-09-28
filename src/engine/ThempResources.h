@@ -18,6 +18,11 @@ namespace Themp
 	class Resources
 	{
 	public:
+		struct Buffer
+		{
+			ID3D11Buffer* buffer;
+			size_t numElements;
+		};
 		Resources();
 		~Resources();
 		void RemoveObject3D(std::string name, Object3D * m);
@@ -31,8 +36,10 @@ namespace Themp
 		Object3D* GetModel(std::string path, bool uniqueMesh = false);
 
 		size_t CreateVertexBuffer(Vertex * vertices, size_t numVertices);
-		bool EditVertexBuffer(Vertex * vertices, size_t numVertices);
+		bool EditVertexBuffer(int vertexBuffer, Vertex * vertices, size_t numVertices);
 		size_t CreateIndexBuffer(uint32_t * indices, size_t numIndices);
+
+		bool EditIndexBuffer(int indexBuffer, uint32_t * indices, size_t numIndices);
 		
 		std::unordered_map<std::string, ID3D11VertexShader*> m_VertexShaders;
 		std::unordered_map<std::string, ID3D11PixelShader*> m_PixelShaders;
@@ -40,8 +47,8 @@ namespace Themp
 		std::unordered_map<std::string, Texture*> m_Textures;
 		std::unordered_map<std::string, Themp::Material*> m_Materials;
 		std::unordered_map<std::string, Object3D*> m_Models;
-		std::vector<ID3D11Buffer*> m_VertexBuffers;
-		std::vector<ID3D11Buffer*> m_IndexBuffers;
+		std::vector<Buffer> m_VertexBuffers;
+		std::vector<Buffer> m_IndexBuffers;
 		std::vector<Mesh*> m_Meshes;
 		std::vector<Object3D*> m_3DObjects;
 		ID3D10Blob* ReadToBlob(std::string path);
