@@ -10,6 +10,13 @@ namespace Themp
 		float nx, ny, nz;
 		float u, v;
 	};
+	struct VoxelVertex
+	{
+		float x, y, z;
+		float nx, ny, nz;
+		float u, v;
+		uint32_t doAnimate;
+	};
 	class Material;
 	class Mesh
 	{
@@ -31,6 +38,7 @@ namespace Themp
 
 		//do not change manually
 		ID3D11Buffer* m_VertexBuffer;
+		size_t m_VertexSize = 0;
 		//do not change manually
 		ID3D11Buffer* m_IndexBuffer;
 	};

@@ -13,6 +13,7 @@ namespace Themp
 	{
 		m_BoundsMin = XMFLOAT3(0, 0, 0);
 		m_BoundsMax = XMFLOAT3(0, 0, 0);
+		m_VertexSize = sizeof(Vertex);
 	}
 
 	Mesh::~Mesh()
@@ -54,11 +55,12 @@ namespace Themp
 	
 	void Mesh::Draw(Themp::D3D& d3d)
 	{
-		uint32_t stride[] = { sizeof(Vertex) };
+		uint32_t stride[] = { m_VertexSize };
 		uint32_t offset[] = { 0 };
 		//set vertex/index buffers
 		d3d.m_DevCon->IASetVertexBuffers(0, 1, &m_VertexBuffer, stride, offset);
 		d3d.m_DevCon->IASetIndexBuffer(m_IndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+		d3d.m_DevCon->IASetInputLayout(m_Material->m_InputLayout);
 
 		//set resources for shader pipeline
 		

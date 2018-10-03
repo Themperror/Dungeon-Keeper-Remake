@@ -24,6 +24,8 @@ namespace Themp
 #include "shaders\gui_ps.h"
 #include "shaders\screenspace_ps.h"
 #include "shaders\screenspace_vs.h"
+#include "shaders\voxel_ps.h"
+#include "shaders\voxel_vs.h"
 #else
 #include "shaders\debugline_vs_d.h"
 #include "shaders\debugline_ps_d.h"
@@ -33,6 +35,8 @@ namespace Themp
 #include "shaders\gui_ps_d.h"
 #include "shaders\screenspace_ps_d.h"
 #include "shaders\screenspace_vs_d.h"
+#include "shaders\voxel_ps_d.h"
+#include "shaders\voxel_vs_d.h"
 #endif
 	};
 
@@ -229,7 +233,21 @@ namespace Themp
 		}
 		return LoadMaterial("_" + materialName, textures, textureTypes, shaderPath, geometryShader, multisample);
 	}
-	Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath)
+	//Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath)
+	//{
+	//	char buf[64] = { 0 };
+	//	_ui64toa(currentUniqueMatIndex, buf, 10);
+	//	std::string uniqueName = std::string("Unique") + buf;
+	//	currentUniqueMatIndex++;
+	//	std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find(uniqueName);
+	//	if (s != m_Materials.end()) return s->second;
+	//	if (shaderPath == "")
+	//	{
+	//		shaderPath = "default";
+	//	}
+	//	return LoadMaterial(uniqueName, texture, shaderPath, false);
+	//}
+	Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath,D3D11_INPUT_ELEMENT_DESC* IED,int IEDNumElements)
 	{
 		char buf[64] = { 0 };
 		_ui64toa(currentUniqueMatIndex, buf, 10);
@@ -241,7 +259,7 @@ namespace Themp
 		{
 			shaderPath = "default";
 		}
-		return LoadMaterial(uniqueName, texture, shaderPath,false);
+		return LoadMaterial(uniqueName, texture, shaderPath, false,IED,IEDNumElements);
 	}
 	Themp::Object3D* Resources::GetModel(std::string path, bool uniqueMesh)
 	{

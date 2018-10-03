@@ -217,6 +217,10 @@ namespace Themp
 					tickTimeAdd = 0;
 					numSamples = 0;
 				}
+				if (totalDelta > (1.0 / targetFPS) * 2)
+				{
+					totalDelta = (1.0 / targetFPS) * 2;
+				}
 				totalDelta = totalDelta - (1.0 / targetFPS);
 			}
 		}

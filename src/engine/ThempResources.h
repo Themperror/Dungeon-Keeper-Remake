@@ -28,7 +28,8 @@ namespace Themp
 		void RemoveObject3D(std::string name, Object3D * m);
 		Texture* GetTexture(std::string path,int d3d11_CPU_ACCESS_FLAG = 0);
 
-		Themp::Material * GetUniqueMaterial(std::string texture, std::string shaderPath);
+		//Themp::Material * GetUniqueMaterial(std::string texture, std::string shaderPath);
+		Themp::Material * GetUniqueMaterial(std::string texture, std::string shaderPath, D3D11_INPUT_ELEMENT_DESC * IED = nullptr, int IEDNumElements = 0);
 		Themp::Material * GetMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED = nullptr, int numElements = 0, bool multisample = false);
 		Themp::Material * GetMaterial(std::string materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, std::string shaderPath, bool geometryShader, bool multisample = false);
 		
