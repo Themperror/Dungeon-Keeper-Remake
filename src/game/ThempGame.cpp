@@ -117,6 +117,10 @@ void Themp::Game::Stop()
 	delete m_MainMenu;
 	delete m_Camera;
 	delete m_FileManager;
+	if (m_CurrentLevel)
+	{
+		delete m_CurrentLevel;
+	}
 	m_Camera = nullptr;
 	for (int i = 0; i < m_Objects3D.size(); i++)
 	{

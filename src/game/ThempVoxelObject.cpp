@@ -14,6 +14,13 @@
 #include "../Engine/ThempDebugDraw.h"
 #include <DirectXMath.h>
 
+D3D11_INPUT_ELEMENT_DESC VoxelInputLayoutDesc[] =
+{
+	{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "NORMAL" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	{ "ANIMATE", 0 ,DXGI_FORMAT_R32_UINT,0,32,D3D11_INPUT_PER_VERTEX_DATA,0},
+};
 
 using namespace Themp;
 #define L8(x) ((x)&0xFF)
@@ -23,6 +30,14 @@ VoxelObject::~VoxelObject()
 	delete[] m_Vertices;
 	if(m_Indices)
 	delete[] m_Indices;
+	if (m_IndexBuffer.buffer)
+	{
+		m_IndexBuffer.buffer->Release();
+	}
+	if (m_VertexBuffer.buffer)
+	{
+		m_VertexBuffer.buffer->Release();
+	}
 }
 
 VoxelObject::VoxelObject()
@@ -39,18 +54,21 @@ VoxelObject::VoxelObject()
 
 	m->m_NumIndices = 6;
 	m->m_NumVertices = 4;
-	m_Vertices = new Vertex[4]; //worse case scenario
+
+	m_Vertices = new VoxelVertex[4]; 
 	m_Indices = new uint32_t[6];
 
-	m->m_Vertices = m_Vertices;
-	m->m_Indices = m_Indices;
-	m->ConstructVertexBuffer(); //requires m_m_Vertices/m_m_Indices to be set
-
-	//unset it so it doesnt "delete[]" our vertices/indices, so we can take care of this ourselves
 	m->m_Vertices = nullptr;
 	m->m_Indices = nullptr;
 
-	m->m_Material = Resources::TRes->GetUniqueMaterial("", "default");
+	CreateVertexBuffer(m_Vertices, 4);
+	CreateIndexBuffer(m_Indices, 6);
+
+	m->m_VertexBuffer = m_VertexBuffer.buffer;
+	m->m_IndexBuffer = m_IndexBuffer.buffer;
+	m->m_VertexSize = sizeof(VoxelVertex);
+
+	m->m_Material = Resources::TRes->GetUniqueMaterial("", "voxel", VoxelInputLayoutDesc,4);
 
 	for (size_t z = 0; z < MAP_SIZE_HEIGHT; z++)
 	for (size_t y = 0; y < MAP_SIZE_SUBTILES_RENDER; y++)
@@ -76,10 +94,83 @@ void VoxelObject::Update(float dt)
 	m_AnimationTime += dt;
 	if (m_AnimationTime >= 1.0 / 5.0)
 	{
+		if (m_AnimationTime > (1.0 / 2.5)) m_AnimationTime = 1.0 / 2.5;
 		m_AnimationTime -= 1.0 / 5.0;
 		m_AnimationIndex++;
 	}
 }
+
+uint8_t GetNeighbourInfo(uint16_t currentType, uint16_t nType)
+{
+	if (currentType == nType)
+	{
+		return N_SAME;
+	}
+	else
+	{
+		if (nType == Type_Lava)
+		{
+			return N_LAVA;
+		}
+		else if (nType == Type_Water)
+		{
+			return N_WATER;
+		}
+		else if (nType != Type_Rock && nType != Type_Gold && nType != Type_Gem && nType != Type_Earth && nType != Type_Earth_Torch && (nType < Type_Wall0 || nType > Type_Wall5))
+		{
+			return N_WALKABLE;
+		}
+		return N_DIFF;
+	}
+	return N_DIFF;
+}
+TileNeighbours CheckNeighbours(Level* level, uint16_t type, int x, int y)
+{
+	TileNeighbours nInfo = { 0 };
+	uint16_t nType = 0;
+	if (y + 1 < MAP_SIZE_TILES)
+	{
+		nType = level->m_Map[y + 1][x].type;
+		nInfo.North = GetNeighbourInfo(type, nType);
+		if (x + 1 < MAP_SIZE_TILES)
+		{
+			nType = level->m_Map[y + 1][x + 1].type;
+			nInfo.NorthEast = GetNeighbourInfo(type, nType);
+		}
+		if (x - 1 >= 0)
+		{
+			nType = level->m_Map[y + 1][x - 1].type;
+			nInfo.NorthWest = GetNeighbourInfo(type, nType);
+		}
+	}
+	if (y - 1 >= 0)
+	{
+		nType = level->m_Map[y - 1][x].type;
+		nInfo.South = GetNeighbourInfo(type, nType);
+		if (x + 1 < MAP_SIZE_TILES)
+		{
+			nType = level->m_Map[y - 1][x + 1].type;
+			nInfo.SouthEast = GetNeighbourInfo(type, nType);
+		}
+		if (x - 1 >= 0)
+		{
+			nType = level->m_Map[y - 1][x - 1].type;
+			nInfo.SouthWest = GetNeighbourInfo(type, nType);
+		}
+	}
+	if (x + 1 < MAP_SIZE_TILES)
+	{
+		nType = level->m_Map[y][x + 1].type;
+		nInfo.East = GetNeighbourInfo(type, nType);
+	}
+	if (x - 1 >= 0)
+	{
+		nType = level->m_Map[y][x - 1].type;
+		nInfo.West = GetNeighbourInfo(type, nType);
+	}
+	return nInfo;
+}
+
 void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 {
 	const int tileRadius = 8;
@@ -155,18 +246,203 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 		delete[] m_Indices;
 
 		m_NumBlocks = solidBlocks;
-		m_Vertices = new Vertex[solidBlocks * 6 * 4]; //worse case scenario
+		m_Vertices = new VoxelVertex[solidBlocks * 6 * 4]; //worse case scenario
 		m_Indices = new uint32_t[solidBlocks * 6 * 6];
 	}
 
 	uint32_t vIndex = 0;
-	uint32_t currentIndex = 0;
+	uint32_t currentIndex = 0; 
 	const float pixelSizeX = (1.0f / 256.0f) * 31.5f;
 	const float pixelSizeY = (1.0f / 2176.0f) * 31.5f;
 
-	for (int z = 0; z < MAP_SIZE_HEIGHT; z++)
+
+	for (int y = camSubTilePosY - subTileRadius; y < camSubTilePosY + subTileRadius; y++)
 	{
-		for (int y = camSubTilePosY - subTileRadius; y <  camSubTilePosY + subTileRadius; y++)
+		for (int x = camSubTilePosX - subTileRadius; x < camSubTilePosX + subTileRadius; x++)
+		{
+			assert(x <= 255);
+			assert(y <= 255);
+			assert(x >= 0);
+			assert(y >= 0);
+			if (m_Map[0][y][x].active)
+			{
+				XMFLOAT2 uv = m_Map[0][y][x].uv[0];
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (x + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Map[0][y][x + 1].active) // right
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
+	
+					m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
+	
+				}
+				if (x - 1 <= 0 || !m_Map[0][y][x - 1].active) // left
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
+	
+					m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY , 0 };
+				}
+				uv = m_Map[0][y][x].uv[1];
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (y - 1 <= 0 || !m_Map[0][y - 1][x].active) // back
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
+	
+					m_Vertices[vIndex++] = { x + 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY , 0 };
+					m_Vertices[vIndex++] = { x + 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
+				}
+				if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Map[0][y + 1][x].active) // front
+				{
+					m_Indices[currentIndex + 0] = vIndex + 0;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 2;
+					m_Indices[currentIndex + 3] = vIndex + 0;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 3;
+					currentIndex += 6;
+	
+					m_Vertices[vIndex++] = { x + 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
+				}
+				uv = m_Map[0][y][x].uv[2];
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (!m_Map[1][y][x].active) // top
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
+					
+					const int yP = floor((float)y / 3.0f);
+					const int xP = floor((float)x / 3.0f);
+					const int tileType = level->m_Map[yP][xP].type;
+					if (tileType == Type_Water || tileType == Type_Lava)
+					{
+						bool cornerQuad = false;
+						uint32_t useAnimNorth = 1;
+						uint32_t useAnimWest = 1;
+						uint32_t useAnimSouth = 1;
+						uint32_t useAnimEast = 1;
+						const int xMod = x % 3;
+						const int yMod = y % 3;
+						TileNeighbours neighbour = CheckNeighbours(level, tileType, xP, yP);
+						if (neighbour.North != N_SAME && yMod == 2)
+						{
+							useAnimNorth = 0;
+						}
+						else if (neighbour.South != N_SAME && yMod == 0)
+						{
+							useAnimSouth = 0;
+						}
+						if (neighbour.East != N_SAME && xMod == 2)
+						{
+							useAnimEast = 0;
+						}
+						else if (neighbour.West != N_SAME && xMod == 0)
+						{
+							useAnimWest = 0;
+						}
+						if (xMod == 0 && yMod == 2 && neighbour.North == N_SAME && neighbour.West == N_SAME)
+						{
+							if (neighbour.NorthWest != N_SAME)
+							{
+								useAnimNorth = 0;
+								useAnimWest = 0;
+								cornerQuad = true;
+							}
+						}
+						else if (xMod == 2 && yMod == 2 && neighbour.North == N_SAME && neighbour.East == N_SAME)
+						{
+							if (neighbour.NorthEast != N_SAME)
+							{
+								useAnimNorth = 0;
+								useAnimEast = 0;
+								cornerQuad = true;
+							}
+						}
+						else if (xMod == 0 && yMod == 0 && neighbour.South == N_SAME && neighbour.West == N_SAME)
+						{
+							if (neighbour.SouthWest != N_SAME)
+							{
+								useAnimSouth = 0;
+								useAnimWest = 0;
+								cornerQuad = true;
+							}
+						}
+						else if (xMod == 2 && yMod == 0 && neighbour.South == N_SAME && neighbour.East == N_SAME)
+						{
+							if (neighbour.SouthEast != N_SAME)
+							{
+								useAnimSouth = 0;
+								useAnimEast = 0;
+								cornerQuad = true;
+							}
+						}
+						
+						if (cornerQuad)
+						{
+							m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, (useAnimEast || useAnimSouth) };
+							m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,(useAnimEast || useAnimNorth) };
+							m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY,(useAnimWest || useAnimNorth) };
+							m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, (useAnimWest || useAnimSouth) };
+						}
+						else
+						{
+							m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, (useAnimEast && useAnimSouth) };
+							m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,(useAnimEast && useAnimNorth) };
+							m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY,(useAnimWest && useAnimNorth) };
+							m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, (useAnimWest && useAnimSouth) };
+						}
+					}
+					else
+					{
+						m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 0 };
+					}
+				}
+			}
+		}
+	}
+
+
+	for (int z = 1; z < MAP_SIZE_HEIGHT; z++)
+	{
+		for (int y = camSubTilePosY - subTileRadius; y < camSubTilePosY + subTileRadius; y++)
 		{
 			for (int x = camSubTilePosX - subTileRadius; x < camSubTilePosX + subTileRadius; x++)
 			{
@@ -189,10 +465,10 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 0;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,(float)z / 9.0f,0, uv.x				,uv.y };
-						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,(float)z / 9.0f,0, uv.x				,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,(float)z / 9.0f,0, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,(float)z / 9.0f,0, uv.x + pixelSizeX	,uv.y };
+						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
 
 					}
 					if (x - 1 <= 0 || !m_Map[z][y][x - 1].active) // left
@@ -205,10 +481,10 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 0;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,(float)z / 9.0f,0, uv.x				,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,(float)z / 9.0f,0, uv.x + pixelSizeX	,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,(float)z / 9.0f,0, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,(float)z / 9.0f,0, uv.x				,uv.y + pixelSizeY };
+						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
 					}
 					uv = m_Map[z][y][x].uv[1];
 					uv.x = uv.x / 8.0;
@@ -223,10 +499,10 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 0;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY };
+						m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
 					}
 					if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Map[z][y + 1][x].active) // front
 					{
@@ -238,15 +514,15 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 3;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY };
+						m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
 					}
 					uv = m_Map[z][y][x].uv[2];
 					uv.x = uv.x / 8.0;
 					uv.y = uv.y / 68.0;
-					if (z - 1 < 0 || !m_Map[z - 1][y][x].active) // bottom
+					if (!m_Map[z - 1][y][x].active) // bottom
 					{
 						m_Indices[currentIndex + 0] = vIndex + 2;
 						m_Indices[currentIndex + 1] = vIndex + 1;
@@ -256,10 +532,10 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 0;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y };
-						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y };
+						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y, 0 };
 					}
 					if (z + 1 >= MAP_SIZE_HEIGHT || !m_Map[z + 1][y][x].active) // top
 					{
@@ -271,26 +547,26 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 						m_Indices[currentIndex + 5] = vIndex + 0;
 						currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y };
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y };
+						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
+						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 0 };
 					}
 				}
 			}
 		}
 	}
-
+	
 
 	Mesh* m = m_Obj3D->m_Meshes[0];
-	assert(Resources::TRes->EditVertexBuffer(m->i_VertexBuffer, m_Vertices, vIndex));
-	assert(Resources::TRes->EditIndexBuffer(m->i_IndexBuffer, m_Indices, currentIndex));
+	assert(EditVertexBuffer(m_Vertices, vIndex));
+	assert(EditIndexBuffer(m_Indices, currentIndex));
 	m->m_NumIndices = currentIndex;
 	m->m_NumVertices = vIndex;
-	m->m_VertexBuffer = Resources::TRes->m_VertexBuffers[m->i_VertexBuffer].buffer;
-	m->m_IndexBuffer = Resources::TRes->m_IndexBuffers[m->i_IndexBuffer].buffer;
+	m->m_VertexBuffer = m_VertexBuffer.buffer;
+	m->m_IndexBuffer = m_IndexBuffer.buffer;
 
-	if ((solidBlocks * 6 * 4) * sizeof(Themp::Vertex) < vIndex * sizeof(Themp::Vertex))
+	if ((solidBlocks * 6 * 4) * sizeof(Themp::VoxelVertex) < vIndex * sizeof(Themp::VoxelVertex))
 	{
 		System::Print("This is wrong.. Very wrong...");
 		assert(false);
@@ -300,10 +576,6 @@ void VoxelObject::ConstructFromLevel(Level* level, int camX,int camY)
 		System::Print("This is wrong.. Very wrong...");
 		assert(false);
 	}
-}
-XMFLOAT2 GetRandomTexture(std::vector<XMFLOAT2>& textures, uint8_t index)
-{
-	return XMFLOAT2(0, 0);
 }
 uint16_t TypeToTexture(uint16_t type)
 {
@@ -331,79 +603,6 @@ uint16_t TypeToTexture(uint16_t type)
 
 	default: return 0; break;
 	}
-}
-
-
-
-uint8_t GetNeighbourInfo(uint16_t currentType, uint16_t nType)
-{
-	if (currentType == nType)
-	{
-		return N_SAME;
-	}
-	else
-	{
-		if (nType == Type_Lava)
-		{
-			return N_LAVA;
-		}
-		else if (nType == Type_Water)
-		{
-			return N_WATER;
-		}
-		else if (nType != Type_Rock && nType != Type_Gold && nType != Type_Gem && nType != Type_Earth && nType != Type_Earth_Torch && (nType < Type_Wall0 || nType > Type_Wall5))
-		{
-			return N_WALKABLE;
-		}
-		return N_DIFF;
-	}
-	return N_DIFF;
-}
-TileNeighbours CheckNeighbours(Level* level, uint16_t type, int x, int y)
-{
-	TileNeighbours nInfo = { 0 };
-	uint16_t nType = 0;
-	if (y + 1 < MAP_SIZE_TILES)
-	{
-		nType = level->m_Map[y + 1][x].type;
-		nInfo.North = GetNeighbourInfo(type, nType);
-		if (x + 1 < MAP_SIZE_TILES)
-		{
-			nType = level->m_Map[y + 1][x + 1].type;
-			nInfo.NorthEast = GetNeighbourInfo(type, nType);
-		}
-		if (x - 1 >= 0)
-		{
-			nType = level->m_Map[y + 1][x - 1].type;
-			nInfo.NorthWest = GetNeighbourInfo(type, nType);
-		}
-	}
-	if (y - 1 >= 0)
-	{
-		nType = level->m_Map[y - 1][x].type;
-		nInfo.South = GetNeighbourInfo(type, nType);
-		if (x + 1 < MAP_SIZE_TILES)
-		{
-			nType = level->m_Map[y - 1][x + 1].type;
-			nInfo.SouthEast = GetNeighbourInfo(type, nType);
-		}
-		if (x - 1 >= 0)
-		{
-			nType = level->m_Map[y - 1][x - 1].type;
-			nInfo.SouthWest = GetNeighbourInfo(type, nType);
-		}
-	}
-	if (x + 1 < MAP_SIZE_TILES)
-	{
-		nType = level->m_Map[y][x + 1].type;
-		nInfo.East = GetNeighbourInfo(type, nType);
-	}
-	if (x - 1 >= 0)
-	{
-		nType = level->m_Map[y][x - 1].type;
-		nInfo.West = GetNeighbourInfo(type, nType);
-	}
-	return nInfo;
 }
 bool CheckWallIsCorner(Level* level, int x, int y)
 {
@@ -607,7 +806,8 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 				const std::vector<XMFLOAT2>& tex0 = BlockTextures[texIndex].top[m_Map[1][yP + sy][xP + sx].randValue % BlockTextures[texIndex].top.size()];
 				m_Map[7][yP + sy][xP + sx].uv[2] = tex0[m_AnimationIndex % tex0.size()];
 			}
-		for (int sz = 0; sz < 8; sz++)
+
+		for (int sz = 1; sz < 8; sz++)
 			for (int sy = 0; sy < 3; sy++)
 				for (int sx = 0; sx < 3; sx++)
 				{
@@ -615,6 +815,12 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 					m_Map[sz][yP + sy][xP + sx].uv[0] = tex0[m_AnimationIndex % tex0.size()];
 					m_Map[sz][yP + sy][xP + sx].uv[1] = tex0[m_AnimationIndex % tex0.size()];
 				}
+
+		if (neighbour.East == N_LAVA || neighbour.East == N_WATER)
+		{
+			const std::vector<XMFLOAT2>& tex1 = BlockTextures[texIndex].edge[0];
+			//m_Map[7][yP + sy][xP + 2].uv[0] = tex1[neighbour.East == N_LAVA ? 0 : 1];
+		}
 		
 	}
 
@@ -933,4 +1139,151 @@ int VoxelObject::CreateFromTile(const Tile& tile, RenderTile& out)
 	}
 
 	return numSolidBlocks;
+}
+
+bool VoxelObject::CreateVertexBuffer(VoxelVertex* vertices, size_t numVertices)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	D3D11_BUFFER_DESC bd;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+
+	//set up for vertices
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(VoxelVertex) * numVertices;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	ID3D11Buffer* vertexBuffer;
+	Resources::Buffer buf;
+	HRESULT res = d->m_Device->CreateBuffer(&bd, NULL, &vertexBuffer);
+	if (res == S_OK)
+	{
+		buf.buffer = vertexBuffer;
+		buf.numElements = numVertices;
+		d->m_DevCon->Map(vertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+		memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
+		d->m_DevCon->Unmap(vertexBuffer, NULL);
+		m_VertexBuffer = buf;
+		return true;
+	}
+	System::Print("Could not create vertex buffer!");
+	return false;
+}
+bool VoxelObject::EditVertexBuffer(VoxelVertex* vertices, size_t numVertices)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	Resources::Buffer& buf = m_VertexBuffer;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	if (buf.numElements >= numVertices) //re-use our buffer
+	{
+		if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+		{
+			memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
+			d->m_DevCon->Unmap(buf.buffer, NULL);
+			return true;
+		}
+	}
+	else
+	{
+		D3D11_BUFFER_DESC bd;
+		ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+
+		//set up for vertices
+		bd.Usage = D3D11_USAGE_DYNAMIC;
+		bd.ByteWidth = sizeof(VoxelVertex) * numVertices;
+		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		ID3D11Buffer* vBuffer;
+		HRESULT res = d->m_Device->CreateBuffer(&bd, NULL, &vBuffer);
+		if (res == S_OK)
+		{
+			if (d->m_DevCon->Map(vBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+			{
+				memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
+				d->m_DevCon->Unmap(vBuffer, NULL);
+				buf.buffer->Release(); //release old buffer
+				buf.buffer = vBuffer;
+				buf.numElements = numVertices;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+bool VoxelObject::CreateIndexBuffer(uint32_t* indices, size_t numIndices)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	HRESULT res;
+
+	D3D11_BUFFER_DESC bd;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	//set up for indices
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(uint32_t) * numIndices;
+	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	ID3D11Buffer* indexBuffer;
+	Resources::Buffer buf;
+	res = d->m_Device->CreateBuffer(&bd, NULL, &indexBuffer);
+	if (res == S_OK)
+	{
+		buf.buffer = indexBuffer;
+		buf.numElements = numIndices;
+		d->m_DevCon->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+		memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
+		d->m_DevCon->Unmap(indexBuffer, NULL);
+		m_IndexBuffer = buf;
+		return true;
+	}
+	System::Print("Could not create index buffer!");
+	return false;
+}
+bool VoxelObject::EditIndexBuffer(uint32_t* indices, size_t numIndices)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	Resources::Buffer& buf = m_IndexBuffer;
+	if (buf.numElements >= numIndices) //re-use our buffer
+	{
+		if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+		{
+			memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
+			d->m_DevCon->Unmap(buf.buffer, NULL);
+			return true;
+		}
+	}
+	else
+	{
+		D3D11_BUFFER_DESC bd;
+		ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+
+		//set up for vertices
+		bd.Usage = D3D11_USAGE_DYNAMIC;
+		bd.ByteWidth = sizeof(uint32_t) * numIndices;
+		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+		ID3D11Buffer* iBuffer;
+		HRESULT res = d->m_Device->CreateBuffer(&bd, NULL, &iBuffer);
+		if (res == S_OK)
+		{
+			if (d->m_DevCon->Map(iBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+			{
+				memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
+				d->m_DevCon->Unmap(iBuffer, NULL);
+				buf.buffer->Release(); //release old buffer
+				buf.buffer = iBuffer;
+				buf.numElements = numIndices;
+				return true;
+			}
+		}
+	}
+	return false;
 }
