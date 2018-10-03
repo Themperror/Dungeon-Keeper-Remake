@@ -32,15 +32,25 @@ namespace Themp
 	FILE* System::logFile = nullptr;
 	void System::Start()
 	{
+		srand(time(nullptr));
+		Print("Creating Managers!");
 		m_D3D = new Themp::D3D();
+		Print("Setting up XAudio2!");
 		m_Audio = new Themp::Audio();
-		m_Game = new Themp::Game();
 		m_Resources = new Themp::Resources();
+		m_Game = new Themp::Game();
+
+		Print("Initialising D3D11!");
 		tSys->m_Quitting = !m_D3D->Init();
-		if (tSys->m_Quitting) { MessageBox(m_Window, L"Failed to initialise all required D3D11 resources, Is your hardware supported?", L"ThempSystem - Critical Error", MB_OK); }
+		if (tSys->m_Quitting)
+		{
+			Print("Failed to set up D3D11!"); 
+			MessageBox(m_Window, L"Failed to initialise all required D3D11 resources, Is your hardware supported?", L"ThempSystem - Critical Error", MB_OK); 
+		}
 		
 		m_GUI = new Themp::GUI(m_Window);
 
+		Print("Setting up Game!");
 		m_Game->Start();
 
 		Timer mainTimer;
@@ -67,6 +77,7 @@ namespace Themp
 		double totalDelta = 0;
 		double time = 0;
 
+		Print("Starting main loop!");
 		ShowCursor(false);
 		while (!tSys->m_Quitting)
 		{
@@ -290,7 +301,6 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 			nConfig << "WindowSizeX 1024\n";
 			nConfig << "WindowSizeY 900\n";
 			nConfig << "Anisotropic_Filtering 1\n";
-			nConfig << "Multisample 1\n";
 
 			nConfig.close();
 		}
@@ -300,7 +310,6 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024;
 		tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800;
 		tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1;
-		tSys->m_SVars[std::string(SVAR_MULTISAMPLE)] = 1;
 	}
 	
 	//check whether all values exist: (in case of outdated config.ini)
@@ -310,7 +319,6 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	if (tSys->m_SVars.find(SVAR_SCREENWIDTH) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024; }
 	if (tSys->m_SVars.find(SVAR_SCREENHEIGHT) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800; }
 	if (tSys->m_SVars.find(SVAR_ANISOTROPIC_FILTERING) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1; }
-	if (tSys->m_SVars.find(SVAR_MULTISAMPLE) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_MULTISAMPLE)] = 1; }
 	
 	ImGui::CreateContext();
 	WNDCLASSEX wc;
@@ -318,7 +326,34 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = CS_HREDRAW | CS_VREDRAW; 
 	WORD icon = 0;
-	wc.hIcon = ExtractAssociatedIcon(hInstance, L"KEEPER95.exe", &icon);
+	HICON hicon = 0;
+	FILE* iconFile = fopen("KEEPER95.exe", "rb");
+	if (iconFile)
+	{
+		fclose(iconFile);
+		hicon = ExtractAssociatedIcon(hInstance, L"KEEPER95.exe", &icon);
+		if (hicon)
+		{
+			wc.hIcon = hicon;
+		}
+	}
+	else
+	{
+		iconFile = fopen("KEEPER.exe", "rb");
+		if (iconFile)
+		{
+			fclose(iconFile);
+			hicon = ExtractAssociatedIcon(hInstance, L"KEEPER.exe", &icon);
+			if (hicon)
+			{
+				wc.hIcon = hicon;
+			}
+		}
+		else
+		{
+			Themp::System::Print("No Icon found for Keeper95.exe or Keeper.exe!");
+		}
+	}
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);

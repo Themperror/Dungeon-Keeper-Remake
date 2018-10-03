@@ -58,7 +58,6 @@ namespace Themp
 
 		ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
 
-
 		scd.BufferCount = 2;
 		scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -171,7 +170,7 @@ namespace Themp
 		D3D11_RASTERIZER_DESC rDesc;
 		memset(&rDesc, 0, sizeof(D3D11_RASTERIZER_DESC));
 		rDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID; //change for Wireframe
-		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE; //Backface culling yes/no/inverted
+		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK; //Backface culling yes/no/inverted
 		rDesc.DepthClipEnable = true; //default true
 
 		m_Device->CreateRasterizerState(&rDesc, &m_RasterizerState);
