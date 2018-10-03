@@ -49,5 +49,4 @@ cbuffer MeshBuffer : register(b3) //not sure if we'll still need a per-mesh buff
 cbuffer LightConstantBuffer : register(b4)
 {
     uint _numPoint, _ldummy0, _ldummy1, _ldummy2;
-    Light _lights[NUM_LIGHTS];
 };
