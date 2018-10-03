@@ -6,22 +6,94 @@ using namespace DirectX;
 #define MAP_SIZE_SUBTILES (85 * 3 + 1)
 #define MAP_SIZE_TILES (85)
 #define MAP_SIZE_SUBTILES_RENDER (85 * 3)
+
+static const int Type_Rock = 0;
+static const int Type_Gold = 1;
+static const int Type_Earth = 2;
+static const int Type_Earth_Torch = 3;
+static const int Type_Wall0 = 4;
+static const int Type_Wall1 = 5; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Wall2 = 6; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Wall3 = 7; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Wall4 = 8; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Wall5 = 9; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Unclaimed_Path = 10;
+static const int Type_Claimed_Land = 11;
+static const int Type_Lava = 12;
+static const int Type_Water = 13;
+static const int Type_Portal = 14;
+static const int Type_Treasure_Room = 16;
+static const int Type_Library = 18;
+static const int Type_Prison = 20;
+static const int Type_Torture_Room = 22;
+static const int Type_Training_Room = 24;
+static const int Type_Dungeon_Heart = 26;
+static const int Type_Workshop = 28;
+static const int Type_Scavenger_Room = 30;
+static const int Type_Temple = 32;
+static const int Type_Graveyard = 34;
+static const int Type_Hatchery = 36;
+static const int Type_Lair = 38;
+static const int Type_Barracks = 40;
+static const int Type_Wooden_DoorH = 42;
+static const int Type_Wooden_DoorV = 43;
+static const int Type_Braced_DoorH = 44;
+static const int Type_Braced_DoorV = 45;
+static const int Type_Iron_DoorH = 46;
+static const int Type_Iron_DoorV = 47;
+static const int Type_Magic_DoorH = 48;
+static const int Type_Magic_DoorV = 49;
+static const int Type_Bridge = 51;
+static const int Type_Gem = 52;
+static const int Type_Guardpost = 53;
+
+//3 bits
+const int N_DIFF = 0b00;
+const int N_SAME = 0b01;
+const int N_WATER = 0b10;
+const int N_LAVA = 0b11;
+const int N_WALKABLE = 0b100;
+
+struct TileNeighbours
+{
+	unsigned char North : 3;
+	unsigned char NorthEast : 3;
+	unsigned char East : 3;
+	unsigned char SouthEast : 3;
+	unsigned char South : 3;
+	unsigned char SouthWest : 3;
+	unsigned char West : 3;
+	unsigned char NorthWest : 3;
+};
+
+
 namespace Themp
 {
 	struct Block
 	{
 		Block()
 		{
-
+			randValue = 0;
 		}
-		Block(bool a, XMFLOAT2 u,XMFLOAT2 v)
+		Block(bool a, XMFLOAT2 u, XMFLOAT2 v)
 		{
 			active = a;
-			uv[0] = u;
-			uv[1] = v;
+			uv[0] = u; //X (side)
+			uv[1] = u; //Y (side)
+			uv[2] = v; //Z (top)
+			randValue = 0;
+		}
+		Block(bool a, XMFLOAT2 u,XMFLOAT2 v,XMFLOAT2 w)
+		{
+			active = a;
+			uv[0] = u; //X (side)
+			uv[1] = v; //Y (side)
+			uv[2] = w; //Z (top)
+			randValue = 0;
 		}
 		bool active = false;
-		XMFLOAT2 uv[2];
+		int randValue;
+		XMFLOAT2 uv[3];
 
 	};
 	struct RenderTile
@@ -2029,42 +2101,18 @@ namespace Themp
 		{
 			{
 				XMFLOAT2(9,5), //normal
+			},
+			{
 				XMFLOAT2(9,4), //lava
+			},
+			{
 				XMFLOAT2(0,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(1,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(2,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(3,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(4,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(5,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(6,5), //water
-			},
-			{
-				XMFLOAT2(9,5), //normal
-				XMFLOAT2(9,4), //lava
 				XMFLOAT2(7,5), //water
 			},
 		},
@@ -2102,22 +2150,22 @@ namespace Themp
 		//top
 		{
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(0,10), //black
+				XMFLOAT2(1,10), //black
+				XMFLOAT2(2,10), //black
+				XMFLOAT2(3,10), //black
 			},
 			{
-				XMFLOAT2(4,6), //black
-				XMFLOAT2(5,6), //black
-				XMFLOAT2(6,6), //black
-				XMFLOAT2(7,6), //black
+				XMFLOAT2(4,10), //black
+				XMFLOAT2(5,10), //black
+				XMFLOAT2(6,10), //black
+				XMFLOAT2(7,10), //black
 			},
 			{
-				XMFLOAT2(0,7), //black
-				XMFLOAT2(1,7), //black
-				XMFLOAT2(2,7), //black
-				XMFLOAT2(3,7), //black
+				XMFLOAT2(0,11), //black
+				XMFLOAT2(1,11), //black
+				XMFLOAT2(2,11), //black
+				XMFLOAT2(3,11), //black
 			},
 		},
 		//side
@@ -2163,12 +2211,130 @@ namespace Themp
 			},
 		},
 	};
+	const TileTextures t_UnclaimedPath =
+	{
+		//top
+		{
+			{
+				XMFLOAT2(3,3), //clear path
+				XMFLOAT2(4,3), //clear path
+				XMFLOAT2(5,3), //clear path
+			},
+			{
+				XMFLOAT2(3,3), //rumbly path
+				XMFLOAT2(4,3), //rumbly path
+				XMFLOAT2(5,3), //rumbly path
+				XMFLOAT2(6,3), //rumbly path
+				XMFLOAT2(7,3), //rumbly path
+			},
+		},
+		//side
+		{
+			{
+				XMFLOAT2(0,0), //black
+			},
+		},
+		//edge
+		{
+			{
+				XMFLOAT2(0,6), //black
+				XMFLOAT2(1,6), //black
+				XMFLOAT2(2,6), //black
+				XMFLOAT2(3,6), //black
+			},
+		},
+	};
+	const TileTextures t_ClaimedPath =
+	{
+		//top
+		{
+			{
+				XMFLOAT2(3,22),
+				XMFLOAT2(4,22),
+				XMFLOAT2(5,22),
+				XMFLOAT2(6,22),
+				XMFLOAT2(0,0),
+				XMFLOAT2(7,22),
+				XMFLOAT2(0,23),
+				XMFLOAT2(1,23),
+				XMFLOAT2(2,23),
+			},
+			{
+				XMFLOAT2(0,22), //random mid-pieces
+				XMFLOAT2(1,22), //random mid-pieces
+				XMFLOAT2(2,22), //random mid-pieces
+			},
+		},
+		//side
+		{
+			{
+				XMFLOAT2(0,0),
+			},
+		},
+		//edge
+		{
+			{
+				XMFLOAT2(4,23), //black
+				XMFLOAT2(5,23), //black
+				XMFLOAT2(6,23), //black
+			},
+		},
+	};
+	const TileTextures t_Wall =
+	{
+		//top
+		{
+			{ 
+				XMFLOAT2(2,13), //corner
+				XMFLOAT2(3,14), //side
+				XMFLOAT2(3,0), //normal
+			},
+		},
+		//side
+		{
+			{
+				XMFLOAT2(0,6),XMFLOAT2(0,6),XMFLOAT2(0,6),
+			},
+			{
+				XMFLOAT2(4,6), //black
+			},
+			{
+				XMFLOAT2(0,7), //black
+			},
+		},
+		//edge
+		{
+			//
+			{
+				XMFLOAT2(0,6), //black
+				XMFLOAT2(1,6), //black
+				XMFLOAT2(2,6), //black
+				XMFLOAT2(3,6), //black
+			},
+			{
+				XMFLOAT2(0,6), //black
+				XMFLOAT2(1,6), //black
+				XMFLOAT2(2,6), //black
+				XMFLOAT2(3,6), //black
+			},
+			{
+				XMFLOAT2(0,6), //black
+				XMFLOAT2(1,6), //black
+				XMFLOAT2(2,6), //black
+				XMFLOAT2(3,6), //black
+			},
+		},
+	};
 	const std::vector<TileTextures> BlockTextures =
 	{
 		t_Black,
 		t_Earth,
 		t_Water,
 		t_Gold,
+		t_UnclaimedPath,
+		t_ClaimedPath,
+		t_Wall,
+
 
 	};
 	//	{

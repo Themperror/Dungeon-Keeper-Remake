@@ -35,6 +35,8 @@ Level::Level(int levelIndex)
 	m_MapObject = new VoxelObject();
 	m_MapObject->m_Obj3D->m_Meshes[0]->m_Material->SetTexture(FileManager::GetBlockTexture(0));
 	Themp::System::tSys->m_Game->AddObject3D(m_MapObject->m_Obj3D);
+	//System::tSys->m_Game->m_Camera->SetOrtho(20, 20);
+	//System::tSys->m_Game->m_Camera->SetProjection(Camera::CameraType::Orthographic);
 }
 //void Level::Cull()
 //{
@@ -83,6 +85,7 @@ Level::Level(int levelIndex)
 void Level::Update(float delta)
 {
 	Game* g = Themp::System::tSys->m_Game;
+	m_MapObject->Update(delta);
 
 	float uiMouseX = 0, uiMouseY = 0;
 	Game::TranslateMousePos(g->m_CursorWindowedX, g->m_CursorWindowedY, uiMouseX, uiMouseY);
@@ -209,14 +212,113 @@ void Level::LoadLevelData()
 	FileData map_wlb = FileManager::GetFileData(LevelPath + L".wlb");
 
 	int slb_index = 0;
-	for (int y = MAP_SIZE_TILES-1; y >= 0; y--)
+	for (int y = MAP_SIZE_TILES - 1; y >= 0; y--)
 	{
-		for (size_t x = 0; x < MAP_SIZE_TILES; x++)
+		for (int x = 0; x < MAP_SIZE_TILES; x++)
 		{
 			BYTE tile = map_slb.data[slb_index++];
 			slb_index++; //second byte is always 0 so we skip it
+			if (tile >= Type_Wall0 && tile <= Type_Wall5)
+			{
+				tile = Type_Wall0;
+			}
 			Tile& mapTile = m_Map[y][x];
 			mapTile.type = tile;
 		}
 	}
+	Tile m_AdjustedMap[85][85];
+	memcpy(m_AdjustedMap, m_Map, sizeof(m_Map));
+	for (int y = 0; y < MAP_SIZE_TILES; y++)
+	{
+		for (int x = 0; x < MAP_SIZE_TILES; x++)
+		{
+			Tile& mapTile = m_Map[y][x];
+			if (mapTile.type == Type_Wall0)
+			{
+				m_AdjustedMap[y][x].type = Type_Wall0;
+				bool northWall = m_Map[y + 1][x].type == Type_Wall0;
+				bool southWall = m_Map[y - 1][x].type == Type_Wall0;
+				bool westWall = m_Map[y][x - 1].type == Type_Wall0;
+				bool eastWall = m_Map[y][x + 1].type == Type_Wall0;
+				bool northRock = m_Map[y + 1][x].type == Type_Rock || m_Map[y + 1][x].type == Type_Earth;
+				bool southRock = m_Map[y - 1][x].type == Type_Rock || m_Map[y - 1][x].type == Type_Earth;
+				bool westRock = m_Map[y][x - 1].type == Type_Rock || m_Map[y][x - 1].type == Type_Earth;
+				bool eastRock = m_Map[y][x + 1].type == Type_Rock || m_Map[y][x + 1].type == Type_Earth;
+
+				if (southWall)
+				{//southern piece is a walltype
+					if (eastWall)
+					{//eastern piece is a walltype
+						if (northRock && westRock)
+						{ //both other sides are not walls
+							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+						}
+						else if (!northWall || !westWall)
+						{//only 1 side is not a wall
+							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+						}
+						else
+						{//otherwise this is a wall
+							m_AdjustedMap[y][x].type = Type_Wall0;
+						}
+					}
+					else if (westWall)
+					{//Western piece is a walltype
+						if (northRock && eastRock)
+						{ //both other sides are not walls
+							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+						}
+						else if (!northWall || !eastWall)
+						{//only 1 northRock is not a wall
+							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+						}
+						else
+						{//otherwise this is a wall
+							m_AdjustedMap[y][x].type = Type_Wall0;
+						}
+					}
+				}
+				if (northWall)
+				{//northern piece is a walltype
+					if (eastWall)
+					{//eastern piece is a walltype
+						if (southRock && westRock)
+						{ //both other sides are not walls
+							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+						}
+						else if (!southWall || !eastWall)
+						{//only 1 side is not a wall
+							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+						}
+						else
+						{//otherwise this is a wall
+							m_AdjustedMap[y][x].type = Type_Wall0;
+						}
+					}
+					else if (westWall)
+					{//Western piece is a walltype
+						if (southRock && eastRock)
+						{ //both other sides are not walls
+							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+							continue;
+						}
+						else if (!southWall || !eastWall)
+						{//only 1 side is not a wall
+							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+							continue;
+						}
+						else
+						{//otherwise this is a wall
+							m_AdjustedMap[y][x].type = Type_Wall0;
+							continue;
+
+						}
+					}
+				}
+				
+			}
+		}
+	}
+
+	memcpy(m_Map,m_AdjustedMap , sizeof(m_Map));
 }

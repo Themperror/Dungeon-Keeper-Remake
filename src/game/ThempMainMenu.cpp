@@ -156,8 +156,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	//GoToSplash();
-	GoToMenu();
+	GoToSplash();
+	//GoToMenu();
 }
 
 
