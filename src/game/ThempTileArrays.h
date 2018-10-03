@@ -2150,64 +2150,64 @@ namespace Themp
 		//top
 		{
 			{
-				XMFLOAT2(0,10), //black
-				XMFLOAT2(1,10), //black
-				XMFLOAT2(2,10), //black
-				XMFLOAT2(3,10), //black
+				XMFLOAT2(0,10), 
+				XMFLOAT2(1,10), 
+				XMFLOAT2(2,10), 
+				XMFLOAT2(3,10), 
 			},
 			{
-				XMFLOAT2(4,10), //black
-				XMFLOAT2(5,10), //black
-				XMFLOAT2(6,10), //black
-				XMFLOAT2(7,10), //black
+				XMFLOAT2(4,10), 
+				XMFLOAT2(5,10), 
+				XMFLOAT2(6,10), 
+				XMFLOAT2(7,10), 
 			},
 			{
-				XMFLOAT2(0,11), //black
-				XMFLOAT2(1,11), //black
-				XMFLOAT2(2,11), //black
-				XMFLOAT2(3,11), //black
+				XMFLOAT2(0,11), 
+				XMFLOAT2(1,11), 
+				XMFLOAT2(2,11), 
+				XMFLOAT2(3,11), 
 			},
 		},
 		//side
 		{
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(0,6),
+				XMFLOAT2(1,6),
+				XMFLOAT2(2,6),
+				XMFLOAT2(3,6),
 			},
 			{
-				XMFLOAT2(4,6), //black
-				XMFLOAT2(5,6), //black
-				XMFLOAT2(6,6), //black
-				XMFLOAT2(7,6), //black
+				XMFLOAT2(4,6),
+				XMFLOAT2(5,6),
+				XMFLOAT2(6,6),
+				XMFLOAT2(7,6),
 			},
 			{
-				XMFLOAT2(0,7), //black
-				XMFLOAT2(1,7), //black
-				XMFLOAT2(2,7), //black
-				XMFLOAT2(3,7), //black
+				XMFLOAT2(0,7),
+				XMFLOAT2(1,7),
+				XMFLOAT2(2,7),
+				XMFLOAT2(3,7),
 			},
 		},
 		//edge
 		{
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(0,6),
+				XMFLOAT2(1,6),
+				XMFLOAT2(2,6),
+				XMFLOAT2(3,6),
 			},
 			{
-				XMFLOAT2(4,6), //black
-				XMFLOAT2(5,6), //black
-				XMFLOAT2(6,6), //black
-				XMFLOAT2(7,6), //black
+				XMFLOAT2(4,6),
+				XMFLOAT2(5,6),
+				XMFLOAT2(6,6),
+				XMFLOAT2(7,6),
 			},
 			{
-				XMFLOAT2(0,7), //black
-				XMFLOAT2(1,7), //black
-				XMFLOAT2(2,7), //black
-				XMFLOAT2(3,7), //black
+				XMFLOAT2(0,7),
+				XMFLOAT2(1,7),
+				XMFLOAT2(2,7),
+				XMFLOAT2(3,7),
 			},
 		},
 	};

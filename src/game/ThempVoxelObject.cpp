@@ -654,7 +654,7 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 		if (neighbour.West == N_WALKABLE)
 		{
 			int randValue = m_Map[7][yP][xP].randValue;//we use the random value of one block as the entire side will need to match
-			const std::vector<XMFLOAT2>& tex1 = BlockTextures[texIndex].side[randValue & BlockTextures[texIndex].side.size()];
+			const std::vector<XMFLOAT2>& tex1 = BlockTextures[texIndex].side[randValue % BlockTextures[texIndex].side.size()];
 			for (int sx = 0; sx < 3; sx++)
 			{
 				for (int z = 1; z < MAP_SIZE_HEIGHT; z++)
@@ -663,8 +663,28 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 				}
 				m_Map[7][yP + sx][xP].uv[2] = tex0[1];
 			}
+		}
+		bool northWalkable = GetNeighbourInfo(type, level->m_Map[y + 1][x].type) == N_WALKABLE;
+		bool southWalkable = GetNeighbourInfo(type, level->m_Map[y - 1][x].type) == N_WALKABLE;
+		bool eastWalkable = GetNeighbourInfo(type, level->m_Map[y][x + 1].type) == N_WALKABLE;
+		bool westWalkable = GetNeighbourInfo(type, level->m_Map[y][x - 1].type) == N_WALKABLE;
 
-			
+		//corner pieces
+		if (northWalkable && eastWalkable)
+		{
+			m_Map[7][yP + 2][xP + 2].uv[2] = tex0[0];
+		}
+		if (northWalkable && westWalkable)
+		{
+			m_Map[7][yP + 2][xP].uv[2] = tex0[0];
+		}
+		if (southWalkable && eastWalkable)
+		{
+			m_Map[7][yP][xP + 2].uv[2] = tex0[0];
+		}
+		if (southWalkable && westWalkable)
+		{
+			m_Map[7][yP][xP].uv[2] = tex0[0];
 		}
 		
 	}
@@ -702,7 +722,7 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 		}
 
 		bool northWalkable = GetNeighbourInfo(type, level->m_Map[y + 1][x].type) == N_WALKABLE;
-		bool southhWalkable = GetNeighbourInfo(type, level->m_Map[y - 1][x].type) == N_WALKABLE;
+		bool southWalkable = GetNeighbourInfo(type, level->m_Map[y - 1][x].type) == N_WALKABLE;
 		bool eastWalkable = GetNeighbourInfo(type, level->m_Map[y][x + 1].type) == N_WALKABLE;
 		bool westWalkable = GetNeighbourInfo(type, level->m_Map[y][x - 1].type) == N_WALKABLE;
 		if (northWalkable)
@@ -712,7 +732,7 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 				m_Map[7][yP + 2][xP + sy].uv[2] = tex0[1];
 			}
 		}
-		if (southhWalkable)
+		if (southWalkable)
 		{
 			for (int sy = 0; sy < 3; sy++)
 			{
@@ -732,6 +752,22 @@ void VoxelObject::DoUVs(Level* level, uint16_t type, int x, int y)
 			{
 				m_Map[7][yP + sx][xP].uv[2] = tex0[1];
 			}
+		}
+		if (northWalkable && eastWalkable)
+		{
+			m_Map[7][yP + 2][xP + 2].uv[2] = tex0[0];
+		}
+		if (northWalkable && westWalkable)
+		{
+			m_Map[7][yP + 2][xP].uv[2] = tex0[0];
+		}
+		if (southWalkable && eastWalkable)
+		{
+			m_Map[7][yP][xP + 2].uv[2] = tex0[0];
+		}
+		if (southWalkable && westWalkable)
+		{
+			m_Map[7][yP][xP].uv[2] = tex0[0];
 		}
 	}
 	if (type == Type_Wall3) //corner
