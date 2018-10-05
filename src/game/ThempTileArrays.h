@@ -13,8 +13,8 @@ static const int Type_Earth = 2;
 static const int Type_Earth_Torch = 3;
 static const int Type_Wall0 = 4;
 static const int Type_Wall1 = 5; //These remain unused for now, I change them to Wall0 during level loading.
-static const int Type_Wall2 = 6; //These remain unused for now, I change them to Wall0 during level loading.
-static const int Type_Wall3 = 7; //These remain unused for now, I change them to Wall0 during level loading.
+static const int Type_Wall2 = 6; 
+static const int Type_Wall3 = 7; 
 static const int Type_Wall4 = 8; //These remain unused for now, I change them to Wall0 during level loading.
 static const int Type_Wall5 = 9; //These remain unused for now, I change them to Wall0 during level loading.
 static const int Type_Unclaimed_Path = 10;
@@ -47,25 +47,20 @@ static const int Type_Bridge = 51;
 static const int Type_Gem = 52;
 static const int Type_Guardpost = 53;
 
+
+static const int Owner_PlayerRed = 0;
+static const int Owner_PlayerBlue = 1;
+static const int Owner_PlayerGreen = 2;
+static const int Owner_PlayerYellow = 3;
+static const int Owner_PlayerWhite = 4;
+static const int Owner_PlayerNone = 5;
+
 //3 bits
-const int N_DIFF = 0b00;
-const int N_SAME = 0b01;
-const int N_WATER = 0b10;
-const int N_LAVA = 0b11;
-const int N_WALKABLE = 0b100;
-
-struct TileNeighbours
-{
-	unsigned char North : 3;
-	unsigned char NorthEast : 3;
-	unsigned char East : 3;
-	unsigned char SouthEast : 3;
-	unsigned char South : 3;
-	unsigned char SouthWest : 3;
-	unsigned char West : 3;
-	unsigned char NorthWest : 3;
-};
-
+static const int N_DIFF = 0b00;
+static const int N_SAME = 0b01;
+static const int N_WATER = 0b10;
+static const int N_LAVA = 0b11;
+static const int N_WALKABLE = 0b100;
 
 namespace Themp
 {
@@ -112,6 +107,49 @@ namespace Themp
 		uint16_t type;
 		SubTile sub[3][3];
 	};
+
+	struct TileNeighbours
+	{
+		unsigned char North : 3;
+		unsigned char NorthEast : 3;
+		unsigned char East : 3;
+		unsigned char SouthEast : 3;
+		unsigned char South : 3;
+		unsigned char SouthWest : 3;
+		unsigned char West : 3;
+		unsigned char NorthWest : 3;
+	};
+
+	struct TileNeighbourTiles
+	{
+		struct Direction
+		{
+			uint8_t owner;
+			uint16_t type;
+		};
+		//Anonymous union to bind all directions into our array
+		//Keeping them in the "upper" scope of this struct ( Allows T.All[N] )
+		union
+		{
+			Direction All[8];
+			//Anonymous struct to avoid adding a layer ( Allows T.NorthWest etc.. )
+			struct
+			{
+				//First few loose variables
+				Direction NorthWest,NorthEast,SouthWest,SouthEast;
+				union //Anonymous union again ( Allows T.Axii[N] )
+				{
+					Direction Axii[4];
+					struct //Another anonymous struct ( Allows T.North etc..)
+					{
+						Direction North, South, West, East;
+					};
+				};
+			};
+		};
+	};
+
+
 	const int Tile_ROCK = 0;
 	const int Tile_FULLBLOCK = 1;
 	const int Tile_GROUND = 2;
@@ -129,8 +167,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -138,8 +176,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -147,8 +185,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -156,8 +194,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -165,8 +203,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -174,8 +212,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -183,8 +221,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -192,8 +230,8 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
@@ -201,10 +239,10 @@ namespace Themp
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
-				Block(true,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
+				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 			},
-			8 * 3 * 3,
+			6 * 3 * 3,
 		},
 		//FullBlock
 		{
@@ -215,8 +253,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -224,8 +262,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -233,8 +271,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -242,8 +280,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -251,8 +289,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -260,8 +298,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -269,8 +307,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -278,8 +316,8 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
@@ -287,10 +325,10 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
-				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 			},
-			8*3*3,
+			6*3*3,
 		},
 		//Ground Block
 		{
@@ -2020,10 +2058,28 @@ namespace Themp
 	{
 		//following a 3x3 grid starting left up (0,0) (1,0) (2,0) (0,1) etc..
 		std::vector<std::vector<XMFLOAT2>> top;
-		//following a 3x3 grid starting left up (0,0) (1,0) (2,0) (0,1) etc..
-		std::vector<std::vector<XMFLOAT2>> side;
+		//following a 3x4 grid starting left up (0,0) (1,0) (2,0) (0,1) etc..
+		std::vector<std::vector<XMFLOAT2>> wall;
 		//tiles next to liquids (normal , lava , water)
 		std::vector<std::vector<XMFLOAT2>> edge; 
+	};
+	const XMFLOAT2 t_WallOwners[6] =
+	{
+		{ 3,13 },
+		{ 4,13 },
+		{ 5,13 },
+		{ 6,13 },
+		{ 7,13 },
+		{ 3,0 },
+	};
+	const XMFLOAT2 t_FloorOwners[6] =
+	{
+		{ 0,34 },
+		{ 1,34 },
+		{ 2,34 },
+		{ 3,34 },
+		{ 7,34 },
+		{ 6,34 },
 	};
 
 	const TileTextures t_Black =
@@ -2052,13 +2108,13 @@ namespace Themp
 		//top
 		{
 			{
-				XMFLOAT2(2,0), //black
+				XMFLOAT2(2,0),
 			},
 			{
-				XMFLOAT2(3,0), //black
+				XMFLOAT2(3,0),
 			},
 			{
-				XMFLOAT2(4,0), //black
+				XMFLOAT2(4,0),
 			},
 		},
 		//side
@@ -2067,6 +2123,9 @@ namespace Themp
 				XMFLOAT2(6,0),
 				XMFLOAT2(7,0),
 				XMFLOAT2(0,1),
+				XMFLOAT2(1,1),
+				XMFLOAT2(2,0),
+				XMFLOAT2(2,1),
 				XMFLOAT2(1,1),
 				XMFLOAT2(2,0),
 				XMFLOAT2(2,1),
@@ -2081,6 +2140,9 @@ namespace Themp
 				XMFLOAT2(1,1),
 				XMFLOAT2(3,0),
 				XMFLOAT2(2,1),
+				XMFLOAT2(1,1),
+				XMFLOAT2(3,0),
+				XMFLOAT2(2,1),
 				XMFLOAT2(3,1),
 				XMFLOAT2(4,1),
 				XMFLOAT2(5,1),
@@ -2089,6 +2151,9 @@ namespace Themp
 				XMFLOAT2(6,0),
 				XMFLOAT2(7,0),
 				XMFLOAT2(0,1),
+				XMFLOAT2(1,1),
+				XMFLOAT2(4,0),
+				XMFLOAT2(2,1),
 				XMFLOAT2(1,1),
 				XMFLOAT2(4,0),
 				XMFLOAT2(2,1),
@@ -2231,7 +2296,22 @@ namespace Themp
 		//side
 		{
 			{
-				XMFLOAT2(0,0), //black
+				XMFLOAT2(4,15),XMFLOAT2(5,15),XMFLOAT2(6,15),
+				XMFLOAT2(7,15),XMFLOAT2(0,16),XMFLOAT2(1,16),
+				XMFLOAT2(2,16),XMFLOAT2(3,16),XMFLOAT2(4,16),
+				XMFLOAT2(5,16),XMFLOAT2(6,16),XMFLOAT2(7,16),
+			},
+			{
+				XMFLOAT2(0,17),XMFLOAT2(1,17),XMFLOAT2(2,17),
+				XMFLOAT2(3,17),XMFLOAT2(4,17),XMFLOAT2(5,17),
+				XMFLOAT2(6,17),XMFLOAT2(7,17),XMFLOAT2(0,18),
+				XMFLOAT2(1,18),XMFLOAT2(2,18),XMFLOAT2(3,18),
+			},
+			{
+				XMFLOAT2(4,18),XMFLOAT2(5,18),XMFLOAT2(6,18),
+				XMFLOAT2(7,18),XMFLOAT2(0,19),XMFLOAT2(1,19),
+				XMFLOAT2(2,19),XMFLOAT2(3,19),XMFLOAT2(4,19),
+				XMFLOAT2(5,19),XMFLOAT2(6,19),XMFLOAT2(7,19),
 			},
 		},
 		//edge
@@ -2268,7 +2348,22 @@ namespace Themp
 		//side
 		{
 			{
-				XMFLOAT2(0,0),
+				XMFLOAT2(4,15),XMFLOAT2(5,15),XMFLOAT2(6,15),
+				XMFLOAT2(7,15),XMFLOAT2(0,16),XMFLOAT2(1,16),
+				XMFLOAT2(2,16),XMFLOAT2(3,16),XMFLOAT2(4,16),
+				XMFLOAT2(5,16),XMFLOAT2(6,16),XMFLOAT2(7,16),
+			},
+			{
+				XMFLOAT2(0,17),XMFLOAT2(1,17),XMFLOAT2(2,17),
+				XMFLOAT2(3,17),XMFLOAT2(4,17),XMFLOAT2(5,17),
+				XMFLOAT2(6,17),XMFLOAT2(7,17),XMFLOAT2(0,18),
+				XMFLOAT2(1,18),XMFLOAT2(2,18),XMFLOAT2(3,18),
+			},
+			{
+				XMFLOAT2(4,18),XMFLOAT2(5,18),XMFLOAT2(6,18),
+				XMFLOAT2(7,18),XMFLOAT2(0,19),XMFLOAT2(1,19),
+				XMFLOAT2(2,19),XMFLOAT2(3,19),XMFLOAT2(4,19),
+				XMFLOAT2(5,19),XMFLOAT2(6,19),XMFLOAT2(7,19),
 			},
 		},
 		//edge
@@ -2293,13 +2388,7 @@ namespace Themp
 		//side
 		{
 			{
-				XMFLOAT2(0,6),XMFLOAT2(0,6),XMFLOAT2(0,6),
-			},
-			{
-				XMFLOAT2(4,6), //black
-			},
-			{
-				XMFLOAT2(0,7), //black
+				XMFLOAT2(0,0),
 			},
 		},
 		//edge
@@ -2334,568 +2423,5 @@ namespace Themp
 		t_UnclaimedPath,
 		t_ClaimedPath,
 		t_Wall,
-
-
 	};
-	//	{
-	//		XMFLOAT2(1,0), //Purple Gem?
-	//	},
-	//	{
-	//		XMFLOAT2(2,0), //Earth 1
-	//		XMFLOAT2(3,0), //Earth 2
-	//		XMFLOAT2(4,0), //Earth 3
-	//		XMFLOAT2(5,0), //Earth 4 Yellow?
-	//	},
-	//	{
-	//		XMFLOAT2(6,0), //Earth 1 Top
-	//		XMFLOAT2(7,0), //Earth 2 Top
-	//		XMFLOAT2(8,0), //Earth 3 Top
-	//		XMFLOAT2(0,1), //Earth 4 Top
-	//	},
-	//	{
-	//		XMFLOAT2(1,1), //Earth 1 ??
-	//		XMFLOAT2(2,1), //Earth 2 ??
-	//		XMFLOAT2(3,1), //Earth 3 ??
-	//		XMFLOAT2(4,1), //Earth 4 ??
-	//		XMFLOAT2(5,1), //Earth 5 ??
-	//	},
-	//	{
-	//		XMFLOAT2(6,1), //Portal blocks
-	//		XMFLOAT2(7,1), //Portal blocks
-	//		XMFLOAT2(0,2), //portal blocks
-	//		XMFLOAT2(1,2), //portal blocks
-	//	},
-	//	{
-	//		XMFLOAT2(3,2), //Lair Wall Tiles
-	//		XMFLOAT2(4,2), //Lair Wall Tiles
-	//		XMFLOAT2(5,2), //Lair Wall Tiles
-	//		XMFLOAT2(6,2), //Lair Wall Tiles
-	//		XMFLOAT2(7,2), //Lair Wall Tiles
-	//		XMFLOAT2(0,3), //Lair Wall Tiles
-	//		XMFLOAT2(1,3), //Lair Wall Tiles
-	//		XMFLOAT2(2,3), //Lair Wall Tiles
-	//	},
-	//	{
-	//		XMFLOAT2(3,3), //path mid
-	//		XMFLOAT2(4,3), //path mid
-	//		XMFLOAT2(5,3), //path mid
-	//		XMFLOAT2(6,3), //path mid
-	//		XMFLOAT2(7,3), //path mid
-	//	},
-	//	{
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3,3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	XMFLOAT2(3, 3), //path mid
-	//	},
-	//;
 };
