@@ -20,6 +20,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 IMGUI_API LRESULT ImGui_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void ImGui_PrepareFrame();
 
+DEVMODE dm = { 0 };
+
 namespace Themp
 {
 	float lerp(float x, float y, float t)
@@ -32,6 +34,7 @@ namespace Themp
 	FILE* System::logFile = nullptr;
 	void System::Start()
 	{
+
 		srand(time(nullptr));
 		Print("Creating Managers!");
 		m_D3D = new Themp::D3D();
@@ -67,10 +70,8 @@ namespace Themp
 		GetWindowRect(m_Window, &windowRect);
 		GetClientRect(m_Window, &clientRect);
 
+
 		m_D3D->ResizeWindow(clientRect.right, clientRect.bottom);
-		DEVMODE dm = {0};
-		dm.dmSize = sizeof(DEVMODE);
-		EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm);
 		//printf("BorderX: %i\n BorderY: %i\n Caption: %i\n", borderX, borderY, caption);
 		SetCursorPos(windowRect.left + (windowRect.right - windowRect.left) / 2, windowRect.top + (windowRect.bottom - windowRect.top) / 2);
 		ImGuiIO& io = ImGui::GetIO();
@@ -226,9 +227,8 @@ namespace Themp
 		}
 
 		GetWindowRect(m_Window, &windowRect);
-		m_SVars[SVAR_SCREENWIDTH] = windowRect.right - windowRect.left;
-		m_SVars[SVAR_SCREENHEIGHT] = windowRect.bottom - windowRect.top;
-
+		m_SVars[SVAR_WINDOWWIDTH] = windowRect.right - windowRect.left;
+		m_SVars[SVAR_WINDOWHEIGHT] = windowRect.bottom - windowRect.top;
 
 		m_Game->Stop();
 		delete m_Game;
@@ -244,9 +244,6 @@ namespace Themp
 		ImGui::DestroyContext();
 	}
 }
-
-int newWindowSizeX = 0;
-int newWindowSizeY = 0;
 
 std::string GetPathName(std::string s)
 {
@@ -265,6 +262,9 @@ std::string GetPathName(std::string s)
 }
 
 
+int newWindowSizeX = 0;
+int newWindowSizeY = 0;
+
 
 int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,int nCmdShow)
 {
@@ -273,6 +273,9 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 
 	Themp::System::tSys = new Themp::System();
 	Themp::System* tSys = Themp::System::tSys;
+
+	dm.dmSize = sizeof(DEVMODE);
+	EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm);
 
 	char szFileName[MAX_PATH + 1];
 	GetModuleFileNameA(NULL, szFileName, MAX_PATH + 1);
@@ -311,8 +314,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		tSys->m_SVars[std::string(SVAR_FULLSCREEN)] = 0;
 		tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = 0;
 		tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = 0;
-		tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024;
-		tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800;
+		tSys->m_SVars[std::string(SVAR_WINDOWWIDTH)] = 800;
+		tSys->m_SVars[std::string(SVAR_WINDOWHEIGHT)] = 600;
 		tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1;
 	}
 	
@@ -320,8 +323,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	if (tSys->m_SVars.find(SVAR_FULLSCREEN) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_FULLSCREEN)] = 0; }
 	if (tSys->m_SVars.find(SVAR_WINDOWPOSX) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = 0; }
 	if (tSys->m_SVars.find(SVAR_WINDOWPOSY) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = 0; }
-	if (tSys->m_SVars.find(SVAR_SCREENWIDTH) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENWIDTH)] = 1024; }
-	if (tSys->m_SVars.find(SVAR_SCREENHEIGHT) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_SCREENHEIGHT)] = 800; }
+	if (tSys->m_SVars.find(SVAR_WINDOWWIDTH) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWWIDTH)] = 800; }
+	if (tSys->m_SVars.find(SVAR_WINDOWHEIGHT) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_WINDOWHEIGHT)] = 600; }
 	if (tSys->m_SVars.find(SVAR_ANISOTROPIC_FILTERING) == tSys->m_SVars.end()) { tSys->m_SVars[std::string(SVAR_ANISOTROPIC_FILTERING)] = 1; }
 	
 	ImGui::CreateContext();
@@ -373,8 +376,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		RECT bSize;
 		GetWindowRect(desktop, &bSize);
 
-		tSys->m_SVars.find(SVAR_SCREENWIDTH)->second = static_cast<float>(bSize.right);
-		tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second = static_cast<float>(bSize.bottom);
+		tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second = static_cast<float>(bSize.right);
+		tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second = static_cast<float>(bSize.bottom);
 		tSys->m_Window = CreateWindowEx(NULL,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
@@ -390,37 +393,31 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		tSys->m_Window = CreateWindowEx(NULL,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
-			WS_OVERLAPPEDWINDOW,
+			WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME,
 			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSX)->second ),
 			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSY)->second ),
-			static_cast<int>(tSys->m_SVars.find(SVAR_SCREENWIDTH)->second),
-			static_cast<int>(tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second),
+			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second),
+			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second),
 			NULL, NULL, hInstance, NULL);
 	}
-	RECT winRect;
-
-	newWindowSizeX = static_cast<int>(tSys->m_SVars.find(SVAR_SCREENWIDTH)->second);
-	newWindowSizeY = static_cast<int>(tSys->m_SVars.find(SVAR_SCREENHEIGHT)->second);
-
-	winRect.left = 0;
-	winRect.right = newWindowSizeX;
-	winRect.top = 0;
-	winRect.bottom = newWindowSizeY;
-
-	//We have to recalculate and rescale the window because window size doesn't equal render (client) size, so windows will rescale the render targets
-	AdjustWindowRect(&winRect, WS_OVERLAPPEDWINDOW, true);
-	SetWindowPos(tSys->m_Window, 0, static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSX)->second), static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWPOSY)->second), winRect.right, winRect.bottom, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 	ShowWindow(tSys->m_Window, nCmdShow);
 
-	//reset all values again
-	newWindowSizeX = winRect.right;
-	newWindowSizeY = winRect.bottom;
+	newWindowSizeX = tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second;
+	newWindowSizeY = tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second;
+
+	RECT winRect;
+	//We have to recalculate and rescale the window because window size doesn't equal render (client) size, so windows will rescale the render targets
+	AdjustWindowRect(&winRect,WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME, true);
+	
+
+	GetClientRect(tSys->m_Window, &winRect);
 
 	ImGuiIO& imgIo = ImGui::GetIO();
 	imgIo.DisplaySize.x = (float)winRect.right;
 	imgIo.DisplaySize.y = (float)winRect.bottom;
 
-	imgIo.KeyMap[ImGuiKey_Tab] = VK_TAB;                       // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array that we will update during the application lifetime.
+	// Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array that we will update during the application lifetime.
+	imgIo.KeyMap[ImGuiKey_Tab] = VK_TAB;
 	imgIo.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
 	imgIo.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
 	imgIo.KeyMap[ImGuiKey_UpArrow] = VK_UP;
@@ -509,16 +506,17 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		if (wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED)
 		{
 			RECT windowRect;
-			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
 
 			newWindowSizeX = windowRect.right;
 			newWindowSizeY = windowRect.bottom;
 
-			imgIo.DisplaySize.x = (float)newWindowSizeX;
-			imgIo.DisplaySize.y = (float)newWindowSizeY;
+			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+			imgIo.DisplaySize.x = (float)windowRect.right;
+			imgIo.DisplaySize.y = (float)windowRect.bottom;
 			if (Themp::System::tSys->m_D3D)
 			{
-				Themp::System::tSys->m_D3D->ResizeWindow(newWindowSizeX, newWindowSizeY);
+				Themp::System::tSys->m_D3D->ResizeWindow(windowRect.right, windowRect.bottom);
 			}
 		}
 	}
@@ -538,12 +536,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		{
 			if (Themp::System::tSys->m_D3D)
 			{
+				GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
+				newWindowSizeX = windowRect.right - windowRect.left;
+				newWindowSizeY = windowRect.bottom - windowRect.top;
 				GetClientRect(Themp::System::tSys->m_Window, &windowRect);
-				newWindowSizeX = windowRect.right;
-				newWindowSizeY = windowRect.bottom;
-				imgIo.DisplaySize.x = (float)windowRect.right;
-				imgIo.DisplaySize.y = (float)windowRect.bottom;
-				Themp::System::tSys->m_D3D->ResizeWindow(newWindowSizeX, newWindowSizeY);
+				imgIo.DisplaySize.x = (float)(windowRect.right);
+				imgIo.DisplaySize.y = (float)(windowRect.bottom);
+				Themp::System::tSys->m_D3D->ResizeWindow(windowRect.right, windowRect.bottom);
 
 
 				ImGui_PrepareFrame();
@@ -573,12 +572,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		case WM_EXITSIZEMOVE:
 		{
 			//we're done resizing the window, now resize all the rendering resources
-			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
 			newWindowSizeX = windowRect.right;
 			newWindowSizeY = windowRect.bottom;
+			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
 			imgIo.DisplaySize.x =(float)windowRect.right;
 			imgIo.DisplaySize.y =(float)windowRect.bottom;
-			Themp::System::tSys->m_D3D->ResizeWindow(newWindowSizeX, newWindowSizeY);
+			Themp::System::tSys->m_D3D->ResizeWindow(windowRect.right, windowRect.bottom);
 			KillTimer(hWnd, 1);
 		}break;
 	}

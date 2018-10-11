@@ -44,6 +44,7 @@ namespace Themp
 	ID3D11SamplerState* D3D::DefaultTextureSamplerFiltered;
 
 
+
 	//0 object
 	//1 camera
 	//2 system
@@ -67,6 +68,8 @@ namespace Themp
 
 		int windowWidth = windowRect.right;
 		int windowHeight = windowRect.bottom;
+		m_ScreenWidth = windowRect.right;
+		m_ScreenHeight = windowRect.bottom;
 
 		scd.Windowed = !static_cast<UINT>(Themp::System::tSys->m_SVars.find(SVAR_FULLSCREEN)->second);
 		if (scd.Windowed)
@@ -138,14 +141,14 @@ namespace Themp
 
 		int multisample = Themp::System::tSys->m_SVars[SVAR_MULTISAMPLE];
 		if (multisample == 0) multisample = 1;
-		if (!CreateBackBuffer() || !CreateDepthStencil(windowWidth, windowHeight, multisample))
+		if (!CreateBackBuffer() || !CreateDepthStencil(m_ScreenWidth, m_ScreenHeight, multisample))
 		{
 			System::Print("Could not initialise all required resources, shutting down");
 			return false;
 		}
 
 
-		SetViewPort(0.0f, 0.0f, (float)windowWidth, (float)windowHeight);
+		SetViewPort(0.0f, 0.0f,m_ScreenWidth, m_ScreenHeight);
 
 		//create default material's and other data
 		D3D11_SAMPLER_DESC texSamplerDesc;
@@ -312,8 +315,8 @@ namespace Themp
 			vp.TopLeftX = 0.0f;
 			vp.TopLeftY = 0.0f;
 			m_DevCon->RSSetViewports(1, &vp);
-			Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] = vp.Width;
-			Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT] = vp.Height;
+			m_ScreenWidth = newX;
+			m_ScreenHeight = newY;
 			m_ConstantBufferData.screenHeight = vp.Width;
 			m_ConstantBufferData.screenWidth = vp.Height;
 			dirtySystemBuffer = true;
@@ -584,8 +587,8 @@ namespace Themp
 		if (!dirtySystemBuffer)return;
 
 		// Supply the vertex shader constant data.
-		m_ConstantBufferData.screenWidth = Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH];
-		m_ConstantBufferData.screenHeight = Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+		m_ConstantBufferData.screenWidth = m_ScreenWidth;
+		m_ConstantBufferData.screenHeight = m_ScreenHeight;
 		if (!m_CBuffer)
 		{
 			// Fill in a buffer description.

@@ -87,7 +87,9 @@ namespace Themp
 	
 		bool dirtySystemBuffer = true;
 		bool m_Wireframe = false;
-		int m_ShadowType = 0;
+
+		float m_ScreenWidth = 0;
+		float m_ScreenHeight = 0;
 
 		Object3D* m_FullScreenQuad = nullptr;
 		Object3D* m_Skybox = nullptr;
