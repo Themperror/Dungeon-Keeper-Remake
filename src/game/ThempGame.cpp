@@ -25,7 +25,7 @@ void Themp::Game::Start()
 	m_Camera->SetPosition(0,10,0);
 	m_Camera->SetTarget(XMFLOAT3(0,0,0));
 	m_Camera->Rotate(0, 0);
-	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] / Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT]);
+	m_Camera->SetAspectRatio(Themp::D3D::s_D3D->m_ScreenWidth / Themp::D3D::s_D3D->m_ScreenHeight);
 	m_Camera->SetFoV(75);
 	m_Camera->SetNear(0.1f);
 	m_Camera->SetFar(1000.0f);
@@ -37,10 +37,10 @@ void Themp::Game::Start()
 }
 void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)
 {
-	outX = (float)inX / (float)Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH];
+	outX = (float)inX / Themp::D3D::s_D3D->m_ScreenWidth;
 	outX *= 4;
 	outX -= 2;
-	outY = (float)inY / (float)Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+	outY = (float)inY / Themp::D3D::s_D3D->m_ScreenHeight;
 	outY *= 4;
 	outY -= 2;
 	outY = -outY;
@@ -48,7 +48,7 @@ void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)
 void Themp::Game::Update(double dt)
 {
 	DebugDraw::Update((float)dt);
-	m_Camera->SetAspectRatio(Themp::System::tSys->m_SVars[SVAR_SCREENWIDTH] / Themp::System::tSys->m_SVars[SVAR_SCREENHEIGHT]);
+	m_Camera->SetAspectRatio(Themp::D3D::s_D3D->m_ScreenWidth / Themp::D3D::s_D3D->m_ScreenHeight);
 	m_CursorDeltaX = oldMouseX - m_CursorWindowedX;
 	m_CursorDeltaY = oldMouseY - m_CursorWindowedY;
 

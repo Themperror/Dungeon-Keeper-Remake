@@ -13,10 +13,12 @@ namespace Themp
 	{
 	public:
 		~VoxelObject();
-		VoxelObject();
+		VoxelObject(Level* level);
 		void Update(float dt);
-		void ConstructFromLevel(Level* level, int camX, int camY);
-		void DoUVs(Level * level, uint16_t type, int x, int y);
+		void ConstructFromLevel(int camX, int camY);
+		bool CheckWallIsCorner(int x, int y);
+		void DoUVs(uint16_t type, int x, int y);
+		void DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int x, int y);
 		uint16_t HandleSpecialCases(const Tile map[85][85], int yPos, int xPos);
 		int CreateFromTile(const Tile& tile, RenderTile & out);
 		bool CreateVertexBuffer(VoxelVertex * vertices, size_t numVertices);
@@ -27,11 +29,13 @@ namespace Themp
 		float m_AnimationTime = 0;
 		uint8_t m_AnimationIndex = 0;
 
-		Block m_Map[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
 		size_t m_NumBlocks = 0;
 		VoxelVertex* m_Vertices = nullptr;
 		uint32_t* m_Indices = nullptr;
 		Resources::Buffer m_VertexBuffer;
 		Resources::Buffer m_IndexBuffer;
+
+		//Level to construct this VoxelObject from.
+		Level* m_Level = nullptr;
 	};
 };

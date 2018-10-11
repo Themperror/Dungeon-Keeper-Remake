@@ -174,7 +174,7 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 				numOpaque += startOff[srcIndex++] << 24;
 				for (size_t z = 0; z < numOpaque; z++)
 				{
-					imageData[(writtenBytes) * 4]	   = coData.data[startOff[srcIndex] * 3] * 4;
+					imageData[(writtenBytes) * 4]	  = coData.data[startOff[srcIndex] * 3] * 4;
 					imageData[(writtenBytes) * 4 + 1] = coData.data[startOff[srcIndex] * 3 + 1] * 4;
 					imageData[(writtenBytes) * 4 + 2] = coData.data[startOff[srcIndex] * 3 + 2] * 4;
 					imageData[(writtenBytes) * 4 + 3] = 255;
@@ -190,7 +190,7 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 					imageData[(writtenBytes) * 4] = 0;
 					imageData[(writtenBytes) * 4 + 1] = 0;
 					imageData[(writtenBytes) * 4 + 2] = 0;
-					imageData[(writtenBytes) * 4 + 3]  =0;
+					imageData[(writtenBytes) * 4 + 3] = 0;
 					writtenBytes++;
 				}
 			}

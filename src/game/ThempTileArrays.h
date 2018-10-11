@@ -7,6 +7,8 @@ using namespace DirectX;
 #define MAP_SIZE_TILES (85)
 #define MAP_SIZE_SUBTILES_RENDER (85 * 3)
 
+#define L8(x) ((x)&0xFF)
+
 static const int Type_Rock = 0;
 static const int Type_Gold = 1;
 static const int Type_Earth = 2;
@@ -46,6 +48,43 @@ static const int Type_Magic_DoorV = 49;
 static const int Type_Bridge = 51;
 static const int Type_Gem = 52;
 static const int Type_Guardpost = 53;
+
+static bool IsWall(uint16_t type)
+{
+	return type >= Type_Wall0 && type <= Type_Wall5;
+}
+static uint16_t TypeToTexture(uint16_t type)
+{
+	switch (type)
+	{
+	case Type_Earth: 
+		return 1;
+		break;
+	case Type_Water:
+		return 2;
+		break;
+	case Type_Gold:
+		return 3;
+		break;
+	case Type_Wall0:
+	case Type_Wall1:
+	case Type_Wall2:
+	case Type_Wall3:
+	case Type_Wall4:
+	case Type_Wall5:
+		return 6;
+		break;
+	case Type_Unclaimed_Path:
+		return 4;
+		break;
+	case Type_Claimed_Land: 
+		return 5;
+		break;
+	default:
+		return 0; 
+		break;
+	}
+}
 
 
 static const int Owner_PlayerRed = 0;
@@ -105,6 +144,7 @@ namespace Themp
 	{
 		uint8_t owner;
 		uint16_t type;
+		uint16_t numBlocks;
 		SubTile sub[3][3];
 	};
 
@@ -2088,17 +2128,76 @@ namespace Themp
 		{
 			{
 				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 			},
 		},
 		//side
 		{
 			{
 				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+			},
+			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+			},
+			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 			},
 		},
 		//edge
 		{
 			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+			},
+			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+			},
+			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 			},
 		},
@@ -2200,7 +2299,10 @@ namespace Themp
 		//side
 		{
 			{
-				XMFLOAT2(0,0),
+				XMFLOAT2(4,15),XMFLOAT2(5,15),XMFLOAT2(6,15),
+				XMFLOAT2(7,15),XMFLOAT2(0,16),XMFLOAT2(1,16),
+				XMFLOAT2(2,16),XMFLOAT2(3,16),XMFLOAT2(4,16),
+				XMFLOAT2(5,16),XMFLOAT2(6,16),XMFLOAT2(7,16),
 			},
 		},
 		//edge

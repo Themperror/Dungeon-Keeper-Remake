@@ -152,6 +152,7 @@ FileManager::FileManager()
 	//load all the files
 	LoadFilesFromDirectory(L"DATA\\");
 	//These folders might not be present depending on whether the game was properly installed or copied over from disc
+	System::Print("Loading language specific data files, These might not exist depending on installation, any errors here are fine!");
 	LoadFilesFromDirectory(L"DATA\\DUTCH\\");
 	LoadFilesFromDirectory(L"DATA\\ENGLISH\\");
 	LoadFilesFromDirectory(L"DATA\\FRENCH\\");
@@ -160,6 +161,7 @@ FileManager::FileManager()
 	LoadFilesFromDirectory(L"DATA\\POLISH\\");
 	LoadFilesFromDirectory(L"DATA\\SPANISH\\");
 	LoadFilesFromDirectory(L"DATA\\SWEDISH\\");
+	System::Print("End Loading language specific data files! Errors matter again!");
 
 	LoadFilesFromDirectory(L"LDATA\\");
 	LoadFilesFromDirectory(L"SOUND\\");

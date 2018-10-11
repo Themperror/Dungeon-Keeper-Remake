@@ -30,12 +30,32 @@ namespace Themp
 		};
 		~Level();
 		Level(int levelIndex);
+		uint8_t GetNeighbourInfo(uint16_t currentType, uint16_t nType);
+		TileNeighbours CheckNeighbours(uint16_t type, int y, int x);
+		TileNeighbourTiles GetNeighbourTiles(int y, int x);
+		void DoUVs(uint16_t type, int x, int y);
+		void DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int x, int y);
+		uint16_t HandleSpecialCases(int yPos, int xPos);
+		void UpdateWalls(int y, int x);
+		void DestroyTile(int y, int x);
+		void UpdateArea(int minY, int maxY, int minX, int maxX);
+		void ClaimRoom(uint8_t newOwner, uint16_t type, int ty, int tx);
+		bool IsClaimableCorner(int y, int x);
+		bool IsOwnedRoom(uint8_t player, int y, int x);
+		void ClaimTile(uint8_t player, int y, int x);
 		void Update(float delta);
 		void LoadLevelData();
+		int CreateFromTile(const Tile & tile, RenderTile & out);
 		Object2D* m_Cursor;
 		VoxelObject* m_MapObject;
 		int m_CurrentLevelNr;
 		//clm_data m_Map[MAP_SIZE_SUBTILES][MAP_SIZE_SUBTILES]; //in subtiles,  includes the border tiles (playable area is 85x85 TILES)
+
+		//Map that keeps the initial state of the map (for water/lava blocks)
+		Tile m_OriginalMap[MAP_SIZE_TILES][MAP_SIZE_TILES];
+		//Map which the current changes to it (mined/dug out blocks, rooms etc..)
 		Tile m_Map[MAP_SIZE_TILES][MAP_SIZE_TILES];
+		//Map in subtile format, used for pathfinding/picking
+		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
 	};
 };
