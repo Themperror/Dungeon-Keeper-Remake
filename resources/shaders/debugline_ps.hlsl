@@ -9,6 +9,6 @@ struct VS_OUTPUT
 
 float4 PShader(VS_OUTPUT input) : SV_Target
 {
-	float4 output = float4(input.color,0.0);
+	float4 output = float4(input.color,1.0);
     return output;
 }

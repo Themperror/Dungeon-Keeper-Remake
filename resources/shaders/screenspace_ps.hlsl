@@ -17,6 +17,11 @@ PS_OUTPUT PShader(VS_OUTPUT input)
 {
     PS_OUTPUT output;
     output.col = diff.Sample(diffSampler, float2(input.uv.x, 1.0 - input.uv.y));
+	
+    if (output.col.a <= 0.01f)
+    {
+        discard;
+    }
     output.depth = input.positionVS.z;
     return output;
 }

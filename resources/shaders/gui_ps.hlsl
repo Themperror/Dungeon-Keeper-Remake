@@ -10,5 +10,9 @@ Texture2D texture0;
 float4 PShader(PS_INPUT input) : SV_Target
 {
     float4 out_col = input.col * texture0.Sample(sampler0, input.uv);
+    if (out_col.a <= 0.01f)
+    {
+        discard;
+    }
     return out_col;
 }
