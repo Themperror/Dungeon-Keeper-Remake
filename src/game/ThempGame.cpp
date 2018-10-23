@@ -47,6 +47,9 @@ void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)
 }
 void Themp::Game::Update(double dt)
 {
+	m_CursorWindowedX = m_CursorWindowedX < 0 ? 0 : m_CursorWindowedX > D3D::s_D3D->m_ScreenWidth  ? D3D::s_D3D->m_ScreenWidth  : m_CursorWindowedX;
+	m_CursorWindowedY = m_CursorWindowedY < 0 ? 0 : m_CursorWindowedY > D3D::s_D3D->m_ScreenHeight ? D3D::s_D3D->m_ScreenHeight : m_CursorWindowedY;
+
 	DebugDraw::Update((float)dt);
 	m_Camera->SetAspectRatio(Themp::D3D::s_D3D->m_ScreenWidth / Themp::D3D::s_D3D->m_ScreenHeight);
 	m_CursorDeltaX = oldMouseX - m_CursorWindowedX;

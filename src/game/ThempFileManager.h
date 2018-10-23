@@ -35,7 +35,7 @@ namespace Themp
 	struct GUITexture
 	{
 		Texture* texture;
-		uint8_t width, height;
+		uint16_t width, height;
 	};
 	class FileManager
 	{

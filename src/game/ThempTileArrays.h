@@ -1,9 +1,10 @@
 #pragma once
 #include <DirectXMath.h>
+#include "../Library/micropather.h"
 using namespace DirectX;
 
 #define MAP_SIZE_HEIGHT (8)
-#define MAP_SIZE_SUBTILES (85 * 3 + 1)
+#define MAP_SIZE_SUBTILES ((85 * 3) + 1)
 #define MAP_SIZE_TILES (85)
 #define MAP_SIZE_SUBTILES_RENDER (85 * 3)
 
@@ -48,6 +49,16 @@ static const int Type_Magic_DoorV = 49;
 static const int Type_Bridge = 51;
 static const int Type_Gem = 52;
 static const int Type_Guardpost = 53;
+
+//not real types currently for future doors unless I think of something better
+static const int Type_Wooden_DoorH_Locked = 54;
+static const int Type_Wooden_DoorV_Locked = 55;
+static const int Type_Braced_DoorH_Locked = 56;
+static const int Type_Braced_DoorV_Locked = 57;
+static const int Type_Iron_DoorH_Locked = 58;
+static const int Type_Iron_DoorV_Locked = 59;
+static const int Type_Magic_DoorH_Locked = 60;
+static const int Type_Magic_DoorV_Locked = 61;
 
 static bool IsWall(uint16_t type)
 {
@@ -128,25 +139,102 @@ namespace Themp
 		bool active = false;
 		int randValue;
 		XMFLOAT2 uv[3];
-
+	};
+	struct PathFindTile
+	{
+		PathFindTile()
+		{
+			cost = FLT_MAX;
+			height = 8;
+			walkable = false;
+		}
+		PathFindTile(int a_Cost, uint8_t a_Height, bool a_Walkable)
+		{
+			if (a_Cost > 1000 || a_Walkable == false)
+			{
+				cost = FLT_MAX;
+			}
+			else
+			{
+				cost = a_Cost;
+			}
+			height = a_Height;
+			walkable = a_Walkable;
+		}
+		float cost = FLT_MAX;
+		uint8_t height = 8;
+		bool walkable = false;
 	};
 	struct RenderTile
 	{
 		Block subTile[3][3][8];
+		PathFindTile pathSubTiles[3][3];
 		uint16_t activeBlocks = 0;
-	};
-	struct SubTile
-	{
-		bool walkable;
-		uint8_t height;
-	};
+	}; 
 	struct Tile
 	{
 		uint8_t owner;
 		uint16_t type;
 		uint16_t numBlocks;
-		SubTile sub[3][3];
+		PathFindTile pathSubTiles[3][3];
 	};
+	class TileMap : public micropather::Graph
+	{
+	public:
+		Tile m_Tiles[MAP_SIZE_TILES][MAP_SIZE_TILES];
+
+		/**
+		Return the least possible cost between 2 states. For example, if your pathfinding
+		is based on distance, this is simply the straight distance between 2 points on the
+		map. If you pathfinding is based on minimum time, it is the minimal travel time
+		between 2 points given the best possible terrain.
+		*/
+		virtual float LeastCostEstimate(void* stateStart, void* stateEnd)
+		{
+			int startX = (((uint64_t)stateStart) & 0xFFFFFFF);
+			int startY = ((((uint64_t)stateStart) >> 32) & 0xFFFFFFF);
+
+			int endX = (((uint64_t)stateEnd) & 0xFFFFFFF);
+			int endY = ((((uint64_t)stateEnd) >> 32) & 0xFFFFFFF);
+
+
+			int dx = abs(startX - endX);
+			int dy = abs(startX - endY);
+			return 1 * (dx + dy);
+		}
+
+		/**
+		Return the exact cost from the given state to all its neighboring states. This
+		may be called multiple times, or cached by the solver. It *must* return the same
+		exact values for every call to MicroPather::Solve(). It should generally be a simple,
+		fast function with no callbacks into the pather.
+		*/
+		virtual void AdjacentCost(void* state, MP_VECTOR< micropather::StateCost >* adjacent)
+		{
+			const XMINT2 directions[4] = { XMINT2(1,0) ,XMINT2(-1,0),XMINT2(0,1),XMINT2(0,-1), };
+			int startX = (((uint64_t)state) & 0xFFFFFFFF);
+			int startY = ((((uint64_t)state) >> 32) & 0xFFFFFFFF);
+			for (int i = 0; i < 4; i++)
+			{
+				int X = startX + directions[i].x;
+				int Y = startY + directions[i].y;
+
+				(*adjacent).push_back({ (void*)((((uint64_t)Y) << 32) | ((uint64_t)X)),m_Tiles[Y / 3][X / 3].pathSubTiles[Y % 3][X % 3].cost });
+			}
+		}
+
+		/**
+		This function is only used in DEBUG mode - it dumps output to stdout. Since void*
+		aren't really human readable, normally you print out some concise info (like "(1,2)")
+		without an ending newline.
+		*/
+		virtual void  PrintStateInfo(void* state)
+		{
+			System::Print("(X: %3i, Y: %3i)", (((uint64_t)state) & 0xFFFFFFFF), ((((uint64_t)state)>>32) & 0xFFFFFFFF));
+		}
+	};
+	
+	
 
 	struct TileNeighbours
 	{
@@ -282,6 +370,17 @@ namespace Themp
 				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 				Block(false,XMFLOAT2(2,9),XMFLOAT2(2,9)),
 			},
+			{
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+			},
 			6 * 3 * 3,
 		},
 		//FullBlock
@@ -367,6 +466,17 @@ namespace Themp
 				Block(true,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
 				Block(false,XMFLOAT2(3,0),XMFLOAT2(3,0)),
+			},
+			{
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
+				PathFindTile(999999, 6,false),
 			},
 			6*3*3,
 		},
@@ -454,6 +564,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+			},
 			3 * 3 * 2,
 		},
 		//Liquid Block
@@ -539,6 +660,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,6)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,6)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,6)),
+			},
+			{
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
 			},
 			3*3*1,
 		},
@@ -627,6 +759,17 @@ namespace Themp
 				Block(true ,XMFLOAT2(7,27),XMFLOAT2(5,27)),
 				Block(true ,XMFLOAT2(6,27),XMFLOAT2(5,27)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 8,false),
+			},
 			33,
 		},
 		//Dungeon Heart Middle Up
@@ -712,6 +855,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+PathFindTile(1, 3, true),
+PathFindTile(1, 3, true),
+PathFindTile(1, 3, true),
+PathFindTile(1, 4, true),
+PathFindTile(1, 4, true),
+PathFindTile(1, 4, true),
 			},
 			27,
 		},
@@ -799,6 +953,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+			},
 			33,
 		},
 		//Dungeon heart Middle Left
@@ -884,6 +1049,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 4,true),
 			},
 			27,
 		},
@@ -971,6 +1147,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+			},
 			3*3*4,
 		},
 		//Dungeon Heart Middle Right
@@ -1056,6 +1243,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
 			},
 			27,
 		},
@@ -1143,6 +1341,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+			},
 			33,
 		},
 		//Dungeon Heart Middle Down
@@ -1229,6 +1438,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+			},
 			27
 		},
 		//Dungeon Heart Corner RD
@@ -1314,6 +1534,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 4,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
 			},
 			33,
 		},
@@ -1402,6 +1633,17 @@ namespace Themp
 				Block(true ,XMFLOAT2(6,1),XMFLOAT2(5,27)),
 				Block(true ,XMFLOAT2(1,2),XMFLOAT2(7,1)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 8,false),
+			},
 			27,
 		},
 		//Portal Mid U
@@ -1487,6 +1729,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(true,XMFLOAT2(1,2),XMFLOAT2(7,1)),
+			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
 			},
 			27,
 		},
@@ -1574,6 +1827,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+			},
 			27,
 		},
 		//Portal Mid L
@@ -1659,6 +1923,17 @@ namespace Themp
 				Block(false,XMFLOAT2(4,25),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(4,25),XMFLOAT2(0,0)),
 				Block(true,XMFLOAT2(1,2),XMFLOAT2(7,1)),
+			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
 			},
 			27,
 		},
@@ -1746,12 +2021,22 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(true,XMFLOAT2(0,0),XMFLOAT2(7,24)),
 			},
+			{
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+				PathFindTile(1, 1,true),
+			},
 			18,
 		},
 		//Portal Mid R
 		{
 			{
-
 				Block(true ,XMFLOAT2(2,0),XMFLOAT2(2,0)),
 				Block(true ,XMFLOAT2(2,0),XMFLOAT2(2,0)),
 				Block(false ,XMFLOAT2(2,0),XMFLOAT2(2,0)),
@@ -1833,9 +2118,20 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+			},
 			27,
 		},
-		//Portal LD //not sure if good
+		//Portal LD
 		{
 			{
 				Block(true ,XMFLOAT2(0,0),XMFLOAT2(3,14)),
@@ -1918,6 +2214,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
 			},
 			27,
 		},
@@ -2005,9 +2312,20 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 			},
+			{
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+			},
 			27,
 		},
-		//Portal RD //not sure if good
+		//Portal RD
 		{
 			{
 				Block(true ,XMFLOAT2(2,0),XMFLOAT2(2,0)),
@@ -2090,6 +2408,17 @@ namespace Themp
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
 				Block(false,XMFLOAT2(0,0),XMFLOAT2(0,0)),
+			},
+			{
+				PathFindTile(1, 8,false),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 3,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
+				PathFindTile(1, 2,true),
 			},
 			27,
 		},

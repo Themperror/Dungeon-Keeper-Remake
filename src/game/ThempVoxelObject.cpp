@@ -163,7 +163,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 			//	}
 			//}
 			//DoUVs(tile.type, x, y);
-			solidBlocks += m_Level->m_Map[y][x].numBlocks;
+			solidBlocks += m_Level->m_Map.m_Tiles[y][x].numBlocks;
 		}
 	}
 	//We'll check if we have to resize our buffers..
@@ -275,7 +275,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 					
 				const int yP = floor((float)y / 3.0f);
 				const int xP = floor((float)x / 3.0f);
-				const int tileType = m_Level->m_Map[yP][xP].type;
+				const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
 				if (tileType == Type_Water || tileType == Type_Lava)
 				{
 					uint16_t texIndex = TypeToTexture(tileType);
@@ -380,7 +380,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 
 			const int yP = floor((float)y / 3.0f);
 			const int xP = floor((float)x / 3.0f);
-			const int tileType = m_Level->m_Map[yP][xP].type;
+			const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
 			if (tileType == Type_Earth || IsWall(tileType))
 			{
 				TileNeighbours neighbour = m_Level->CheckNeighbours(tileType, yP, xP);
@@ -592,7 +592,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 			{
 				const int yP = floor((float)y / 3.0f);
 				const int xP = floor((float)x / 3.0f);
-				const int tileType = m_Level->m_Map[yP][xP].type;
+				const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
 				assert(x <= 255);
 				assert(y <= 255);
 				assert(x >= 0);
@@ -662,8 +662,8 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 
 						m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
 						m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y, 0 };
+						m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY, 0 };
 					}
 					if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y + 1][x].active) // front
 					{
@@ -741,10 +741,10 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 
 bool VoxelObject::CheckWallIsCorner(int x, int y)
 {
-	bool north = m_Level->m_Map[y + 1][x].type != Type_Wall0 && m_Level->m_Map[y + 1][x].type != Type_Wall3;
-	bool south = m_Level->m_Map[y - 1][x].type != Type_Wall0 && m_Level->m_Map[y - 1][x].type != Type_Wall3;
-	bool east =  m_Level->m_Map[y][x + 1].type != Type_Wall0 && m_Level->m_Map[y][x + 1].type != Type_Wall3;
-	bool west =  m_Level->m_Map[y][x - 1].type != Type_Wall0 && m_Level->m_Map[y][x - 1].type != Type_Wall3;
+	bool north = m_Level->m_Map.m_Tiles[y + 1][x].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y + 1][x].type != Type_Wall3;
+	bool south = m_Level->m_Map.m_Tiles[y - 1][x].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y - 1][x].type != Type_Wall3;
+	bool east =  m_Level->m_Map.m_Tiles[y][x + 1].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y][x + 1].type != Type_Wall3;
+	bool west =  m_Level->m_Map.m_Tiles[y][x - 1].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y][x - 1].type != Type_Wall3;
 	int numSides = (uint8_t)north + (uint8_t)south + (uint8_t)east + (uint8_t)west;
 
 	if (north && west || north && east || south && west || south && east)
