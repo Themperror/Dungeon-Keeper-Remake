@@ -82,6 +82,7 @@ namespace Themp
 		ShowCursor(false);
 		while (!tSys->m_Quitting)
 		{
+			io = ImGui::GetIO();
 			double delta = mainTimer.GetDeltaTimeReset();
 			//System::Print("Total Delta was: %lf", delta);
 			totalDelta += delta;
@@ -111,6 +112,21 @@ namespace Themp
 				{
 					tSys->m_Quitting = true;
 				}
+				if (msg.message == WM_KEYUP)
+				{
+					if (msg.wParam > 256)continue;
+					m_Game->m_Keys[msg.wParam] = -1;
+				}
+				if (msg.message == WM_LBUTTONUP)
+				{
+					m_Game->m_Keys[256] = -1;
+				}
+				if (msg.message == WM_RBUTTONUP)
+				{
+					m_Game->m_Keys[257] = -1;
+				}
+
+				if (io.WantCaptureMouse)break;
 				if (msg.message == WM_LBUTTONDOWN)
 				{
 					if (m_Game->m_Keys[256] <= 0)
@@ -118,32 +134,15 @@ namespace Themp
 						m_Game->m_Keys[256] = 2;
 					}
 				}
-				if (msg.message == WM_LBUTTONUP)
-				{
-					m_Game->m_Keys[256] = -1;
-				}
 				if (msg.message == WM_RBUTTONDOWN)
 				{
 					if (m_Game->m_Keys[257] <= 0)
 					{
 						m_Game->m_Keys[257] = 2;
 					}
-					//if (m_CursorShown)
-					//{
-					//	//SetCursorPos(windowRect.left + (windowRect.right - windowRect.left) / 2, windowRect.top + (windowRect.bottom - windowRect.top) / 2);
-					//	m_CursorShown = false;
-					//	ShowCursor(m_CursorShown);
-					//}
 				}
-				if (msg.message == WM_RBUTTONUP)
-				{
-					m_Game->m_Keys[257] = -1;
-					//if (!m_CursorShown)
-					//{
-					//	m_CursorShown = true;
-					//	ShowCursor(m_CursorShown);
-					//}
-				}
+				
+				if (io.WantCaptureKeyboard)break;
 				if (msg.message == WM_KEYDOWN)
 				{
 					if (msg.wParam > 256)continue;
@@ -152,17 +151,12 @@ namespace Themp
 						m_Game->m_Keys[msg.wParam] = 2;
 					}
 				}
-				if (msg.message == WM_KEYUP)
-				{
-					if (msg.wParam > 256)continue;
-					m_Game->m_Keys[msg.wParam] = -1;
-				}
+				
 			}
 			const float targetFPS = dm.dmDisplayFrequency;
 			if (totalDelta > 1.0 / targetFPS)
 			{
 				GetWindowRect(m_Window, &windowRect);
-				io = ImGui::GetIO();
 				
 				//sadly we need all these calls
 				GetClientRect(m_Window, &clientRect);
@@ -213,6 +207,10 @@ namespace Themp
 				if (trackerTime >= 1.0)
 				{
 					System::Print("Avg FPS: %5i  Avg Frametime: %.5f   Avg Tick Time: %.5f", numSamples, frameTimeAdd / (float)numSamples, tickTimeAdd/(float)numSamples);
+					if (totalDelta > 2.0)
+					{
+						totalDelta = 2.0;
+					}
 					trackerTime = trackerTime - 1.0;
 					frameTimeAdd = 0;
 					tickTimeAdd = 0;

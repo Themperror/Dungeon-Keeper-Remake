@@ -44,5 +44,6 @@ namespace Themp
 		Object3DConstantBufferData m_ConstantBufferData;
 		bool isDirty = true;
 		bool isVisible = true;
+		bool m_BackfaceCull = true;
 	};
 }

@@ -26,6 +26,8 @@ namespace Themp
 #include "shaders\screenspace_vs.h"
 #include "shaders\voxel_ps.h"
 #include "shaders\voxel_vs.h"
+#include "shaders\indicator_ps.h"
+#include "shaders\indicator_vs.h"
 #else
 #include "shaders\debugline_vs_d.h"
 #include "shaders\debugline_ps_d.h"
@@ -37,6 +39,8 @@ namespace Themp
 #include "shaders\screenspace_vs_d.h"
 #include "shaders\voxel_ps_d.h"
 #include "shaders\voxel_vs_d.h"
+#include "shaders\indicator_ps_d.h"
+#include "shaders\indicator_vs_d.h"
 #endif
 	};
 
@@ -165,6 +169,14 @@ namespace Themp
 			//memcpy
 			memcpy(nBlob->GetBufferPointer(), shaderData->second.data(), shaderData->second.size());
 			//ifs.read((char*)nBlob->GetBufferPointer(), length);
+		}
+		else
+		{
+			std::wstring converted = L"";
+			std::copy(path.begin(), path.end(), std::back_inserter(converted));
+			std::wstring ErrorMsg = L"Could not find shader: " + converted;
+			MessageBox(System::tSys->m_Window, ErrorMsg.c_str(), L"Shader Error!", MB_OK);
+			System::tSys->m_Quitting = true;
 		}
 		return nBlob;
 	}
@@ -460,6 +472,7 @@ namespace Themp
 		result = System::tSys->m_D3D->m_Device->CreateVertexShader(VSRaw->GetBufferPointer(), VSRaw->GetBufferSize(), nullptr, &vShader);
 		if (result != S_OK) { System::Print("Could not create Vertex shader from: %s", name.c_str()); CLEAN(VSRaw); return nullptr; }
 		m_VertexShaders[name] = vShader;
+		CLEAN(VSRaw);
 
 		return vShader;
 	}
@@ -475,7 +488,7 @@ namespace Themp
 		result = System::tSys->m_D3D->m_Device->CreatePixelShader(PSRaw->GetBufferPointer(), PSRaw->GetBufferSize(), nullptr, &pShader);
 		if (result != S_OK) { System::Print("Could not create Pixel shader from: %s", name.c_str() ); CLEAN(PSRaw); return nullptr; }
 		m_PixelShaders[name] = pShader;
-
+		CLEAN(PSRaw);
 		return pShader;
 	}
 	ID3D11GeometryShader * Resources::GetGeometryShader(std::string name)
@@ -489,7 +502,7 @@ namespace Themp
 		result = System::tSys->m_D3D->m_Device->CreateGeometryShader(GSRaw->GetBufferPointer(), GSRaw->GetBufferSize(), nullptr, &gShader);
 		if (result != S_OK) { System::Print("Could not create Geometry shader from: %", name.c_str()); CLEAN(GSRaw); return nullptr; }
 		m_GeometryShaders[name] = gShader;
-
+		CLEAN(GSRaw);
 		return gShader;
 	}
 	Themp::Material* Resources::LoadMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)

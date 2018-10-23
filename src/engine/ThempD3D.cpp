@@ -175,14 +175,12 @@ namespace Themp
 		rDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID; //change for Wireframe
 		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK; //Backface culling yes/no/inverted
 		rDesc.DepthClipEnable = true; //default true
-
 		m_Device->CreateRasterizerState(&rDesc, &m_RasterizerState);
 
-		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_BACK;
-		m_Device->CreateRasterizerState(&rDesc, &m_ShadowRasterizerState);
+		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
+		m_Device->CreateRasterizerState(&rDesc, &m_NoCullingRasterizerState);
 
 		rDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_WIREFRAME;
-		rDesc.CullMode = D3D11_CULL_MODE::D3D11_CULL_NONE;
 		m_Device->CreateRasterizerState(&rDesc, &m_WireframeRasterizerState);
 
 		m_DevCon->RSSetState(m_RasterizerState);
@@ -191,10 +189,10 @@ namespace Themp
 		ZeroMemory(&desc, sizeof(desc));
 		desc.AlphaToCoverageEnable = false;
 		desc.RenderTarget[0].BlendEnable = true;
-		desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-		desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+		desc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+		desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA; 
 		desc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-		desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+		desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
 		desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
 		desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 		desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
@@ -329,34 +327,59 @@ namespace Themp
 		if (m_Wireframe)
 		{
 			m_DevCon->RSSetState(m_WireframeRasterizerState);
+
+			m_DevCon->OMSetRenderTargets(1, &m_BackBuffer, m_DepthStencilView);
+			m_DevCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			m_DevCon->IASetInputLayout(D3D::DefaultMaterial->m_InputLayout); //skybox layout doesn't differ so this is fine
+
+																			 //Models
+			m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);
+			m_DevCon->PSSetShaderResources(0, 4, D3D::DefaultMaterial->m_Views);
+
+			m_DevCon->PSSetShader(D3D::DefaultMaterial->m_PixelShader, 0, 0);
+			m_DevCon->VSSetShader(D3D::DefaultMaterial->m_VertexShader, 0, 0);
+			m_DevCon->GSSetShader(D3D::DefaultMaterial->m_GeometryShader, 0, 0);
+
+			for (int i = 0; i < game.m_Objects3D.size(); ++i)
+			{
+				game.m_Objects3D[i]->Draw(_this);
+			}
 		}
 		else
 		{
-			m_DevCon->RSSetState(m_RasterizerState);
+			m_DevCon->OMSetRenderTargets(1, &m_BackBuffer, m_DepthStencilView);
+			m_DevCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			m_DevCon->IASetInputLayout(D3D::DefaultMaterial->m_InputLayout); //skybox layout doesn't differ so this is fine
+
+																			 //Models
+			m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);
+			m_DevCon->PSSetShaderResources(0, 4, D3D::DefaultMaterial->m_Views);
+
+			m_DevCon->PSSetShader(D3D::DefaultMaterial->m_PixelShader, 0, 0);
+			m_DevCon->VSSetShader(D3D::DefaultMaterial->m_VertexShader, 0, 0);
+			m_DevCon->GSSetShader(D3D::DefaultMaterial->m_GeometryShader, 0, 0);
+
+			for (int i = 0; i < game.m_Objects3D.size(); ++i)
+			{
+				if (game.m_Objects3D[i]->m_BackfaceCull)
+				{
+					m_DevCon->RSSetState(m_RasterizerState);
+				}
+				else
+				{
+					m_DevCon->RSSetState(m_NoCullingRasterizerState);
+				}
+
+				game.m_Objects3D[i]->Draw(_this);
+			}
 		}
-		m_DevCon->OMSetRenderTargets(1, &m_BackBuffer, m_DepthStencilView);
-		m_DevCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		m_DevCon->IASetInputLayout(D3D::DefaultMaterial->m_InputLayout); //skybox layout doesn't differ so this is fine
 		
-		//Models
-		m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);
-		m_DevCon->PSSetShaderResources(0, 4, D3D::DefaultMaterial->m_Views);
-
-		m_DevCon->PSSetShader(D3D::DefaultMaterial->m_PixelShader, 0, 0);
-		m_DevCon->VSSetShader(D3D::DefaultMaterial->m_VertexShader, 0, 0);
-		m_DevCon->GSSetShader(D3D::DefaultMaterial->m_GeometryShader, 0, 0);
-
-		for (int i = 0; i < game.m_Objects3D.size(); ++i)
-		{
-			game.m_Objects3D[i]->Draw(_this);
-		}
 
 #ifdef _DEBUG
 		DebugDraw::Draw(m_Device, m_DevCon);
 #endif // _DEBUG
 
 	}
-	Camera* shadowCamera; 
 
 	void D3D::Draw(Themp::Game& game)
 	{
@@ -406,10 +429,8 @@ namespace Themp
 		CLEAN(m_DepthStencil);
 		CLEAN(m_DepthStencilView);
 		CLEAN(m_DepthStencilState);
-		CLEAN(m_SkyboxDepthStencilState);
-		CLEAN(m_ShadowClearDepthStencilState);
 		CLEAN(m_RasterizerState);
-		CLEAN(m_ShadowRasterizerState);
+		CLEAN(m_NoCullingRasterizerState);
 		CLEAN(m_BlendState);
 		CLEAN(m_WireframeRasterizerState);
 		CLEAN(m_InputLayout);
@@ -551,34 +572,6 @@ namespace Themp
 			return false;
 		}
 		m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);
-
-		
-		D3D11_DEPTH_STENCIL_DESC dssDesc;
-		ZeroMemory(&dssDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
-		dssDesc.DepthEnable = true;
-		dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		dssDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-		result = m_Device->CreateDepthStencilState(&dssDesc, &m_SkyboxDepthStencilState);
-		if (result != S_OK)
-		{
-			System::Print("Could not create Skybox Depthstencil state");
-			return false;
-		}
-
-		ZeroMemory(&dssDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
-		dssDesc.DepthEnable = true;
-		dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-		dssDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
-		dssDesc.StencilEnable = false;
-		dssDesc.StencilReadMask = 0xFF;
-		dssDesc.StencilWriteMask = 0xFF;
-
-		result = m_Device->CreateDepthStencilState(&dssDesc, &m_ShadowClearDepthStencilState);
-		if (result != S_OK)
-		{
-			System::Print("Could not create ShadowClear Depthstencil state");
-			return false;
-		}
 		return true;
 	}
 	void D3D::PrepareSystemBuffer()

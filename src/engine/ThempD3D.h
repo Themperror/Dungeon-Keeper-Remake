@@ -57,22 +57,18 @@ namespace Themp
 
 		bool CreateBackBuffer();
 		bool CreateDepthStencil(int width, int height, int multisample);
-
-		ID3D10Blob * ReadToBlob(std::string path);
-
+		
 		CONSTANT_BUFFER m_ConstantBufferData;
 
 		ID3D11RenderTargetView* m_BackBuffer = nullptr;
 		ID3D11BlendState* m_OMBlendState = nullptr;
 		ID3D11Texture2D* m_DepthStencil = nullptr;
 		ID3D11DepthStencilState* m_DepthStencilState = nullptr;
-		ID3D11DepthStencilState* m_SkyboxDepthStencilState = nullptr;
-		ID3D11DepthStencilState* m_ShadowClearDepthStencilState = nullptr;
 		ID3D11DepthStencilView* m_DepthStencilView = nullptr;
 
 		ID3D11RasterizerState* m_RasterizerState = nullptr;
+		ID3D11RasterizerState* m_NoCullingRasterizerState = nullptr;
 		ID3D11RasterizerState* m_WireframeRasterizerState = nullptr;
-		ID3D11RasterizerState* m_ShadowRasterizerState = nullptr;
 		ID3D11BlendState* m_BlendState = nullptr;
 		ID3D11Buffer* m_CBuffer = nullptr;      //System Constant Buffer
 		ID3D11Device* m_Device = nullptr;

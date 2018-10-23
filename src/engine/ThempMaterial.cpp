@@ -254,6 +254,7 @@ namespace Themp
 	}
 	void Texture::Load(void* data, int size)
 	{
+		assert(m_Data && size <= m_Width * m_Height * 4);
 		if (m_Data && size <= m_Width*m_Height*4)
 		{
 			memcpy(m_Data, data, size);

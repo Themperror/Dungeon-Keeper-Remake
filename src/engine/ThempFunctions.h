@@ -22,4 +22,9 @@ namespace Themp
 	DirectX::XMFLOAT3 Clamp(const DirectX::XMFLOAT3& val, float a_min, float a_max);
 	DirectX::XMFLOAT4 ToXMFLOAT4(const DirectX::XMFLOAT3& a, float b);
 	DirectX::XMFLOAT3 ToXMFLOAT3(const DirectX::XMFLOAT4& a);
+
+	bool operator==(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs);
+	bool operator==(const DirectX::XMINT2& lhs, const DirectX::XMINT2& rhs);
+	DirectX::XMFLOAT2 operator+(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs);
+	DirectX::XMINT2 operator+(const DirectX::XMINT2& lhs, const DirectX::XMINT2& rhs);
 }

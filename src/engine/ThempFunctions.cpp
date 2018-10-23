@@ -78,4 +78,20 @@ namespace Themp
 	{
 		return XMFLOAT3(a.x, a.y, a.z);
 	}
+	bool operator==(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs)
+	{
+		return (lhs.x == rhs.x && lhs.y == rhs.y);
+	}
+	bool operator==(const DirectX::XMINT2& lhs, const DirectX::XMINT2& rhs)
+	{
+		return (lhs.x == rhs.x && lhs.y == rhs.y);
+	}
+	XMFLOAT2 operator+(const DirectX::XMFLOAT2& lhs, const DirectX::XMFLOAT2& rhs)
+	{
+		return XMFLOAT2(lhs.x + rhs.x, lhs.y + rhs.y);
+	}
+	XMINT2 operator+(const DirectX::XMINT2& lhs, const DirectX::XMINT2& rhs)
+	{
+		return XMINT2(lhs.x + rhs.x, lhs.y + rhs.y);
+	}
 }

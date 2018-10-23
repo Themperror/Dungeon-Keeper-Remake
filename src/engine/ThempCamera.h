@@ -20,6 +20,7 @@ namespace Themp
 		enum CameraType { Perspective, Orthographic };
 		Camera();
 		~Camera();
+		XMFLOAT3 ScreenToWorld(float x, float y);
 		void MoveForward();
 		void MoveBackward();
 		void MoveRight();
