@@ -26,7 +26,7 @@ namespace Themp
 {
 	float lerp(float x, float y, float t)
 	{
-		return x * (1.0 - t) + y * t;
+		return x * (1.0f - t) + y * t;
 	}
 
 
@@ -35,7 +35,7 @@ namespace Themp
 	void System::Start()
 	{
 
-		srand(time(nullptr));
+		srand((uint32_t)time(nullptr));
 		Print("Creating Managers!");
 		m_D3D = new Themp::D3D();
 		Print("Setting up XAudio2!");
@@ -153,7 +153,7 @@ namespace Themp
 				}
 				
 			}
-			const float targetFPS = dm.dmDisplayFrequency;
+			const float targetFPS = (float)dm.dmDisplayFrequency;
 			if (totalDelta > 1.0 / targetFPS)
 			{
 				GetWindowRect(m_Window, &windowRect);
@@ -166,11 +166,11 @@ namespace Themp
 				int WindowedMouseX = m_Game->m_CursorPos.x - windowRect.left - windowDiffX;
 				int WindowedMouseY = m_Game->m_CursorPos.y - windowRect.top - windowDiffY;
 				io.DeltaTime = (float)totalDelta;
-				m_Game->m_CursorWindowedX = WindowedMouseX;
-				m_Game->m_CursorWindowedY = WindowedMouseY;
+				m_Game->m_CursorWindowedX = (float)WindowedMouseX;
+				m_Game->m_CursorWindowedY = (float)WindowedMouseY;
 
 				//windows Title bar messes up the actual mouse position for collision testing with the UI, so I adjust it to fit "good enough" since getting exact measurements from top and bottom is a pain
-				io.MousePos = ImVec2(WindowedMouseX, WindowedMouseY);
+				io.MousePos = ImVec2((float)WindowedMouseX, (float)WindowedMouseY);
 				io.DisplaySize = ImVec2((float)clientRect.right, (float)clientRect.bottom);
 
 				ImGui_PrepareFrame();
@@ -196,7 +196,7 @@ namespace Themp
 				drawTimer.StartTime();
 				//Doesn't actually render but prepares render data for us to use
 				ImGui::Render();
-				m_D3D->m_ConstantBufferData.time = time;
+				m_D3D->m_ConstantBufferData.time = (float)time;
 				m_D3D->dirtySystemBuffer = true;
 				m_D3D->PrepareSystemBuffer();
 				m_D3D->Draw(*m_Game);
@@ -206,11 +206,11 @@ namespace Themp
 				numSamples++;
 				if (trackerTime >= 1.0)
 				{
+					//Update audio to remove old data once a second..
+					m_Audio->Update();
+					
+					//display FPS and other info
 					System::Print("Avg FPS: %5i  Avg Frametime: %.5f   Avg Tick Time: %.5f", numSamples, frameTimeAdd / (float)numSamples, tickTimeAdd/(float)numSamples);
-					if (totalDelta > 2.0)
-					{
-						totalDelta = 2.0;
-					}
 					trackerTime = trackerTime - 1.0;
 					frameTimeAdd = 0;
 					tickTimeAdd = 0;
@@ -225,8 +225,8 @@ namespace Themp
 		}
 
 		GetWindowRect(m_Window, &windowRect);
-		m_SVars[SVAR_WINDOWWIDTH] = windowRect.right - windowRect.left;
-		m_SVars[SVAR_WINDOWHEIGHT] = windowRect.bottom - windowRect.top;
+		m_SVars[SVAR_WINDOWWIDTH] = (float)(windowRect.right - windowRect.left);
+		m_SVars[SVAR_WINDOWHEIGHT] = (float)(windowRect.bottom - windowRect.top);
 
 		m_Game->Stop();
 		delete m_Game;
@@ -400,8 +400,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	}
 	ShowWindow(tSys->m_Window, nCmdShow);
 
-	newWindowSizeX = tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second;
-	newWindowSizeY = tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second;
+	newWindowSizeX = (int)tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second;
+	newWindowSizeY = (int)tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second;
 
 	RECT winRect;
 	//We have to recalculate and rescale the window because window size doesn't equal render (client) size, so windows will rescale the render targets
@@ -459,7 +459,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 void Themp::System::Print(const char* message, ...)
 {
 	size_t strLength = strlen(message);
-	int fmtMsgSize = strLength < 128 ? 256 : strLength * 2;
+	size_t fmtMsgSize = strLength < 128 ? 256 : strLength * 2;
 	char* buffer = new char[fmtMsgSize];
 	memset(buffer, 0, fmtMsgSize);
 	std::string timestamp;
@@ -476,6 +476,39 @@ void Themp::System::Print(const char* message, ...)
 	va_list args;
 	va_start(args, message);
 	vsnprintf(buffer, fmtMsgSize, message, args);
+	//snprintf(buffer, fmtMsgSize, message, args);
+	va_end(args);
+	timestamp.append(buffer);
+	timestamp.append("\n");
+	printf("%s", timestamp.c_str());
+	delete[] buffer;
+	delete[] msg;
+	if (logFile)
+	{
+		fwrite(timestamp.c_str(), timestamp.size(), 1, logFile);
+		fflush(logFile);
+	}
+}
+void Themp::System::Print(const std::string& message, ...)
+{
+	size_t strLength =message.size();
+	size_t fmtMsgSize = strLength < 128 ? 256 : strLength * 2;
+	char* buffer = new char[fmtMsgSize];
+	memset(buffer, 0, fmtMsgSize);
+	std::string timestamp;
+	char* msg = new char[fmtMsgSize];
+	timeb t;
+	ftime(&t);
+	strftime(msg, fmtMsgSize, "[%T", localtime(&t.time));
+	timestamp.insert(0, msg);
+	timestamp.append(":");
+	memset(msg, 0, 4);
+	short msVal = t.millitm;
+	timestamp.append(itoa(t.millitm, msg, 10));
+	timestamp.append(msVal < 10 ? "00] " : (msVal < 100 ? "0] " : "] "));
+	va_list args;
+	va_start(args, &message);
+	vsnprintf(buffer, fmtMsgSize, message.c_str(), args);
 	//snprintf(buffer, fmtMsgSize, message, args);
 	va_end(args);
 	timestamp.append(buffer);
@@ -553,8 +586,8 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		case WM_MOVING:
 		{
 			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
-			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = windowRect.left;
-			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = windowRect.top;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = (float)windowRect.left;
+			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = (float)windowRect.top;
 		}break;
 		case WM_PAINT:
 			if (Themp::System::tSys->m_D3D && Themp::System::tSys->m_D3D->m_DevCon)

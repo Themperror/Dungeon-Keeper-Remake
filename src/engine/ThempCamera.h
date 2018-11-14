@@ -58,6 +58,7 @@ namespace Themp
 		XMFLOAT4X4 GetViewMatrix();
 		XMFLOAT4X4 GetOrthoProjectionMatrix(float nearPlane, float farPlane);
 		XMFLOAT4X4 GetPerspectiveProjectionMatrix();
+		CameraType GetProjection();
 		void UpdateMatrices();
 
 		XMFLOAT3 GetForward() { return m_Forward; }

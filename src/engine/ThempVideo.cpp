@@ -25,13 +25,13 @@ namespace Themp
 	Video::Video(FileData* file)
 	{
 		decoder = new SmackerDecoder();
-		if (Load(file->data, file->size))
+		if (Load(file->data, (uint32_t)file->size))
 		{
 			isLoaded = true;
 		}
 	}
 
-	bool Video::Load(BYTE* data, size_t size)
+	bool Video::Load(BYTE* data, uint32_t size)
 	{
 		if (decoder->loadStream(new MemoryReadStream(data, size, false)))
 		{
@@ -72,20 +72,17 @@ namespace Themp
 	}
 	
 	//0 failed, 1 success,2 end reached
-	float totalTime = 0;
-	float extraTime = 0;
-	int timeInFrames = 0;
 	int Video::Play()
 	{
 		if (!isLoaded)return 0;
 		double dif = videoTimer.GetDeltaTimeReset();
-		totalTime += dif;
-		const float frameMS = 1.0 / m_Fps;
-		if (totalTime >= frameMS)
+		m_TotalTime += (float)dif;
+		const float frameMS = 1.0f / m_Fps;
+		if (m_TotalTime >= frameMS)
 		{
-			extraTime = totalTime - frameMS; //amount time we waited too much
-			timeInFrames = extraTime / frameMS; //converted to frames
-			totalTime = extraTime;
+			m_ExtraTime = m_TotalTime - frameMS; //amount time we waited too much
+			m_TimeInFrames = (int)(m_ExtraTime / frameMS); //converted to frames
+			m_TotalTime = m_ExtraTime;
 		}
 		else
 		{
@@ -112,7 +109,7 @@ namespace Themp
 			
 			if (decoder->_header.audioInfo[0].hasAudio)
 			{
-				Themp::System::tSys->m_Audio->AddSoundData(sound, (void*)decoder->audio[0]->_buffer, decoder->audio[0]->_bufferSize,!(m_CurrentFrame == decoder->video->getFrameCount()));
+				Themp::System::tSys->m_Audio->AddSoundData(sound, (void*)decoder->audio[0]->_buffer, decoder->audio[0]->_bufferSize,(m_CurrentFrame < decoder->video->getFrameCount()-2));
 				if (!sound->isPlaying)
 				{
 					Themp::System::tSys->m_Audio->Play(sound);
@@ -125,12 +122,16 @@ namespace Themp
 		else
 		{
 			//finally done playing
+			Themp::System::tSys->m_Audio->MarkEnd(sound);
 			return 2;
 		}
 		//something went wrong
 		return 0;
 	}
-
+	void Video::Stop()
+	{
+		Themp::System::tSys->m_Audio->Stop(sound);
+	}
 	Video::~Video()
 	{
 		delete m_Tex;

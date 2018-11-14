@@ -27,6 +27,7 @@ namespace Themp
 		void ConstructVertexBuffer();
 		void Draw(Themp::D3D& d3d);
 		Material* m_Material;
+		ID3D11Buffer* m_ConstantBuffer = nullptr;
 		Vertex* m_Vertices;
 		uint32_t m_NumVertices;
 		uint32_t* m_Indices;
@@ -35,6 +36,7 @@ namespace Themp
 		size_t i_IndexBuffer; // index to the indexbuffer in resourcemanager
 		DirectX::XMFLOAT3 m_BoundsMin;
 		DirectX::XMFLOAT3 m_BoundsMax;
+
 
 		//do not change manually
 		ID3D11Buffer* m_VertexBuffer;

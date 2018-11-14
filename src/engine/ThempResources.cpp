@@ -28,6 +28,8 @@ namespace Themp
 #include "shaders\voxel_vs.h"
 #include "shaders\indicator_ps.h"
 #include "shaders\indicator_vs.h"
+#include "shaders\creature_vs.h"
+#include "shaders\creature_ps.h"
 #else
 #include "shaders\debugline_vs_d.h"
 #include "shaders\debugline_ps_d.h"
@@ -41,6 +43,8 @@ namespace Themp
 #include "shaders\voxel_vs_d.h"
 #include "shaders\indicator_ps_d.h"
 #include "shaders\indicator_vs_d.h"
+#include "shaders\creature_vs_d.h"
+#include "shaders\creature_ps_d.h"
 #endif
 	};
 
@@ -325,7 +329,7 @@ namespace Themp
 
 		//set up for vertices
 		bd.Usage = D3D11_USAGE_DYNAMIC;
-		bd.ByteWidth = sizeof(Vertex) * numVertices;
+		bd.ByteWidth = (uint32_t)(sizeof(Vertex) * numVertices);
 		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -367,7 +371,7 @@ namespace Themp
 
 			//set up for vertices
 			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = sizeof(Vertex) * numVertices;
+			bd.ByteWidth = (uint32_t)(sizeof(Vertex) * numVertices);
 			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -399,7 +403,7 @@ namespace Themp
 		ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
 		//set up for indices
 		bd.Usage = D3D11_USAGE_DYNAMIC;
-		bd.ByteWidth = sizeof(uint32_t) * numIndices;
+		bd.ByteWidth = (uint32_t)(sizeof(uint32_t) * numIndices);
 		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		ID3D11Buffer* indexBuffer;
@@ -440,7 +444,7 @@ namespace Themp
 
 			//set up for vertices
 			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = sizeof(uint32_t) * numIndices;
+			bd.ByteWidth = (uint32_t)(sizeof(uint32_t) * numIndices);
 			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
 			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -575,7 +579,7 @@ namespace Themp
 			if (!material->m_GeometryShader)System::Print("Couldn't find Geometry shader: %s", tempPath.c_str());
 		}
 		std::vector<std::string> textures = { texture };
-		std::vector<std::uint8_t> textureTypes = { Material::DIFFUSE};
+		std::vector<std::uint8_t> textureTypes = { 0 };
 		material->ReadTextures(textures, textureTypes);
 		m_Materials[materialName] = material;
 		return material;
@@ -653,7 +657,7 @@ namespace Themp
 		std::string output = "";
 		output.reserve(input.size());
 
-		int64_t i = (int64_t)(input.size()-1);
+		int64_t i = (int32_t)(input.size()-1);
 		while (i >= 0)
 		{
 			//remove double (or more) slashes "//" or "\\" in filepaths
@@ -664,7 +668,7 @@ namespace Themp
 			}
 			i--;
 		}
-		for (i = 0; i < input.size(); i++)
+		for (i = 0; i < (int32_t)input.size(); i++)
 		{
 			if (input[i] != (unsigned char)255)
 			{

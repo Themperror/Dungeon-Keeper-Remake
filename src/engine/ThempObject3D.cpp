@@ -59,6 +59,7 @@ namespace Themp
 		}
 		d3d.SetObject3DConstantBuffer(m_ConstantBuffer);
 
+		d3d.SetMaterialConstantBuffer(m_Meshes[0]->m_ConstantBuffer);
 		d3d.VSUploadConstantBuffersToGPU();
 
 		for (int i = 0; i < m_Meshes.size(); ++i)
@@ -167,7 +168,7 @@ namespace Themp
 		mesh->m_Material = Themp::System::tSys->m_Resources->GetUniqueMaterial("", shader);
 		m_Meshes.push_back(mesh);
 		//because the world exists out of small cubes, having to set scale every single time is a pain, so lets default it to the "small cube size"
-		m_Scale = XMFLOAT3(0.3333333333, 0.3333333333, 0.3333333333);
+		m_Scale = XMFLOAT3(0.3333333333f, 0.3333333333f, 0.3333333333f);
 	}
 	void Object3D::CreateTriangle(std::string shader, bool geometryShader)
 	{

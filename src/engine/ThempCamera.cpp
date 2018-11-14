@@ -39,9 +39,10 @@ namespace Themp
 	}
 	XMFLOAT3 Camera::ScreenToWorld(float x, float y)
 	{
-		XMFLOAT4 t_pos = { (x / D3D::s_D3D->m_ScreenWidth) * 2.0f - 1.0f,-(y / D3D::s_D3D->m_ScreenHeight) * 2.0f + 1.0f,m_Far,1.0f };
+		//viewspace
+		XMFLOAT4 tempPos = { (x / D3D::s_D3D->m_ScreenWidth) * 2.0f - 1.0f,-(y / D3D::s_D3D->m_ScreenHeight) * 2.0f + 1.0f,0.0,1.0f };
 
-		XMVECTOR t_pos_Vec = DirectX::XMLoadFloat4(&t_pos);
+		XMVECTOR tempPosV = DirectX::XMLoadFloat4(&tempPos);
 
 		XMMATRIX projectionMatrix;
 		XMMATRIX viewMatrix;
@@ -57,17 +58,17 @@ namespace Themp
 			viewMatrix = XMMatrixLookToLH(XMLoadFloat3(&m_Position), XMLoadFloat3(&m_Forward), XMLoadFloat3(&m_Up));
 		}
 
-		XMMATRIX t_inverse_mat = DirectX::XMMatrixInverse(nullptr, XMMatrixMultiply(viewMatrix, projectionMatrix));
+		XMMATRIX invViewProjMatrix = DirectX::XMMatrixInverse(nullptr, XMMatrixMultiply(viewMatrix, projectionMatrix));
 
+		//WorldSpace
+		tempPosV = XMVector4Transform(tempPosV, invViewProjMatrix);
+		//Divide with W;
+		XMStoreFloat4(&tempPos, tempPosV);
+		tempPosV = XMVectorScale(tempPosV, 1.0f / tempPos.w);
 
-		t_pos_Vec = XMVector4Transform(t_pos_Vec, t_inverse_mat);
-		//Divide bt W;
-		XMStoreFloat4(&t_pos, t_pos_Vec);
-		t_pos_Vec = XMVectorScale(t_pos_Vec, 1.0f / t_pos.w);
-		//t_pos_Vec = XMVector3Normalize(t_pos_Vec);
-		DirectX::XMStoreFloat4(&t_pos, t_pos_Vec);
+		DirectX::XMStoreFloat4(&tempPos, tempPosV);
 
-		return ToXMFLOAT3(t_pos);
+		return ToXMFLOAT3(tempPos);
 	}
 	//forward, back, up , down , left , right
 	bool dirs[6] = { false,false,false,false,false,false };
@@ -386,5 +387,9 @@ namespace Themp
 		XMFLOAT4X4 res;
 		XMStoreFloat4x4(&res, proj);
 		return res;
+	}
+	Camera::CameraType Camera::GetProjection()
+	{
+		return m_CamType;
 	}
 }

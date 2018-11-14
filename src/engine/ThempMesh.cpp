@@ -55,7 +55,7 @@ namespace Themp
 	
 	void Mesh::Draw(Themp::D3D& d3d)
 	{
-		uint32_t stride[] = { m_VertexSize };
+		uint32_t stride[] = { (uint32_t)m_VertexSize };
 		uint32_t offset[] = { 0 };
 		//set vertex/index buffers
 		d3d.m_DevCon->IASetVertexBuffers(0, 1, &m_VertexBuffer, stride, offset);
@@ -70,8 +70,9 @@ namespace Themp
 		d3d.m_DevCon->PSSetShader(m_Material->m_PixelShader, 0, 0);
 		d3d.m_DevCon->GSSetShader(m_Material->m_GeometryShader, 0, 0);
 
-		d3d.SetMaterialConstantBuffer(m_Material->m_MaterialConstantBuffer);
+		d3d.SetMaterialConstantBuffer(m_ConstantBuffer);
 		d3d.PSUploadConstantBuffersToGPU();
+
 		d3d.m_DevCon->DrawIndexed(m_NumIndices, 0, 0);
 	}
 }

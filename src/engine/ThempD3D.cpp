@@ -2,6 +2,7 @@
 #include "ThempD3D.h"
 #include "ThempObject3D.h"
 #include "ThempGame.h"
+#include "ThempCreature.h"
 #include "ThempResources.h"
 #include "ThempMaterial.h"
 #include "ThempMesh.h"
@@ -9,6 +10,7 @@
 #include "ThempGUI.h"
 #include "ThempCamera.h"
 #include "ThempDebugDraw.h"
+#include "ThempFunctions.h"
 #include <imgui.h>
 #include <iostream>
 #include <fstream>
@@ -17,14 +19,6 @@ using namespace DirectX;
 
 namespace Themp
 {
-	XMFLOAT3 Normalize(const XMFLOAT3& v)
-	{
-		XMVECTOR x = XMLoadFloat3(&v);
-		x = XMVector3Normalize(x);
-		XMFLOAT3 r;
-		XMStoreFloat3(&r, x);
-		return r;
-	}
 	XMFLOAT3 XMFLOAT3Add(const XMFLOAT3& a, const XMFLOAT3& b)
 	{
 		return XMFLOAT3(a.x + b.x, a.y + b.y, a.z + b.z);
@@ -68,8 +62,8 @@ namespace Themp
 
 		int windowWidth = windowRect.right;
 		int windowHeight = windowRect.bottom;
-		m_ScreenWidth = windowRect.right;
-		m_ScreenHeight = windowRect.bottom;
+		m_ScreenWidth = (float)windowRect.right;
+		m_ScreenHeight = (float)windowRect.bottom;
 
 		scd.Windowed = !static_cast<UINT>(Themp::System::tSys->m_SVars.find(SVAR_FULLSCREEN)->second);
 		if (scd.Windowed)
@@ -139,7 +133,7 @@ namespace Themp
 		}
 #endif
 
-		int multisample = Themp::System::tSys->m_SVars[SVAR_MULTISAMPLE];
+		int multisample = (int)Themp::System::tSys->m_SVars[SVAR_MULTISAMPLE];
 		if (multisample == 0) multisample = 1;
 		if (!CreateBackBuffer() || !CreateDepthStencil(m_ScreenWidth, m_ScreenHeight, multisample))
 		{
@@ -313,8 +307,8 @@ namespace Themp
 			vp.TopLeftX = 0.0f;
 			vp.TopLeftY = 0.0f;
 			m_DevCon->RSSetViewports(1, &vp);
-			m_ScreenWidth = newX;
-			m_ScreenHeight = newY;
+			m_ScreenWidth = (float)newX;
+			m_ScreenHeight = (float)newY;
 			m_ConstantBufferData.screenHeight = vp.Width;
 			m_ConstantBufferData.screenWidth = vp.Height;
 			dirtySystemBuffer = true;
@@ -371,6 +365,11 @@ namespace Themp
 				}
 
 				game.m_Objects3D[i]->Draw(_this);
+			}
+			m_DevCon->RSSetState(m_RasterizerState);
+			for (int i = 0; i < game.m_Creatures.size(); ++i)
+			{
+				game.m_Creatures[i]->Draw(_this);
 			}
 		}
 		
@@ -490,7 +489,7 @@ namespace Themp
 	void D3D::VSUploadConstantBuffersToGPU()
 	{
 		if (D3D::ConstantBuffers[1] == nullptr) System::Print("No Camera active in scene");
-		m_DevCon->VSSetConstantBuffers(0, 3, D3D::ConstantBuffers);
+		m_DevCon->VSSetConstantBuffers(0, 5, D3D::ConstantBuffers);
 	}
 	void D3D::VSUploadConstantBuffersToGPUNull()
 	{
