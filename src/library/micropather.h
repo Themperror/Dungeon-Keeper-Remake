@@ -448,7 +448,7 @@ namespace micropather
 								advantage if you may call the pather with the same path or sub-path, which
 								is common for pathing over maps in games.
 		*/
-		MicroPather( Graph* graph, unsigned allocate = 260, unsigned typicalAdjacent=4, bool cache=true );
+		MicroPather( Graph* graph, unsigned allocate = 260, unsigned typicalAdjacent=8, bool cache=true );
 		~MicroPather();
 
 		/**
