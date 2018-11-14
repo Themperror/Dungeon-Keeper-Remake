@@ -168,13 +168,18 @@
     <ClCompile Include="src\Engine\ThempSystem.cpp" />
     <ClCompile Include="src\Engine\ThempVideo.cpp" />
     <ClCompile Include="src\Game\ThempCreature.cpp" />
+    <ClCompile Include="src\Game\ThempCreatureData.cpp" />
+    <ClCompile Include="src\Game\ThempCreatureTaskManager.cpp" />
     <ClCompile Include="src\Game\ThempFileManager.cpp" />
     <ClCompile Include="src\Game\ThempFont.cpp" />
     <ClCompile Include="src\Game\ThempGame.cpp" />
     <ClCompile Include="src\Game\ThempGUIButton.cpp" />
     <ClCompile Include="src\Game\ThempLevel.cpp" />
+    <ClCompile Include="src\Game\ThempLevelConfig.cpp" />
+    <ClCompile Include="src\Game\ThempLevelData.cpp" />
     <ClCompile Include="src\Game\ThempMainMenu.cpp" />
     <ClCompile Include="src\Game\ThempObject2D.cpp" />
+    <ClCompile Include="src\Game\ThempTileArrays.cpp" />
     <ClCompile Include="src\Game\ThempVoxelObject.cpp" />
     <ClCompile Include="src\Library\imgui.cpp" />
     <ClCompile Include="src\Library\imgui_demo.cpp" />
@@ -198,11 +203,15 @@
     <ClInclude Include="src\Engine\ThempSystem.h" />
     <ClInclude Include="src\Engine\ThempVideo.h" />
     <ClInclude Include="src\Game\ThempCreature.h" />
+    <ClInclude Include="src\Game\ThempCreatureData.h" />
+    <ClInclude Include="src\Game\ThempCreatureTaskManager.h" />
     <ClInclude Include="src\Game\ThempFileManager.h" />
     <ClInclude Include="src\Game\ThempFont.h" />
     <ClInclude Include="src\Game\ThempGame.h" />
     <ClInclude Include="src\Game\ThempGUIButton.h" />
     <ClInclude Include="src\Game\ThempLevel.h" />
+    <ClInclude Include="src\Game\ThempLevelConfig.h" />
+    <ClInclude Include="src\Game\ThempLevelData.h" />
     <ClInclude Include="src\Game\ThempMainMenu.h" />
     <ClInclude Include="src\Game\ThempObject2D.h" />
     <ClInclude Include="src\Game\ThempTileArrays.h" />
@@ -219,6 +228,13 @@
     <ClInclude Include="src\Library\stb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="resources\shaders\creature_ps.hlsl" />
+    <FxCompile Include="resources\shaders\creature_vs.hlsl">
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VShader</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">VShader</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="resources\shaders\debugline_ps.hlsl">
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)\data\shaders\%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)\data\shaders\%(Filename)_d.cso</ObjectFileOutput>

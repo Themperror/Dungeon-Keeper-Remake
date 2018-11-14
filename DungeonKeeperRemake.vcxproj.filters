@@ -34,6 +34,18 @@
     <Filter Include="Resource Files\Shaders">
       <UniqueIdentifier>{d68bb8c2-629a-49db-bdb8-6885acf7b702}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Game\Level">
+      <UniqueIdentifier>{ce96484c-5f06-46b6-be79-1595a2869fce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Game\Level">
+      <UniqueIdentifier>{8e195b1c-33b4-4164-a6f2-bac3999d28d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Game\Creature">
+      <UniqueIdentifier>{df2ad62f-c9bc-4832-9941-3f03fadd2766}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Game\Creature">
+      <UniqueIdentifier>{6fdba452-e8d5-48fa-83cd-fe128aa821bc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine\ThempSystem.cpp">
@@ -105,13 +117,7 @@
     <ClCompile Include="src\Game\ThempGUIButton.cpp">
       <Filter>Source Files\Game</Filter>
     </ClCompile>
-    <ClCompile Include="src\Game\ThempCreature.cpp">
-      <Filter>Source Files\Game</Filter>
-    </ClCompile>
     <ClCompile Include="src\Game\ThempFont.cpp">
-      <Filter>Source Files\Game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Game\ThempLevel.cpp">
       <Filter>Source Files\Game</Filter>
     </ClCompile>
     <ClCompile Include="src\Game\ThempVoxelObject.cpp">
@@ -119,6 +125,27 @@
     </ClCompile>
     <ClCompile Include="src\Library\micropather.cpp">
       <Filter>Source Files\Library</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempLevel.cpp">
+      <Filter>Source Files\Game\Level</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempLevelData.cpp">
+      <Filter>Source Files\Game\Level</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempCreature.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempCreatureData.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempCreatureTaskManager.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempTileArrays.cpp">
+      <Filter>Source Files\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempLevelConfig.cpp">
+      <Filter>Source Files\Game\Level</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -203,13 +230,7 @@
     <ClInclude Include="src\Game\ThempGUIButton.h">
       <Filter>Header Files\Game</Filter>
     </ClInclude>
-    <ClInclude Include="src\Game\ThempCreature.h">
-      <Filter>Header Files\Game</Filter>
-    </ClInclude>
     <ClInclude Include="src\Game\ThempFont.h">
-      <Filter>Header Files\Game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Game\ThempLevel.h">
       <Filter>Header Files\Game</Filter>
     </ClInclude>
     <ClInclude Include="src\Game\ThempVoxelObject.h">
@@ -220,6 +241,24 @@
     </ClInclude>
     <ClInclude Include="src\Library\micropather.h">
       <Filter>Header Files\Library</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempLevel.h">
+      <Filter>Header Files\Game\Level</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempLevelData.h">
+      <Filter>Header Files\Game\Level</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempCreature.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempCreatureData.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempCreatureTaskManager.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempLevelConfig.h">
+      <Filter>Header Files\Game\Level</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -266,6 +305,12 @@
       <Filter>Resource Files\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="resources\shaders\indicator_vs.hlsl">
+      <Filter>Resource Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="resources\shaders\creature_vs.hlsl">
+      <Filter>Resource Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="resources\shaders\creature_ps.hlsl">
       <Filter>Resource Files\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
