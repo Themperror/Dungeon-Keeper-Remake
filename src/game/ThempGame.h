@@ -3,6 +3,7 @@
 namespace Themp
 {
 	class Object3D;
+	class Creature;
 	class Camera;
 	class MainMenu;
 	class Level;
@@ -18,8 +19,10 @@ namespace Themp
 		void LoadLevel(int levelIndex);
 		void Stop();
 		void AddObject3D(Object3D* obj);
+		void AddCreature(Creature* obj);
 		static void TranslateMousePos(int inX, int inY, float & outX, float & outY);
 		std::vector<Themp::Object3D*> m_Objects3D;
+		std::vector<Themp::Creature*> m_Creatures;
 		Camera* m_Camera = nullptr;
 		FileManager* m_FileManager;
 		MainMenu* m_MainMenu = nullptr;

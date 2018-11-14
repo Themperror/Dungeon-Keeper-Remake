@@ -2,17 +2,16 @@
 #include "ThempFileManager.h"
 #include "ThempGame.h"
 #include "ThempResources.h"
-#include "../Library/imgui.h"
-#include "../Engine/ThempCamera.h"
+#include "ThempAudio.h"
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempMesh.h"
 #include "../Engine/ThempMaterial.h"
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
-#include "../Engine/ThempDebugDraw.h"
-#include "../Engine/ThempVideo.h"
 #include <DirectXMath.h>
 #include <lbrncbase.h>
+
+#define MKTAG(a0,a1,a2,a3) ((uint32_t)((a3) | ((a2) << 8) | ((a1) << 16) | ((a0) << 24)))
 
 using namespace Themp;
 FileManager* FileManager::fileManager = nullptr;
@@ -20,8 +19,8 @@ FileManager* FileManager::fileManager = nullptr;
 std::unordered_map<std::wstring, FileData> FileDataList;
 
 //Creatures
-std::unordered_map<std::wstring, std::vector<CreatureTab>> SpriteFileData;
-std::vector<Sprite> CreatureSprites;
+std::vector<CreatureTab> SpriteFileData;
+std::vector<Sprite*> CreatureSprites;
 
 ////////Level UI
 
@@ -57,6 +56,8 @@ std::vector<GUITexture> Font_Menu3Textures;
 //Localized Text
 std::unordered_map<std::wstring, std::vector<std::string>> Localized_Strings; //Key == language, vector contains every string from that language
 
+//Sounds
+std::unordered_map<std::string, Sound*> Sounds;
 
 std::wstring GetFileExtension(std::wstring const& file);
 
@@ -64,10 +65,10 @@ FileManager::~FileManager()
 {
 	for (auto i : FileDataList)
 	{
-		free(i.second.data);
+		_aligned_free(i.second.data);
 	}
 
-	for (auto i : CreatureSprites)			delete[] i.textures; //animated textures; these keep an array instead of single ones
+	for (auto i : CreatureSprites) { delete i->texture;	delete i;}
 	for (auto i : Level_MiscLowGUITextures)	delete i.texture;
 	for (auto i : Level_MiscHiGUITextures)	delete i.texture;
 	for (auto i : Level_PaneLowGUITextures)	delete i.texture;
@@ -327,6 +328,8 @@ FileManager::FileManager()
 		System::tSys->m_Quitting = true;
 	}
 
+	LoadSounds(L"SOUND\\SOUND.DAT");
+
 	FileManager::fileManager = this;
 }
 
@@ -367,7 +370,7 @@ FileData FileManager::LoadFileData(std::wstring& path)
 		fseek(f, 0, SEEK_END); //go to end of file 
 		rawFileSize = ftell(f); //tell the size
 		fseek(f, 0, SEEK_SET); //set it back to beginning
-		rawData = (BYTE*)malloc(rawFileSize);
+		rawData = (BYTE*)_aligned_malloc(rawFileSize,16);
 		fread(rawData, rawFileSize, 1, f);
 		fclose(f);
 		if (rawData[0] == 'R' && rawData[1] == 'N' && rawData[2] == 'C' && rawData[3] == 0x01) //RNC magic number
@@ -386,12 +389,12 @@ FileData FileManager::LoadFileData(std::wstring& path)
 		{
 			int uncompressed_size = rnc_ulen(rawData);
 			filedata.size = uncompressed_size;
-			filedata.data = (BYTE*)malloc(uncompressed_size);
+			filedata.data = (BYTE*)_aligned_malloc(uncompressed_size,16);
 			if (rnc_unpack(rawData, filedata.data, RNC_IGNORE_NONE) < 0)
 			{
 				System::Print("Failed to unpack %S", path.c_str());
 			}
-			free(rawData);
+			_aligned_free(rawData);
 		}
 		else
 		{
@@ -421,7 +424,7 @@ FileData FileManager::GetFileData(std::wstring path)
 Sprite* Themp::FileManager::GetCreatureSprite(int index)
 {
 	index = index % CreatureSprites.size();
-	return &CreatureSprites[index];
+	return CreatureSprites[index];
 }
 GUITexture* Themp::FileManager::GetLevelMiscGUITexture(int index, bool hiRes)
 {
@@ -469,6 +472,28 @@ Texture* Themp::FileManager::GetBlockTexture(int index)
 	index = index % Level_BlockTextures.size();
 	return Level_BlockTextures[index];
 }
+Sound* Themp::FileManager::GetSoundByIndex(int index)
+{
+	auto& it = Sounds.begin();
+	for (size_t i = 0; i < index; i++)
+	{
+		it++;
+		if (it == Sounds.end())
+		{
+			it = Sounds.begin();
+		}
+	}
+	return it->second;
+}
+Sound* Themp::FileManager::GetSound(std::string name)
+{
+	auto&& it = Sounds.find(name);
+	if (it == Sounds.end())
+	{
+		return nullptr;
+	}
+	return it->second;
+}
 std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 {
 	switch (source)
@@ -488,7 +513,6 @@ void FileManager::LoadCreatures()
 	FileData creatureTAB = GetFileData(L"DATA\\CREATURE.TAB");
 
 	//create sprite table
-	auto&& it = SpriteFileData[L"DATA\\CREATURE.TAB"];
 	CreatureTab spriteData = {0};
 	size_t i = 0;
 	while (i < creatureTAB.size)
@@ -518,28 +542,27 @@ void FileManager::LoadCreatures()
 		spriteData.unscaledH =  (int16_t)creatureTAB.data[i++];
 		spriteData.unscaledH += (int16_t)creatureTAB.data[i++] << 8;
 
-		it.push_back(spriteData);
+		SpriteFileData.push_back(spriteData);
 	}
 
 	//create sprites out of the data we just read
-	Sprite sprite = { 0 };
 	FileData palData = FileManager::GetFileData(L"DATA\\MAIN.PAL");
 
-	for (size_t i = 0; i < it.size()-1; i+= it[i].frames) //BUG TODO it.size()-1 might not be correct, I believe it skips the very last frame of the last sprite in the list
+	for (size_t i = 0; i < SpriteFileData.size()-1; ( i+= (SpriteFileData[i].frames))) //BUG TODO it.size()-1 might not be correct, I believe it skips the very last frame of the last sprite in the list
 	{
-		sprite.numAnim = it[i].frames;
-		sprite.textures = new Texture[sprite.numAnim];
+		Sprite* sprite = new Sprite();
+		sprite->numAnim = SpriteFileData[i].frames;
 	
-		int width = it[i].src_dx;
-		int height = it[i].src_dy;
+		int width = SpriteFileData[i].src_dx * sprite->numAnim;
+		int singleWidth = SpriteFileData[i].src_dx;
+		int height = SpriteFileData[i].src_dy;
 
-		BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
+		BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
 		memset(textureData, 0, width * height * 4);
 		
-		for (int j = 0; j < sprite.numAnim; j++)
+		for (int j = 0; j < sprite->numAnim; j++)
 		{
-			memset(textureData, 0, width * height * 4);
-			CreatureTab& sData = it[i + j];
+			CreatureTab& sData = SpriteFileData[i + j];
 			BYTE* startOff = (creatureJTY.data + sData.foffset); //palletize the creature data with MAIN.PAL
 
 			int srcIndex = 0;
@@ -555,10 +578,10 @@ void FileManager::LoadCreatures()
 					{
 						for (size_t z = 0; z < abs(val)-1; z++)
 						{
-							textureData[(x + y * width) * 4] = 0;
-							textureData[(x + y * width) * 4 + 1] = 0;
-							textureData[(x + y * width) * 4 + 2] = 0;
-							textureData[(x + y * width) * 4 + 3] = 0;
+							textureData[((x + singleWidth * j) + y * width) * 4] = 0;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 1] = 0;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 2] = 0;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 3] = 0;
 							x++;
 						}
 						srcIndex++;
@@ -574,10 +597,10 @@ void FileManager::LoadCreatures()
 						for (size_t z = 0; z < val; z++)
 						{
 							srcIndex++;
-							textureData[(x + y * width) * 4] = palData.data[startOff[srcIndex] * 3] * 4;
-							textureData[(x + y * width) * 4 + 1] = palData.data[startOff[srcIndex] * 3 + 1] * 4;
-							textureData[(x + y * width) * 4 + 2] = palData.data[startOff[srcIndex] * 3 + 2] * 4;
-							textureData[(x + y * width) * 4 + 3] = 255;
+							textureData[((x + singleWidth * j) + y * width) * 4] = palData.data[startOff[srcIndex] * 3] * 4;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 1] = palData.data[startOff[srcIndex] * 3 + 1] * 4;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 2] = palData.data[startOff[srcIndex] * 3 + 2] * 4;
+							textureData[((x + singleWidth * j) + y * width) * 4 + 3] = 255;
 							x++;
 						}
 						srcIndex++;
@@ -586,9 +609,68 @@ void FileManager::LoadCreatures()
 					if (x - sData.xOff >= sData.width) break;
 				}
 			}
-			sprite.textures[j].Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, textureData);
 		}
-		free(textureData);
+		sprite->texture = new Texture();
+		sprite->texture->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, textureData);
+
+		///////TEMPORARY FOR DEV PURPOSES
+		//Dump the sprite to disk
+//#pragma pack(push,1)
+//		struct BITMAPFILEHEADER
+//		{
+//			uint16_t magic = 19778;
+//			uint32_t fileSize = 0;
+//			uint16_t reserved0 = 0; //MUST BE 0
+//			uint16_t reserved1 = 0; //MUST BE 0
+//			uint32_t offsetBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+//		};
+//		struct BITMAPINFOHEADER
+//		{
+//			uint32_t headersize = sizeof(BITMAPINFOHEADER);
+//			uint32_t imageWidth;
+//			uint32_t imageHeight;
+//			uint16_t planes = 0; //must be 0
+//			uint16_t bitcount = 32;//bits per pixel
+//			uint32_t compression = false;
+//			uint32_t sizeImage = 0;
+//			uint32_t xPelsMeter = 0;
+//			uint32_t yPerlsmeter = 0;
+//			uint32_t clrUsed = 0;
+//			uint32_t clrImportant = 0;
+//		};
+//#pragma pack(pop)
+//		struct RGBQUAD
+//		{
+//			RGBQUAD(BYTE* data)
+//			{ 
+//				//R G B A
+//				A = *(data + 3);
+//				B = *(data + 2);
+//				G = *(data + 1);
+//				R = *(data + 0);
+//			}
+//			uint8_t B, G, R, A; //NOTE THE B G R format
+//		};
+//		char buf[8] = {0};
+//		itoa(CreatureSprites.size(), buf, 10);
+//		FILE* creatureSpriteFile = fopen(std::string("Creatures\\Creature").append(buf).append(".bmp").c_str(), "w+b");
+//		BITMAPFILEHEADER bmpHeader = BITMAPFILEHEADER();
+//		BITMAPINFOHEADER bmpInfoHeader = BITMAPINFOHEADER();
+//		bmpHeader.fileSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height * 4;
+//		bmpInfoHeader.imageWidth = width;
+//		bmpInfoHeader.imageHeight = height;
+//
+//		fwrite(&bmpHeader, sizeof(BITMAPFILEHEADER), 1, creatureSpriteFile);
+//		fwrite(&bmpInfoHeader, sizeof(BITMAPINFOHEADER), 1, creatureSpriteFile);
+//		for (int k = (width * height * 4); k >=0 ; k-=4)
+//		{
+//			fwrite(&RGBQUAD(&textureData[k - 4]), 4, 1, creatureSpriteFile);
+//		}
+//		//fwrite(textureData, width * height * 4, 1, creatureSpriteFile);
+//		fclose(creatureSpriteFile);
+		//////////
+
+		_aligned_free(textureData);
 		CreatureSprites.push_back(sprite);
 	}
 	System::Print("Done Creating Sprites!!");
@@ -628,7 +710,7 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 			continue;
 		}
 
-		BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
+		BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
 		memset(textureData, 0, width * height * 4);
 
 		BYTE* startOff = (guiData.data + guiTabData.offset);
@@ -679,7 +761,7 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 		}
 		guiTex.texture->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, keepCPUData, textureData);
 
-		free(textureData);
+		_aligned_free(textureData);
 		guiTexVector.push_back(guiTex);
 	}
 }
@@ -692,7 +774,7 @@ void FileManager::LoadBlockTextures(std::wstring datFile, std::vector<Texture*>&
 	int height = 2176; //resulting in 8*68 textures
 
 	Texture* Tex = new Texture();
-	BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
+	BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
 	memset(textureData, 0, width * height * 4);
 	int xRead = 0;
 	int yRead = 0;
@@ -714,9 +796,101 @@ void FileManager::LoadBlockTextures(std::wstring datFile, std::vector<Texture*>&
 	}
 	Tex->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, textureData);
 	TexVector.push_back(Tex);
-	free(textureData);
+	_aligned_free(textureData);
 }
 
+void FileManager::LoadSounds(std::wstring file)
+{
+	FileData fData = GetFileData(file);
+	Audio* audio = Themp::System::tSys->m_Audio;
+	struct SoundTab
+	{
+		//The first thirteen bytes form the internal name of the file (not the one my extractor outputs), followed by five bytes of zeroes, 
+		//eight bytes giving the offset of the file in the .dat, then six bytes giving the size of the file.
+		std::string name; // 13 chars max
+		//char nulls[5];
+		uint32_t offset;
+		//uint32_t null0;
+		uint32_t size;
+		//uint16_t null1;
+	};
+	std::unordered_map<std::string, SoundTab> soundTable;
+	fData.SeekTo(fData.size - 4);
+	uint32_t tableEnd = fData.ReadUInt32();
+	fData.SeekTo(fData.size - 0x3C);
+	uint32_t tableStart = fData.ReadUInt32();
+	fData.SeekTo(tableStart + 32);
+
+	while (fData.currentOffset < tableEnd)
+	{
+		//this data line is 32 bytes long
+		SoundTab tab;
+		tab.name = "";
+		tab.name.reserve(13);
+		int bytesRead = 0;
+		while (bytesRead < 13)
+		{
+			char byte = fData.ReadSInt8();
+			if(byte != 0)
+				tab.name.append(1, byte);
+			bytesRead++;
+		}
+		if (tab.name == "NULL.WAV" || soundTable.find(tab.name) != soundTable.end())
+		{
+			//we read 13 bytes, so skip the next 19 so we land on the next line.
+			fData.SkipBytes(19);
+			continue;
+		}
+		fData.SkipBytes(5);
+		tab.offset = fData.ReadUInt32();
+		fData.SkipBytes(4);
+		tab.size = fData.ReadUInt32();
+		soundTable[tab.name] = tab;
+		fData.SkipBytes(2);
+	}
+
+	for(auto&& i : soundTable)
+	{
+		fData.SeekTo(i.second.offset);
+		uint32_t tag = fData.ReadUInt32();
+		if (tag == MKTAG('F', 'F', 'I', 'R'))
+		{
+			WAVEFORMATEX format = { 0 };
+			int currentOffset = fData.currentOffset;
+			uint32_t chunkSize = fData.ReadUInt32();
+			//skip WAVE and FMT tag
+			fData.SkipBytes(8);
+			uint32_t subChunkSize = fData.ReadUInt32();
+			uint16_t audioFormat = fData.ReadUInt16();
+			assert(audioFormat == 1);
+
+			uint16_t numChannels = fData.ReadUInt16();
+			uint32_t sampleRate = fData.ReadUInt32();
+			uint32_t byteRate = fData.ReadUInt32();
+			uint16_t blockAlign = fData.ReadUInt16();
+			uint16_t bitsPerSample = fData.ReadUInt16();
+
+			//skip 'data' tag
+			fData.SkipBytes(4);
+			uint32_t dataSize = fData.ReadUInt32();
+
+			format.nSamplesPerSec =sampleRate;
+			format.nChannels = numChannels == 2 ? 2 : 1;
+			format.wBitsPerSample = bitsPerSample;
+			format.wFormatTag = WAVE_FORMAT_PCM;
+			format.nBlockAlign = blockAlign;
+			format.nAvgBytesPerSec = byteRate;
+			Sound* s = audio->MakeSoundBuffer(format);
+			audio->AddSoundData(s, fData.CurrentAddress(), dataSize, false);
+
+			Sounds[i.first] = s;
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+}
 void FileManager::LoadStrings(std::wstring datFile, std::wstring language)
 {
 	FileData stringFile = GetFileData(datFile);

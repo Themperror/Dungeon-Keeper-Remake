@@ -133,7 +133,7 @@ Themp::GUIButton::GUIButton(int source, int* textureIDNormal, int* textureIDHove
 			texID.hoverAnimation = nullptr;
 		}
 		m_TexIDs.push_back(texID);
-		SetSize(1, 1, 1, 1, i);
+		SetSize(1.0f, 1.0f, 1.0f, 1.0f, i);
 	}
 	if (text.size() > 0)
 	{
@@ -155,10 +155,10 @@ void GUIButton::NextGUI()
 void GUIButton::SetSize(float W,float H, float textW, float textH, int index)
 {
 	Texture* t = m_Objects[index]->m_Tex;
-	float originalW = (float)t->m_Width  / 640.0; //original screen width
-	float originalH = (float)t->m_Height / 480.0; //original screen height
-	float newW = originalW*2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENWIDTH];
-	float newH = originalH*2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+	float originalW = (float)t->m_Width  / 640.0f; //original screen width
+	float originalH = (float)t->m_Height / 480.0f; //original screen height
+	float newW = originalW*2.0f;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENWIDTH];
+	float newH = originalH*2.0f;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
 
 	m_Objects[index]->m_Renderable->SetScale(W * newW,H * newH,1);
 
@@ -167,7 +167,7 @@ void GUIButton::SetSize(float W,float H, float textW, float textH, int index)
 
 	for (size_t i = 0; i < m_FontObjects.size(); i++)
 	{
-		m_FontObjects[i]->SetScale(textW ,textH, 1);
+		m_FontObjects[i]->SetScale(textW ,textH, 1.0f);
 	}
 
 	//m_Object[index]->m_Renderable->m_Scale.x = W * 2.0;
@@ -205,7 +205,7 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 					{
 						m_TexIDs[j].currentAnimIndex = 0;
 						m_TexIDs[j].currentNormalTime = 0;
-						m_TexIDs[j].currentHoverTime = m_TexIDs[i].hoverAnimation ? 1.0 / m_TexIDs[i].hoverAnimation->fps : 0;;
+						m_TexIDs[j].currentHoverTime = m_TexIDs[i].hoverAnimation ? 1.0f / (float)m_TexIDs[i].hoverAnimation->fps : 0.0f;
 					}
 				}
 				m_IsColliding = true;
@@ -218,7 +218,7 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 		for (size_t i = 0; i < m_Objects.size(); i++)
 		{
 			m_TexIDs[i].currentAnimIndex = 0;
-			m_TexIDs[i].currentNormalTime = m_TexIDs[i].normalAnimation ? 1.0 / m_TexIDs[i].normalAnimation->fps : 0;
+			m_TexIDs[i].currentNormalTime = m_TexIDs[i].normalAnimation ? 1.0f / (float)m_TexIDs[i].normalAnimation->fps : 0.0f;
 			m_TexIDs[i].currentHoverTime = 0;
 		}
 		m_IsColliding = false;
@@ -232,9 +232,9 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 			if (bInfo.hoverAnimation)
 			{
 				bInfo.currentHoverTime += delta;
-				if (bInfo.currentHoverTime > 1.0 / (float)bInfo.hoverAnimation->fps)
+				if (bInfo.currentHoverTime > 1.0f / (float)bInfo.hoverAnimation->fps)
 				{
-					bInfo.currentHoverTime -= 1.0 / (float)bInfo.hoverAnimation->fps;
+					bInfo.currentHoverTime -= 1.0f / (float)bInfo.hoverAnimation->fps;
 					if (bInfo.hoverAnimation->pingpong) //pingpong animation
 					{
 						if (bInfo.reversing)
@@ -255,7 +255,7 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 							if (bInfo.currentAnimIndex >= bInfo.hoverAnimation->animation.size() - 1)
 							{
 								bInfo.reversing = true;
-								bInfo.currentAnimIndex = bInfo.hoverAnimation->animation.size() - 1;
+								bInfo.currentAnimIndex = (int)(bInfo.hoverAnimation->animation.size() - 1);
 								if (bInfo.currentAnimIndex < 0)bInfo.currentAnimIndex = 0;
 							}
 							obj->SetTexture(obj->GetTexture((Object2D::Source)m_Source, bInfo.hoverAnimation->animation[bInfo.currentAnimIndex]));
@@ -300,9 +300,9 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 			if (bInfo.normalAnimation)
 			{
 				bInfo.currentNormalTime += delta;
-				if (bInfo.currentNormalTime > 1.0 / (float)bInfo.normalAnimation->fps)
+				if (bInfo.currentNormalTime > 1.0f / (float)bInfo.normalAnimation->fps)
 				{
-					bInfo.currentNormalTime -= 1.0 / (float)bInfo.normalAnimation->fps;
+					bInfo.currentNormalTime -= 1.0f / (float)bInfo.normalAnimation->fps;
 					if (bInfo.normalAnimation->pingpong) //pingpong animation
 					{
 						if (bInfo.reversing)
@@ -323,7 +323,7 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 							if (bInfo.currentAnimIndex >= bInfo.normalAnimation->animation.size() - 1)
 							{
 								bInfo.reversing = true;
-								bInfo.currentAnimIndex = bInfo.normalAnimation->animation.size() - 1;
+								bInfo.currentAnimIndex = (int)(bInfo.normalAnimation->animation.size() - 1);
 								if (bInfo.currentAnimIndex < 0)bInfo.currentAnimIndex = 0;
 							}
 							obj->SetTexture(obj->GetTexture((Object2D::Source)m_Source, bInfo.normalAnimation->animation[bInfo.currentAnimIndex]));
@@ -386,6 +386,6 @@ void Themp::GUIButton::SetPosition(float x, float y, float z)
 	}
 	for (size_t i = 0; i < m_FontObjects.size(); i++)
 	{
-		m_FontObjects[i]->m_ScreenObj->m_Renderable->SetPosition(x, y,z - 0.05);
+		m_FontObjects[i]->m_ScreenObj->m_Renderable->SetPosition(x, y,z - 0.05f);
 	}
 }

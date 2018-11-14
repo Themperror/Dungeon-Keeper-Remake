@@ -3,17 +3,14 @@
 #include "ThempFileManager.h"
 #include "ThempMainMenu.h"
 #include "ThempLevel.h"
+#include "ThempCreature.h"
 #include "ThempResources.h"
+#include "ThempLevelConfig.h"
 #include "../Library/imgui.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
-#include "../Engine/ThempMesh.h"
-#include "../Engine/ThempMaterial.h"
 #include "../Engine/ThempD3D.h"
-#include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
-#include "../Engine/ThempVideo.h"
-#include <DirectXMath.h>
 
 float totalMouseX = 0, totalMouseY = 0;
 float oldMouseX=0, oldMouseY = 0;
@@ -32,6 +29,13 @@ void Themp::Game::Start()
 
 	m_FileManager = new FileManager();
 	m_MainMenu = new MainMenu();
+
+	if (!LevelConfig::LoadConfiguration())
+	{
+		System::Print("Game::Start || Was not able to load data\\creature.txt!");
+		Stop();
+		return;
+	}
 
 	m_MainMenu->Start();
 }
@@ -61,7 +65,7 @@ void Themp::Game::Update(double dt)
 	}
 	else
 	{
-		m_CurrentLevel->Update(dt);
+		m_CurrentLevel->Update((float)dt);
 	}
 
 	//left mouse button
@@ -73,10 +77,10 @@ void Themp::Game::Update(double dt)
 		totalMouseY = totalMouseY > 90.0f ? 90.0f : totalMouseY < -90.0f ? -90.0f : totalMouseY;
 		m_Camera->Rotate(totalMouseX, totalMouseY);
 	}
-	double speedMod = 0.05;
+	float speedMod = 0.05f;
 	if (m_Keys[VK_SHIFT])
 	{
-		speedMod = 0.2;
+		speedMod = 0.2f;
 	}
 	m_Camera->SetSpeed(speedMod);
 	if (m_Keys['W'])
@@ -105,7 +109,7 @@ void Themp::Game::Update(double dt)
 		m_Camera->MoveDown();
 	}
 
-	m_Camera->Update(dt);
+	m_Camera->Update((float)dt);
 	m_Camera->UpdateMatrices();
 	oldMouseX = m_CursorWindowedX;
 	oldMouseY = m_CursorWindowedY;
@@ -135,4 +139,8 @@ void Themp::Game::Stop()
 void Themp::Game::AddObject3D(Object3D * obj)
 {
 	m_Objects3D.push_back(obj);
+}
+void Themp::Game::AddCreature(Creature* creature)
+{
+	m_Creatures.push_back(creature);
 }

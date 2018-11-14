@@ -10,6 +10,7 @@
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempVideo.h"
+#include "ThempAudio.h"
 #include "ThempFileManager.h"
 #include "ThempGUIButton.h"
 #include "ThempFont.h"
@@ -66,7 +67,7 @@ void Themp::MainMenu::Start()
 
 	//Create Video material
 	std::vector<std::string> textures = { "" };
-	std::vector<std::uint8_t> types = { Material::DIFFUSE };
+	std::vector<std::uint8_t> types = { 0 };
 	videoMat = Themp::System::tSys->m_Resources->GetMaterial(std::string("Video"), textures, types, "ScreenSpace", false);
 	m_VideoObject->SetMaterial(videoMat);
 	videoMat->SetTexture(m_Video->m_Tex);
@@ -156,16 +157,15 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	//GoToSplash();
-	GoToMenu();
+	GoToSplash();
+	//GoToMenu();
 }
 
 
 
 
 Themp::GUIButton* InitialClick = nullptr;
-int cursorIndex = 0;
-int blockType = 0;
+int soundIndex = 0;
 float waitingTime = 0;
 XMFLOAT2 mouseOffset = XMFLOAT2(0.166, 0.18);
 void Themp::MainMenu::Update(double dt)
@@ -194,6 +194,7 @@ void Themp::MainMenu::Update(double dt)
 		if (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2)
 		{
 			m_DoPlayVideo = false;
+			m_Video->Stop();
 			GoToLoading();
 		}
 		if (m_DoPlayVideo && m_Video)
@@ -259,6 +260,8 @@ void Themp::MainMenu::Update(double dt)
 								System::tSys->m_Quitting = true;
 								break;
 							}
+
+							Themp::System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("BUTTON1.WAV"));
 						}
 						else
 						{
@@ -268,16 +271,14 @@ void Themp::MainMenu::Update(double dt)
 				}
 			}
 		}
-		if (ImGui::Button("Next Tex"))
+		if (ImGui::Button("Play Sound"))
 		{
-			m_Cursor->SetTexture(FileManager::GetBlockTexture(blockType));
-			m_Cursor->SetScale(1, 1);
+			
+			Themp::System::tSys->m_Audio->PlayOneShot(FileManager::GetSoundByIndex(soundIndex));
+			//soundIndex++;
 		}
-		if(ImGui::SliderInt("Block Type", &blockType, 0, 7))
-		{
-			m_Cursor->SetTexture(FileManager::GetBlockTexture(blockType));
-			m_Cursor->SetScale(1, 1);
-		}
+		ImGui::SliderInt("Sound Index", &soundIndex, 0, 335);
+
 		break;
 	case MenuState::CampaignSelect:
 		if (ImGui::Button("Next Level"))
@@ -361,9 +362,9 @@ void Themp::MainMenu::Update(double dt)
 			}
 			if (g->m_Keys[256] == -1 && InitialClick == m_LevelSelectFlag) // just up
 			{
+				Themp::System::tSys->m_Audio->Stop(FileManager::GetSound("NICELAND.WAV"));
 				Stop();
 				g->LoadLevel(m_CurrentLevel);
-				System::Print("Clicked the flag!");
 			}
 		}
 		else
@@ -402,6 +403,8 @@ void MainMenu::GoToCampaignSelect()
 	m_Cursor->SetTexture(FileManager::GetMenuCursorTexture(0));
 	m_Cursor->SetScale(1, 1);
 	mouseOffset = XMFLOAT2(0.03, 0);
+
+	Themp::System::tSys->m_Audio->Play(FileManager::GetSound("NICELAND.WAV"),true);
 }
 void MainMenu::GoToContinue()
 {

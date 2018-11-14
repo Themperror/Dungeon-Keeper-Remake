@@ -130,9 +130,9 @@ Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::
 		if (textID < 0)continue;
 		GUITexture* tex = &m_Font->at(textID);
 		BYTE* texData = (BYTE*)tex->texture->m_Data;
-		for (size_t y = 0; y < tex->height; y++)
+		for (int y = 0; y < tex->height; y++)
 		{
-			for (size_t x = 0; x < tex->width; x++)
+			for (int x = 0; x < tex->width; x++)
 			{
 				int posX = lastX + x;
 				int posY = lastY + y;
@@ -165,10 +165,10 @@ void Themp::Font::SetVisibility(bool val)
 void Themp::Font::SetScale(float x, float y, float z)
 {
 	Texture* t = m_Texture->texture;
-	float originalW = (float)t->m_Width / 640.0; //original screen width
-	float originalH = (float)t->m_Height / 480.0; //original screen height
-	float newW = originalW * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENWIDTH];
-	float newH = originalH * 2.0;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
+	float originalW = (float)t->m_Width / 640.0f; //original screen width
+	float originalH = (float)t->m_Height / 480.0f; //original screen height
+	float newW = originalW * 2.0f;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENWIDTH];
+	float newH = originalH * 2.0f;// *4.0 ;//* System::tSys->m_SVars[SVAR_SCREENHEIGHT];
 
 	m_ScreenObj->m_Renderable->SetScale(x * newW, y * newH, z);
 }

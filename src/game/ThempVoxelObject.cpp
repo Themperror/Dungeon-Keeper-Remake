@@ -1,18 +1,14 @@
 #include "ThempSystem.h"
 #include "ThempVoxelObject.h"
-#include "ThempLevel.h"
-#include "ThempGame.h"
+#include "ThempLevelData.h"
 #include "ThempFileManager.h"
 #include "ThempResources.h"
 #include "../Library/imgui.h"
-#include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempMesh.h"
 #include "../Engine/ThempMaterial.h"
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
-#include "../Engine/ThempDebugDraw.h"
-#include <DirectXMath.h>
 
 D3D11_INPUT_ELEMENT_DESC VoxelInputLayoutDesc[] =
 {
@@ -39,11 +35,11 @@ VoxelObject::~VoxelObject()
 	}
 }
 
-VoxelObject::VoxelObject(Level* level)
+VoxelObject::VoxelObject(LevelData* leveldata)
 {
-	m_Level = level;
+	m_Level = leveldata;
 	m_Obj3D = new Object3D();
-	m_Obj3D->SetPosition(-((MAP_SIZE_TILES*3) / 2), 0,-((MAP_SIZE_TILES*3) / 2));
+	m_Obj3D->SetPosition(0,0,0);
 
 
 	Mesh* m = new Mesh();
@@ -77,16 +73,6 @@ VoxelObject::VoxelObject(Level* level)
 			m_Level->m_BlockMap[z][y][x].active = true;
 			m_Level->m_BlockMap[z][y][x].randValue = rand();
 		}
-	//for (size_t z = 0; z < MAP_SIZE_HEIGHT; z++)
-	//{
-	//	for (size_t y = 0; y < MAP_SIZE_SUBTILES; y++)
-	//	{
-	//		for (size_t x = 0; x < MAP_SIZE_SUBTILES; x++)
-	//		{
-	//			m_Level->m_BlockMap[z][y][x].active = true;
-	//		}
-	//	}
-	//}
 
 }
 void VoxelObject::Update(float dt)
@@ -105,64 +91,44 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 	const int tileRadius = 8;
 	const int subTileRadius = tileRadius * 3;
 
-	int camTilePosX = (camX + (MAP_SIZE_SUBTILES_RENDER / 2)) / 3;
-	int camTilePosY = (camY + (MAP_SIZE_SUBTILES_RENDER / 2)) / 3;
+	XMINT2 camTilePos = LevelData::WorldToTile(XMFLOAT3(camX, 2, camY));
 
-	int camSubTilePosX = camTilePosX * 3;
-	int camSubTilePosY = camTilePosY * 3;
+	int camSubTilePosX = camTilePos.x * 3;
+	int camSubTilePosY = camTilePos.y * 3;
 
 
 	//make sure we're within bounds of a of the 85x85 map with a 16x16 tile area
 	//This is working in subtiles
-	if (camTilePosX - tileRadius < 0)
+	if (camTilePos.x - tileRadius < 0)
 	{
-		camTilePosX = tileRadius;
+		camTilePos.x = tileRadius;
 		camSubTilePosX = subTileRadius;
 	}
-	else if (camTilePosX + tileRadius > MAP_SIZE_TILES)
+	else if (camTilePos.x + tileRadius >= MAP_SIZE_TILES)
 	{
-		camTilePosX = MAP_SIZE_TILES - tileRadius;
-		camSubTilePosX = MAP_SIZE_SUBTILES_RENDER - subTileRadius;
+		camTilePos.x = MAP_SIZE_TILES - tileRadius - 1;
+		camSubTilePosX = MAP_SIZE_SUBTILES_RENDER - subTileRadius - 1;
 	}
-	if (camTilePosY - tileRadius < 0)
+	if (camTilePos.y - tileRadius < 0)
 	{
-		camTilePosY = tileRadius;
+		camTilePos.y = tileRadius;
 		camSubTilePosY = subTileRadius;
 	}
-	else if (camTilePosY + tileRadius > MAP_SIZE_TILES)
+	else if (camTilePos.y + tileRadius >= MAP_SIZE_TILES)
 	{
-		camTilePosY = MAP_SIZE_TILES - tileRadius;
-		camSubTilePosY = MAP_SIZE_SUBTILES_RENDER - subTileRadius;
+		camTilePos.y = MAP_SIZE_TILES - tileRadius - 1;
+		camSubTilePosY = MAP_SIZE_SUBTILES_RENDER - subTileRadius - 1;
 	}
 	size_t solidBlocks = 0;
 
-	assert(camTilePosX + 8 <= 85);
-	assert(camTilePosY + 8 <= 85);
-	assert(camTilePosY - 8 >= 0);
-	assert(camTilePosX - 8 >= 0);
-	for (int y = camTilePosY-8; y < camTilePosY+8; y++)
+	assert(camTilePos.x + 8 <= 84);
+	assert(camTilePos.y + 8 <= 84);
+	assert(camTilePos.y - 8 >= 0);
+	assert(camTilePos.x - 8 >= 0);
+	for (int y = camTilePos.y -8; y < camTilePos.y +8; y++)
 	{
-		for (int x = camTilePosX-8; x < camTilePosX+8; x++)
+		for (int x = camTilePos.x -8; x < camTilePos.x+8; x++)
 		{
-			//RenderTile tileOut = { };
-			//size_t numBlocks = CreateFromTile(m_Level->m_Map[y][x], tileOut);
-			//solidBlocks += numBlocks;
-			//
-			//for (size_t yy = 0; yy < 3; yy++)
-			//{
-			//	for (size_t xx = 0; xx < 3; xx++)
-			//	{
-			//		for (size_t z = 0; z < 8; z++)
-			//		{
-			//			assert(y + yy < 256);
-			//			assert(x + xx < 256);
-			//			Block& b = tileOut.subTile[yy][xx][z];
-			//			b.randValue = m_Level->m_BlockMap[z][y*3 + yy][x*3 + xx].randValue;
-			//			m_Level->m_BlockMap[z][y*3 + yy][x*3 + xx] = b;
-			//		}
-			//	}
-			//}
-			//DoUVs(tile.type, x, y);
 			solidBlocks += m_Level->m_Map.m_Tiles[y][x].numBlocks;
 		}
 	}
@@ -187,8 +153,8 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 	{
 		for (int x = camSubTilePosX - subTileRadius; x < camSubTilePosX + subTileRadius; x++)
 		{
-			assert(x <= 255);
-			assert(y <= 255);
+			assert(x <= 254);
+			assert(y <= 254);
 			assert(x >= 0);
 			assert(y >= 0);
 			if (!m_Level->m_BlockMap[0][y][x].active) continue;
@@ -378,8 +344,8 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 		{
 			if (!m_Level->m_BlockMap[1][y][x].active)continue;
 
-			const int yP = floor((float)y / 3.0f);
-			const int xP = floor((float)x / 3.0f);
+			const int yP = y / 3;
+			const int xP = x / 3;
 			const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
 			if (tileType == Type_Earth || IsWall(tileType))
 			{
@@ -474,8 +440,8 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 			}
 			else
 			{
-				assert(x <= 255);
-				assert(y <= 255);
+				assert(x <= 254);
+				assert(y <= 254);
 				assert(x >= 0);
 				assert(y >= 0);
 				if (m_Level->m_BlockMap[1][y][x].active)
@@ -590,129 +556,144 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 		{
 			for (int x = camSubTilePosX - subTileRadius; x < camSubTilePosX + subTileRadius; x++)
 			{
-				const int yP = floor((float)y / 3.0f);
-				const int xP = floor((float)x / 3.0f);
-				const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
-				assert(x <= 255);
-				assert(y <= 255);
+				assert(x <= 254);
+				assert(y <= 254);
 				assert(x >= 0);
 				assert(y >= 0);
-				if (m_Level->m_BlockMap[z][y][x].active)
+				if (!m_Level->m_BlockMap[z][y][x].active)continue;
+
+				const int yP = y / 3;
+				const int xP = x / 3;
+				const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
+
+				if (tileType == Type_Gold || tileType == Type_Gem)
 				{
-					if (tileType == Type_Gold || tileType == Type_Gem)
+					uint16_t texIndex = TypeToTexture(tileType);
+
+					const std::vector<XMFLOAT2>& tex0 = BlockTextures[texIndex].top[m_Level->m_BlockMap[z][y][x].randValue % BlockTextures[texIndex].top.size()];
+					m_Level->m_BlockMap[z][y][x].uv[0] = tex0[m_AnimationIndex % tex0.size()];
+					m_Level->m_BlockMap[z][y][x].uv[1] = tex0[m_AnimationIndex % tex0.size()];
+
+					if (z == 5)
 					{
-						uint16_t texIndex = TypeToTexture(tileType);
-						if (z == 5)
+						if (m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+						{
+							const std::vector<XMFLOAT2>& tex0 = BlockTextures[7].top[1];
+							m_Level->m_BlockMap[5][y][x].uv[2] = tex0[m_AnimationIndex % tex0.size()];
+						}
+						else
 						{
 							const std::vector<XMFLOAT2>& tex0 = BlockTextures[texIndex].top[m_Level->m_BlockMap[1][y][x].randValue % BlockTextures[texIndex].top.size()];
 							m_Level->m_BlockMap[5][y][x].uv[2] = tex0[m_AnimationIndex % tex0.size()];
 						}
-						const std::vector<XMFLOAT2>& tex0 = BlockTextures[texIndex].top[m_Level->m_BlockMap[z][y][x].randValue % BlockTextures[texIndex].top.size()];
-						m_Level->m_BlockMap[z][y][x].uv[0] = tex0[m_AnimationIndex % tex0.size()];
-						m_Level->m_BlockMap[z][y][x].uv[1] = tex0[m_AnimationIndex % tex0.size()];
 					}
+				}
 
+				XMFLOAT2 uv = m_Level->m_BlockMap[z][y][x].uv[0];
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (x + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y][x + 1].active) // right
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
 
-					XMFLOAT2 uv = m_Level->m_BlockMap[z][y][x].uv[0];
-					uv.x = uv.x / 8.0;
-					uv.y = uv.y / 68.0;
-					if (x + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y][x + 1].active) // right
-					{
-						m_Indices[currentIndex + 0] = vIndex + 2;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 0;
-						m_Indices[currentIndex + 3] = vIndex + 3;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 0;
-						currentIndex += 6;
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
 
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
+				}
+				if (x - 1 <= 0 || !m_Level->m_BlockMap[z][y][x - 1].active) // left
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
 
-					}
-					if (x - 1 <= 0 || !m_Level->m_BlockMap[z][y][x - 1].active) // left
-					{
-						m_Indices[currentIndex + 0] = vIndex + 2;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 0;
-						m_Indices[currentIndex + 3] = vIndex + 3;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 0;
-						currentIndex += 6;
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
+				}
+				uv = m_Level->m_BlockMap[z][y][x].uv[1];
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (y - 1 <= 0 || !m_Level->m_BlockMap[z][y - 1][x].active) // back
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 0 };
-					}
-					uv = m_Level->m_BlockMap[z][y][x].uv[1];
-					uv.x = uv.x / 8.0;
-					uv.y = uv.y / 68.0;
-					if (y - 1 <= 0 || !m_Level->m_BlockMap[z][y - 1][x].active) // back
-					{
-						m_Indices[currentIndex + 0] = vIndex + 2;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 0;
-						m_Indices[currentIndex + 3] = vIndex + 3;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 0;
-						currentIndex += 6;
+					m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY, 0 };
+				}
+				if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y + 1][x].active) // front
+				{
+					m_Indices[currentIndex + 0] = vIndex + 0;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 2;
+					m_Indices[currentIndex + 3] = vIndex + 0;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 3;
+					currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY, 0 };
-					}
-					if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y + 1][x].active) // front
-					{
-						m_Indices[currentIndex + 0] = vIndex + 0;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 2;
-						m_Indices[currentIndex + 3] = vIndex + 0;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 3;
-						currentIndex += 6;
+					m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
+				}
 
-						m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 0 };
-					}
-					uv = m_Level->m_BlockMap[z][y][x].uv[2];
-					uv.x = uv.x / 8.0;
-					uv.y = uv.y / 68.0;
-					if (!m_Level->m_BlockMap[z - 1][y][x].active) // bottom
-					{
-						m_Indices[currentIndex + 0] = vIndex + 2;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 0;
-						m_Indices[currentIndex + 3] = vIndex + 3;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 0;
-						currentIndex += 6;
+				uv = m_Level->m_BlockMap[z][y][x].uv[2]; 
+				if (tileType != Type_Gold && tileType != Type_Gem && m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+				{
+					const std::vector<XMFLOAT2>& tex0 = BlockTextures[7].top[0];
+					uv = tex0[m_AnimationIndex % tex0.size()];
+				}
+				uv.x = uv.x / 8.0;
+				uv.y = uv.y / 68.0;
+				if (!m_Level->m_BlockMap[z - 1][y][x].active) // bottom
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y, 0 };
-					}
-					if (z + 1 >= MAP_SIZE_HEIGHT || !m_Level->m_BlockMap[z + 1][y][x].active) // top
-					{
-						m_Indices[currentIndex + 0] = vIndex + 2;
-						m_Indices[currentIndex + 1] = vIndex + 1;
-						m_Indices[currentIndex + 2] = vIndex + 0;
-						m_Indices[currentIndex + 3] = vIndex + 3;
-						m_Indices[currentIndex + 4] = vIndex + 2;
-						m_Indices[currentIndex + 5] = vIndex + 0;
-						currentIndex += 6;
+					m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y, 0 };
+				}
+				if (z + 1 >= MAP_SIZE_HEIGHT || !m_Level->m_BlockMap[z + 1][y][x].active) // top
+				{
+					m_Indices[currentIndex + 0] = vIndex + 2;
+					m_Indices[currentIndex + 1] = vIndex + 1;
+					m_Indices[currentIndex + 2] = vIndex + 0;
+					m_Indices[currentIndex + 3] = vIndex + 3;
+					m_Indices[currentIndex + 4] = vIndex + 2;
+					m_Indices[currentIndex + 5] = vIndex + 0;
+					currentIndex += 6;
 
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
-						m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 0 };
-						m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 0 };
-					}
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 0 };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 0 };
 				}
 			}
 		}
