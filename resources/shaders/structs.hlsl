@@ -39,12 +39,16 @@ cbuffer ConstantBuffer : register(b2)
     float _visualType;
     float _time;
 };
-cbuffer MeshBuffer : register(b3) //not sure if we'll still need a per-mesh buffer
+cbuffer CreatureDataBuffer : register(b3) 
 {
-	bool _hasNormal; //4
-	bool _hasRoughness; //8
-	bool _hasMisc; //12
-	bool _isEmissive; //16
+	float _AnimIndex;
+	float _NumAnim;
+	float _SpriteWidth;
+	bool _isFrozen; 
+    bool _isFlipped;
+    float _cdummy0; 
+    float _cdummy1; 
+    float _cdummy2;   
 };
 cbuffer LightConstantBuffer : register(b4)
 {
