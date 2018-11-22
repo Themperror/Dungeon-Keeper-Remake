@@ -77,9 +77,14 @@ namespace Themp
 		ImGuiIO& io = ImGui::GetIO();
 		double totalDelta = 0;
 		double time = 0;
-
+		const int captionSize = GetSystemMetrics(SM_CYCAPTION);
+		const int frameSizeY = GetSystemMetrics(SM_CYFIXEDFRAME);
+		const int frameSizeX = GetSystemMetrics(SM_CXFIXEDFRAME);
+		const int borderSizeY = GetSystemMetrics(SM_CYEDGE);
+		const int borderSizeX = GetSystemMetrics(SM_CXEDGE);
 		Print("Starting main loop!");
 		ShowCursor(false);
+		m_CursorShown = false;
 		while (!tSys->m_Quitting)
 		{
 			io = ImGui::GetIO();
@@ -168,7 +173,25 @@ namespace Themp
 				io.DeltaTime = (float)totalDelta;
 				m_Game->m_CursorWindowedX = (float)WindowedMouseX;
 				m_Game->m_CursorWindowedY = (float)WindowedMouseY;
-
+				if (m_Game->m_CursorPos.x < windowRect.left + borderSizeX + frameSizeX ||
+					m_Game->m_CursorPos.x > windowRect.right - borderSizeX - frameSizeX ||
+					m_Game->m_CursorPos.y >= windowRect.bottom - borderSizeY - frameSizeY ||
+					m_Game->m_CursorPos.y <= windowRect.top + captionSize + borderSizeY + frameSizeY)
+				{
+					if (!m_CursorShown)
+					{
+						m_CursorShown = true;
+						ShowCursor(true);
+					}
+				}
+				else
+				{
+					if (m_CursorShown)
+					{
+						m_CursorShown = false;
+						ShowCursor(false);
+					}
+				}
 				//windows Title bar messes up the actual mouse position for collision testing with the UI, so I adjust it to fit "good enough" since getting exact measurements from top and bottom is a pain
 				io.MousePos = ImVec2((float)WindowedMouseX, (float)WindowedMouseY);
 				io.DisplaySize = ImVec2((float)clientRect.right, (float)clientRect.bottom);
@@ -238,7 +261,11 @@ namespace Themp
 		m_GUI = nullptr;
 		delete m_D3D;
 		m_D3D = nullptr;
-		ShowCursor(true);
+		if (!m_CursorShown)
+		{
+			m_CursorShown = true;
+			ShowCursor(true);
+		}
 		ImGui::DestroyContext();
 	}
 }

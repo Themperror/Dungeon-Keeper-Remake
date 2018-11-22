@@ -390,6 +390,8 @@ namespace Themp
 	}
 	Camera::CameraType Camera::GetProjection()
 	{
+		//TODO TEMP FIX THIS
+		return CameraType::Orthographic;
 		return m_CamType;
 	}
 }

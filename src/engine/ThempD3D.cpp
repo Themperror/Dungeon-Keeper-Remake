@@ -3,6 +3,7 @@
 #include "ThempObject3D.h"
 #include "ThempGame.h"
 #include "ThempCreature.h"
+#include "ThempEntity.h"
 #include "ThempResources.h"
 #include "ThempMaterial.h"
 #include "ThempMesh.h"
@@ -370,6 +371,10 @@ namespace Themp
 			for (int i = 0; i < game.m_Creatures.size(); ++i)
 			{
 				game.m_Creatures[i]->Draw(_this);
+			}
+			for (int i = 0; i < game.m_Entities.size(); ++i)
+			{
+				game.m_Entities[i]->Draw(_this);
 			}
 		}
 		
