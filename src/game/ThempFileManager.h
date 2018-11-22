@@ -5,7 +5,7 @@
 namespace Themp
 {
 	struct Texture;
-	class Sound;
+	struct Sound;
 	struct FileData
 	{
 		BYTE* data;
@@ -86,8 +86,10 @@ namespace Themp
 	};
 	struct Sprite
 	{
-		Texture* texture;
+		int16_t unscaledW;
+		int16_t unscaledH;
 		int numAnim;
+		Texture* texture;
 	};
 	struct CreatureTab 
 	{ 

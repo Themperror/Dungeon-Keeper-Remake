@@ -387,7 +387,6 @@ Themp::Creature::Creature(CreatureData::CreatureType creatureIndex)
 
 	SetSprite(m_CreatureSpriteIndex);
 	m_Speed = 12.0;
-
 	m_Direction = XMFLOAT3(1, 0, 0);
 
 	m_CreatureCBData._AnimIndex = 0;
@@ -459,8 +458,20 @@ void Creature::Update(float delta)
 		//CreatureTaskManager::RemoveReinforcingTask()
 		//
 		
-
-		GetTask();
+		if (!m_Order.valid)
+		{
+			m_ImpTaskSearchTimer -= delta;
+			if (m_ImpTaskSearchTimer <= 0.0f)
+			{
+				GetTask();
+				if (!m_Order.valid)
+				{
+					//random timer from 1 to 2 seconds
+					m_ImpTaskSearchTimer = 1.0 + ((float)(rand() % 10)) / 10.0f;
+				}
+			}
+		}
+		
  		if (m_Order.valid)
 		{
 			int pathingResult = micropather::MicroPather::SOLVED;
@@ -476,7 +487,6 @@ void Creature::Update(float delta)
 					System::Print("Imp could not find path, resetting world pathing");
 					LevelData::PathsInvalidated = true;
 					CreatureTaskManager::UnlistCreatureFromTask(this);
-					StopOrder();
 				}
 			}
 			m_PathLerpTime += delta * m_Speed;
@@ -518,22 +528,31 @@ void Creature::Update(float delta)
 				}
 				else
 				{
-					if (m_Order.orderType == 0)//Mine
+					if (m_Order.orderType == CreatureTaskManager::Order_Mine)//Mine
 					{
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Attacking;
 						if (m_ImpSpecialTimer <= 0.0f)
 						{
 							const InstanceData& digInstance = LevelConfig::instanceData[INSTANCE_DIG];
 							m_ImpSpecialTimer = GAME_TURNS_TO_SECOND(digInstance.Time + digInstance.ActionTime + digInstance.ResetTime);
+							uint16_t miningType = Level::s_CurrentLevel->m_LevelData->GetTileType(m_Order.targetTilePos.y, m_Order.targetTilePos.x);
+							if (miningType == Type_Gold || miningType == Type_Gem)
+							{
+								m_CurrentGoldHold += LevelConfig::gameSettings[GameSettings::GAME_GOLD_PER_GOLD_BLOCK].Value / LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_GOLD].Value;
+							}
 							if (Level::s_CurrentLevel->m_LevelData->MineTile(m_Order.targetTilePos.y, m_Order.targetTilePos.x))
 							{
 								StopOrder();
 								CreatureTaskManager::RemoveMiningTask(m_Owner, m_Order.tile);
+							}
+							if (m_CurrentGoldHold >= m_CreatureData.GoldHold)
+							{						
+								CreatureTaskManager::UnlistCreatureFromTask(this);
 								GetTask();
 							}
 						}
 					}
-					else if(m_Order.orderType == 1) //Claim
+					else if(m_Order.orderType == CreatureTaskManager::Order_Claim) //Claim
 					{
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Claiming;
 						if (m_ImpSpecialTimer <= 0.0f)
@@ -549,7 +568,7 @@ void Creature::Update(float delta)
 							}
 						}
 					}
-					else //Reinforce
+					else if(m_Order.orderType == CreatureTaskManager::Order_Reinforce) //Reinforce
 					{
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Claiming;
 						if (m_ImpSpecialTimer <= 0.0f)
@@ -564,6 +583,24 @@ void Creature::Update(float delta)
 								GetTask();
 							}
 						}
+					}
+					else if (m_Order.orderType == CreatureTaskManager::Order_DeliverGold)
+					{
+						auto& room = Level::s_CurrentLevel->m_LevelData->m_Rooms[m_Owner][m_Order.tile->roomID];
+						room.roomFillAmount += m_CurrentGoldHold;
+						auto&& t = room.tiles.find(m_Order.tile);
+						t->second.tileValue += m_CurrentGoldHold;
+						Level::s_CurrentLevel->m_LevelData->AdjustRoomTile(room,t->second);
+						m_CurrentGoldHold = 0;
+						StopOrder();
+						GetTask();
+
+					//	System::Print("Creature.cpp || Unimplemented task: %i Deliver Gold!", m_Order.orderType);
+					}
+					else
+					{
+						
+						System::Print("Creature.cpp || Unimplemented task: %i", m_Order.orderType);
 					}
 				}
 			}
@@ -597,27 +634,47 @@ void Creature::Update(float delta)
 	}
 	m_Renderable->isDirty = true;
 
-	DebugDraw::Line(m_Renderable->m_Position, m_Renderable->m_Position + m_Direction * 3);
+	//DebugDraw::Line(m_Renderable->m_Position, m_Renderable->m_Position + m_Direction * 3);
 }
 void Creature::GetTask()
 {
-	if (!m_Order.valid)
+	if (m_Order.valid) return;
+	XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
+	int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+		
+	//priority - top to bottom:
+	//If full on gold -> bring to treasury
+	//Drag unconcious creatures to prison 
+	//Drag dead bodies to graveyard
+	//Mine Gold/Gem
+	//Mine Rock/Walls
+	//Claim tiles
+	//Collect Special / Traps / Spells
+	//Reinforce walls
+	//Build traps
+	//Deliver ANY gold
+	if (m_CurrentGoldHold >= m_CreatureData.GoldHold)
 	{
-		XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-		int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
-		m_Order = CreatureTaskManager::GetSoloMiningTask(this, areaCode);
-		if (!m_Order.valid)
-		{
-			m_Order = CreatureTaskManager::GetClaimingTask(this, areaCode);
-			if (!m_Order.valid)
-			{
-				m_Order = CreatureTaskManager::GetMiningTask(this, areaCode);
-				if (!m_Order.valid)
-				{
-					m_Order = CreatureTaskManager::GetReinforcingTask(this, areaCode);
-				}
-			}
-		}
+		m_Order = CreatureTaskManager::GetAvailableTreasury(this, areaCode);
+		if (m_Order.valid) return;
+	}
+
+	m_Order = CreatureTaskManager::GetSoloMiningTask(this, areaCode);
+	if (m_Order.valid)return;
+		
+	m_Order = CreatureTaskManager::GetClaimingTask(this, areaCode);
+	if (m_Order.valid) return;
+		
+	m_Order = CreatureTaskManager::GetMiningTask(this, areaCode);
+	if (m_Order.valid) return;
+
+	m_Order = CreatureTaskManager::GetReinforcingTask(this, areaCode);
+	if (m_Order.valid) return;
+
+	if (m_CurrentGoldHold > 0)
+	{
+		m_Order = CreatureTaskManager::GetAvailableTreasury(this, areaCode);
+		if (m_Order.valid) return;
 	}
 }
 void Creature::StopOrder()

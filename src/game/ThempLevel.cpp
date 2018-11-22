@@ -8,6 +8,7 @@
 #include "ThempFont.h"
 #include "ThempResources.h"
 #include "ThempVoxelObject.h"
+#include "ThempEntity.h"
 #include "../Library/imgui.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
@@ -114,7 +115,18 @@ void Level::Update(float delta)
 	ImGui::Checkbox("Wireframe", &D3D::s_D3D->m_Wireframe);
 
 	ImGui::Text("Controls: WASD for movement.\nHold Right Click to rotate the camera.\nPress T to use the tool on the current hovered Tile.\nPress 1 to set Pathfind Start, 2 to set Pathfind End, 3 to calculate Path.\nLeft click (and/or hold) to Mark tiles\n");
-	ImGui::Text("Current Selected Tool: %s", SelectedTool == 0 ? "None" : (SelectedTool == 1 ? "Destroy" : (SelectedTool == 2 ? "Claim" : SelectedTool == 3 ? "Marker" : "UnMarker")));
+	
+	char* ToolNames[7] =
+	{
+		"None",
+		"Destroy",
+		"Claim",
+		"Marker",
+		"Treasure Room",
+		"Hatchery",
+		"UnMarker",
+	};
+	ImGui::Text("Current Selected Tool: %s", ToolNames[SelectedTool]);
 	if (ImGui::Button("Tool: None"))
 	{
 		SelectedTool = 0;
@@ -127,28 +139,14 @@ void Level::Update(float delta)
 	{
 		SelectedTool = 2;
 	}
-	//ImGui::Image(m_MinimapData.texture->m_View, ImVec2(MAP_SIZE_SUBTILES_RENDER, MAP_SIZE_SUBTILES_RENDER));
-	//if (ImGui::Button("Claim Tile Blue"))
-	//{
-	//	ClaimTile(Owner_PlayerBlue, camTilePosY, camTilePosX);
-	//}
-	//if (ImGui::Button("Claim Tile Green"))
-	//{
-	//	ClaimTile(Owner_PlayerGreen, camTilePosY, camTilePosX);
-	//}
-	//if (ImGui::Button("Claim Tile Yellow"))
-	//{
-	//	ClaimTile(Owner_PlayerYellow, camTilePosY, camTilePosX);
-	//}
-	//if (ImGui::Button("Claim Tile White"))
-	//{
-	//	ClaimTile(Owner_PlayerWhite, camTilePosY, camTilePosX);
-	//}
-	//if (ImGui::Button("Claim Tile None"))
-	//{
-	//	ClaimTile(Owner_PlayerNone, camTilePosY, camTilePosX);
-	//}
-
+	if (ImGui::Button("Tool: Build Treasure Room"))
+	{
+		SelectedTool = 4;
+	}
+	if (ImGui::Button("Tool: Build Hatchery Room"))
+	{
+		SelectedTool = 5;
+	}
 
 	XMFLOAT3 mouseDir = g->m_Camera->ScreenToWorld(g->m_CursorWindowedX, g->m_CursorWindowedY);
 	XMFLOAT3 dir = Normalize(mouseDir - camPos);
@@ -176,16 +174,19 @@ void Level::Update(float delta)
 					m_LevelData->ClaimTile(Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
 			}
-			if (g->m_Keys['1'] == 2)
-			{
-				System::Print("Area code: %i",m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode);
-			}
-
 			if (g->m_Keys[256] == 2)
 			{
-				if (m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
+				if (SelectedTool == 4)
 				{
-					SelectedTool = 4;
+					m_LevelData->BuildRoom(Type_Treasure_Room, Owner_PlayerRed, tilePos.y, tilePos.x);
+				}
+				else if (SelectedTool == 5)
+				{
+					m_LevelData->BuildRoom(Type_Hatchery, Owner_PlayerRed, tilePos.y, tilePos.x);
+				}
+				else if (m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
+				{
+					SelectedTool = 6;
 					m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
 				else if(m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x))
@@ -199,7 +200,7 @@ void Level::Update(float delta)
 				{
 					m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
-				else if (SelectedTool == 4)
+				else if (SelectedTool == 6)
 				{
 					m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
@@ -245,6 +246,10 @@ void Level::Update(float delta)
 			m_Pather->Reset();
 			LevelData::PathsInvalidated = false;
 		}
+	}
+	for (int i = 0; i < m_LevelData->m_MapEntityUsed.size(); i++)
+	{
+		m_LevelData->m_MapEntityUsed[i]->Update(delta);
 	}
 	
 }
@@ -328,83 +333,83 @@ void Level::UpdateMinimap()
 			}
 			else if (tileType == Type_Rock)
 			{
-m_MiniMapScratchData[texPos + 0] = 0x00;
-m_MiniMapScratchData[texPos + 1] = 0x00;
-m_MiniMapScratchData[texPos + 2] = 0x00;
-m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x00;
+				m_MiniMapScratchData[texPos + 1] = 0x00;
+				m_MiniMapScratchData[texPos + 2] = 0x00;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType == Type_Lava)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x38;
-			m_MiniMapScratchData[texPos + 1] = 0x1C;
-			m_MiniMapScratchData[texPos + 2] = 0x00;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x38;
+				m_MiniMapScratchData[texPos + 1] = 0x1C;
+				m_MiniMapScratchData[texPos + 2] = 0x00;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType == Type_Water)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x65;
-			m_MiniMapScratchData[texPos + 1] = 0x4D;
-			m_MiniMapScratchData[texPos + 2] = 0x49;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x65;
+				m_MiniMapScratchData[texPos + 1] = 0x4D;
+				m_MiniMapScratchData[texPos + 2] = 0x49;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (IsWall(tileType))
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x5D;
-			m_MiniMapScratchData[texPos + 1] = 0x45;
-			m_MiniMapScratchData[texPos + 2] = 0x1C;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x5D;
+				m_MiniMapScratchData[texPos + 1] = 0x45;
+				m_MiniMapScratchData[texPos + 2] = 0x1C;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType == Type_Earth || tileType == Type_Earth_Torch)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x30;
-			m_MiniMapScratchData[texPos + 1] = 0x20;
-			m_MiniMapScratchData[texPos + 2] = 0x04;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x30;
+				m_MiniMapScratchData[texPos + 1] = 0x20;
+				m_MiniMapScratchData[texPos + 2] = 0x04;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType == Type_Gold)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x71;
-			m_MiniMapScratchData[texPos + 1] = 0x6D;
-			m_MiniMapScratchData[texPos + 2] = 0x18;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x71;
+				m_MiniMapScratchData[texPos + 1] = 0x6D;
+				m_MiniMapScratchData[texPos + 2] = 0x18;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType >= Type_Portal && tileType <= Type_Barracks)
 			{
-			if (tile.owner == Owner_PlayerNone)
-			{
-				m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[UnownedRoomColorIndex][0];
-				m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[UnownedRoomColorIndex][1];
-				m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[UnownedRoomColorIndex][2];
-				m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[UnownedRoomColorIndex][3];
-			}
-			else
-			{
-				m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[tile.owner][0];
-				m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[tile.owner][1];
-				m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[tile.owner][2];
-				m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[tile.owner][3];
-			}
+				if (tile.owner == Owner_PlayerNone)
+				{
+					m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[UnownedRoomColorIndex][0];
+					m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[UnownedRoomColorIndex][1];
+					m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[UnownedRoomColorIndex][2];
+					m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[UnownedRoomColorIndex][3];
+				}
+				else
+				{
+					m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[tile.owner][0];
+					m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[tile.owner][1];
+					m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[tile.owner][2];
+					m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[tile.owner][3];
+				}
 			}
 			else if (tileType >= Type_Wooden_DoorH && tileType <= Type_Magic_DoorV)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0x92;
-			m_MiniMapScratchData[texPos + 1] = 0x9A;
-			m_MiniMapScratchData[texPos + 2] = 0x51;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0x92;
+				m_MiniMapScratchData[texPos + 1] = 0x9A;
+				m_MiniMapScratchData[texPos + 2] = 0x51;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else if (tileType >= Type_Wooden_DoorH_Locked && tileType <= Type_Magic_DoorV_Locked)
 			{
-			m_MiniMapScratchData[texPos + 0] = 0xF7;
-			m_MiniMapScratchData[texPos + 1] = 0x86;
-			m_MiniMapScratchData[texPos + 2] = 0x5D;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0xF7;
+				m_MiniMapScratchData[texPos + 1] = 0x86;
+				m_MiniMapScratchData[texPos + 2] = 0x5D;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			else
 			{
-			m_MiniMapScratchData[texPos + 0] = 0xFF;
-			m_MiniMapScratchData[texPos + 1] = 0x0;
-			m_MiniMapScratchData[texPos + 2] = 0xFF;
-			m_MiniMapScratchData[texPos + 3] = 0xFF;
+				m_MiniMapScratchData[texPos + 0] = 0xFF;
+				m_MiniMapScratchData[texPos + 1] = 0x0;
+				m_MiniMapScratchData[texPos + 2] = 0xFF;
+				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			if (tile.marked[Owner_PlayerRed])
 			{

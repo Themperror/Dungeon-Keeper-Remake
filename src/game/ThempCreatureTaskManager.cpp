@@ -4,6 +4,7 @@
 #include "ThempGame.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
+#include "ThempLevelConfig.h"
 #include "ThempResources.h"
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempFunctions.h"
@@ -138,10 +139,10 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetMiningTask(Creature* r
 
 		int Walkable[4] =
 		{
-			(neighbours.North == N_WALKABLE || neighbours.North == N_WATER) && neighbourTiles.North.areaCode == areaCode,
-			(neighbours.East == N_WALKABLE || neighbours.East == N_WATER) && neighbourTiles.East.areaCode == areaCode,
-			(neighbours.South == N_WALKABLE || neighbours.South == N_WATER) && neighbourTiles.South.areaCode == areaCode,
-			(neighbours.West == N_WALKABLE || neighbours.West == N_WATER) && neighbourTiles.West.areaCode == areaCode,
+			(neighbours.North == N_WALKABLE || neighbours.North == N_WATER) && neighbourTiles.North->areaCode == areaCode,
+			(neighbours.East == N_WALKABLE || neighbours.East == N_WATER) && neighbourTiles.East->areaCode == areaCode,
+			(neighbours.South == N_WALKABLE || neighbours.South == N_WATER) && neighbourTiles.South->areaCode == areaCode,
+			(neighbours.West == N_WALKABLE || neighbours.West == N_WATER) && neighbourTiles.West->areaCode == areaCode,
 		};
 		if (task.assignedCreatures >= (Walkable[0] * 3 + Walkable[1] * 3 + Walkable[2] * 3 + Walkable[3] * 3))
 		{
@@ -182,13 +183,13 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetMiningTask(Creature* r
 
 		i->second.assignedCreatures++;
 		TaskedCreatures[player][requestee] = task;
-		return Order(true, creatureSubtilePos, task.tilePosition, 0, task.tile);
+		return Order(true, creatureSubtilePos, task.tilePosition, Order_Mine, task.tile);
 	}
-	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), 0, nullptr);
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
 }
 CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creature* requestee, int areaCode)
 {
-	uint8_t player = requestee->m_Owner;
+	const uint8_t player = requestee->m_Owner;
 	const XMINT2 subTileOffsets[4] =
 	{
 		XMINT2(0,3),
@@ -216,13 +217,13 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 
 		int Walkable[4] =
 		{
-			(neighbours.North == N_WALKABLE || neighbours.North == N_WATER) && neighbourTiles.North.areaCode == areaCode,
-			(neighbours.East == N_WALKABLE || neighbours.East == N_WATER) && neighbourTiles.East.areaCode == areaCode,
-			(neighbours.South == N_WALKABLE || neighbours.South == N_WATER) && neighbourTiles.South.areaCode == areaCode,
-			(neighbours.West == N_WALKABLE || neighbours.West == N_WATER) && neighbourTiles.West.areaCode == areaCode,
+			(neighbours.North == N_WALKABLE || neighbours.North == N_WATER) && neighbourTiles.North->areaCode == areaCode,
+			(neighbours.East == N_WALKABLE || neighbours.East == N_WATER) && neighbourTiles.East->areaCode == areaCode,
+			(neighbours.South == N_WALKABLE || neighbours.South == N_WATER) && neighbourTiles.South->areaCode == areaCode,
+			(neighbours.West == N_WALKABLE || neighbours.West == N_WATER) && neighbourTiles.West->areaCode == areaCode,
 		};
 		
-		XMINT2 taskSubTile = XMINT2(task.tilePosition.x * 3, task.tilePosition.y * 3);
+		const XMINT2 taskSubTile = XMINT2(task.tilePosition.x * 3, task.tilePosition.y * 3);
 		XMINT2 creatureSubtilePos;
 		int cameFrom = -1;
 		int creatureSpotIndex = -1;
@@ -248,7 +249,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 			continue;
 		}
 	SPOTFOUND:
-		XMINT2 creatureTilePos = XMINT2(creatureSubtilePos.x / 3, creatureSubtilePos.y / 3);
+		const XMINT2 creatureTilePos = XMINT2(creatureSubtilePos.x / 3, creatureSubtilePos.y / 3);
 		if (LevelData::m_Map.m_Tiles[creatureTilePos.y][creatureTilePos.x].areaCode != areaCode)
 		{
 			task.takenPositions[creatureSpotIndex] = nullptr;
@@ -257,14 +258,14 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 
 		i->second.assignedCreatures++;
 		TaskedCreatures[player][requestee] = task;
-		return Order(true, creatureSubtilePos, task.tilePosition, 0, task.tile);
+		return Order(true, creatureSubtilePos, task.tilePosition, Order_Mine, task.tile);
 	}
-	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), 0, nullptr);
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
 }
 
 CreatureTaskManager::Order Themp::CreatureTaskManager::GetClaimingTask(Creature* requestee, int areaCode)
 {
-	uint8_t player = requestee->m_Owner;
+	const uint8_t player = requestee->m_Owner;
 	for (auto i = ClaimingTasks[player].begin(); i != ClaimingTasks[player].end(); i++)
 	{
 		Task& task = i->second;
@@ -278,15 +279,15 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetClaimingTask(Creature*
 			task.takenPositions[0] = requestee;
 			i->second.assignedCreatures++;
 			TaskedCreatures[player][requestee] = task;
-			return Order(true, XMINT2(creaturePos.x,creaturePos.z), task.tilePosition, 1, task.tile);
+			return Order(true, XMINT2(creaturePos.x,creaturePos.z), task.tilePosition, Order_Claim, task.tile);
 		}
 	}
-	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), 1, nullptr);
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
 }
 
 CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creature* requestee, int areaCode)
 {
-	uint8_t player = requestee->m_Owner;
+	const uint8_t player = requestee->m_Owner;
 	const XMINT2 subTileOffsets[4] =
 	{
 		XMINT2(0,3),
@@ -303,17 +304,17 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 
 		int walkable[4] =
 		{
-			neighbours.North == N_WALKABLE && neighbourTiles.North.owner == player && neighbourTiles.North.areaCode == areaCode,
-			neighbours.East == N_WALKABLE && neighbourTiles.East.owner == player && neighbourTiles.East.areaCode == areaCode,
-			neighbours.South == N_WALKABLE && neighbourTiles.South.owner == player && neighbourTiles.South.areaCode == areaCode,
-			neighbours.West == N_WALKABLE && neighbourTiles.West.owner == player && neighbourTiles.West.areaCode == areaCode,
+			neighbours.North == N_WALKABLE && neighbourTiles.North->owner == player && neighbourTiles.North->areaCode == areaCode,
+			neighbours.East == N_WALKABLE && neighbourTiles.East->owner == player && neighbourTiles.East->areaCode == areaCode,
+			neighbours.South == N_WALKABLE && neighbourTiles.South->owner == player && neighbourTiles.South->areaCode == areaCode,
+			neighbours.West == N_WALKABLE && neighbourTiles.West->owner == player && neighbourTiles.West->areaCode == areaCode,
 		};
 		
 		if (task.assignedCreatures >= (walkable[0] + walkable[1] + walkable[2] + walkable[3]))
 		{
 			continue;
 		}
-		XMINT2 taskSubTile = XMINT2(task.tilePosition.x * 3, task.tilePosition.y * 3);
+		const XMINT2 taskSubTile = XMINT2(task.tilePosition.x * 3, task.tilePosition.y * 3);
 		XMINT2 creaturePos;
 		int cameFrom = -1;
 		for (int j = 0; j < 4; j++)
@@ -332,14 +333,42 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 		task.takenPositions[cameFrom] = requestee;
 		i->second.assignedCreatures++;
 		TaskedCreatures[player][requestee] = task;
-		return Order(true, creaturePos, task.tilePosition, 2, task.tile);
+		return Order(true, creaturePos, task.tilePosition, Order_Reinforce, task.tile);
 	}
-	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), 2,nullptr);
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None,nullptr);
 }
+CreatureTaskManager::Order Themp::CreatureTaskManager::GetAvailableTreasury(Creature* requestee, int areaCode)
+{
+	const uint8_t owner = requestee->m_Owner;
+	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
+	auto& it = rooms.begin();
+	while (it != rooms.end())
+	{
+		if (it->second.areaCode == areaCode && it->second.roomType == Type_Treasure_Room)
+		{
+			if (it->second.roomFillPercentage != 100)
+			{
+				const int roomMaxGoldPerTile = LevelConfig::gameSettings[GameSettings::GAME_GOLD_PILE_MAXIMUM].Value * it->second.roomEfficiency / 100;
+				//find a suitable tile
+				auto& tileIt = it->second.tiles.begin();
+				while (tileIt != it->second.tiles.end())
+				{
+					if (tileIt->second.tileValue < roomMaxGoldPerTile)
+					{
+						return Order(true, XMINT2(tileIt->second.x*3 + 1, tileIt->second.y* 3 + 1), XMINT2(tileIt->second.x, tileIt->second.y), Order_DeliverGold, tileIt->first);
+					}
+					tileIt++;
+				}
+			}
+		}
+		it++;
+	}
 
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
+}
 void Themp::CreatureTaskManager::UnlistCreatureFromTask(Creature * requestee)
 {
-	uint8_t player = requestee->m_Owner;
+	const uint8_t player = requestee->m_Owner;
 	auto it = TaskedCreatures[player].find(requestee);
 	if (it != TaskedCreatures->end())
 	{

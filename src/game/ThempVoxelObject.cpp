@@ -357,17 +357,33 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 				{
 					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[animIndex];
 				}
+				else if (neighbour.North == N_LAVA)
+				{
+					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[m_Level->m_BlockMap[1][y][x].randValue & 1];
+				}
 				if (neighbour.South == N_WATER)
 				{
 					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[animIndex];
+				}
+				else if (neighbour.South == N_LAVA)
+				{
+					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[m_Level->m_BlockMap[1][y][x].randValue & 1];
 				}
 				if (neighbour.East == N_WATER)
 				{
 					m_Level->m_BlockMap[1][y][x].uv[0] = tex0[animIndex];
 				}
+				else if (neighbour.East == N_LAVA)
+				{
+					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[m_Level->m_BlockMap[1][y][x].randValue & 1];
+				}
 				if (neighbour.West == N_WATER)
 				{
 					m_Level->m_BlockMap[1][y][x].uv[0] = tex0[animIndex];
+				}
+				else if (neighbour.West == N_LAVA)
+				{
+					m_Level->m_BlockMap[1][y][x].uv[1] = tex0[m_Level->m_BlockMap[1][y][x].randValue & 1];
 				}
 
 				XMFLOAT2 uv = m_Level->m_BlockMap[1][y][x].uv[0];

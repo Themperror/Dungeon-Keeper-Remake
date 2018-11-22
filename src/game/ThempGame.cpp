@@ -4,6 +4,7 @@
 #include "ThempMainMenu.h"
 #include "ThempLevel.h"
 #include "ThempCreature.h"
+#include "ThempEntity.h"
 #include "ThempResources.h"
 #include "ThempLevelConfig.h"
 #include "../Library/imgui.h"
@@ -27,9 +28,12 @@ void Themp::Game::Start()
 	m_Camera->SetNear(0.1f);
 	m_Camera->SetFar(1000.0f);
 
+	System::Print("Creating Filemanager!");
 	m_FileManager = new FileManager();
+	System::Print("Creating MainMenu!");
 	m_MainMenu = new MainMenu();
 
+	System::Print("Loading Creature.txt!");
 	if (!LevelConfig::LoadConfiguration())
 	{
 		System::Print("Game::Start || Was not able to load data\\creature.txt!");
@@ -37,6 +41,7 @@ void Themp::Game::Start()
 		return;
 	}
 
+	System::Print("Starting MainMenu!");
 	m_MainMenu->Start();
 }
 void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)
@@ -143,4 +148,8 @@ void Themp::Game::AddObject3D(Object3D * obj)
 void Themp::Game::AddCreature(Creature* creature)
 {
 	m_Creatures.push_back(creature);
+}
+void Themp::Game::AddEntity(Entity* entity)
+{
+	m_Entities.push_back(entity);
 }

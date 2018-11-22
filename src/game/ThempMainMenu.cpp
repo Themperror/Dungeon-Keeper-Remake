@@ -157,8 +157,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	GoToSplash();
-	//GoToMenu();
+	//GoToSplash();
+	GoToMenu();
 }
 
 
@@ -364,7 +364,9 @@ void Themp::MainMenu::Update(double dt)
 			{
 				Themp::System::tSys->m_Audio->Stop(FileManager::GetSound("NICELAND.WAV"));
 				Stop();
+				System::Print("Loading Level: %i",m_CurrentLevel);
 				g->LoadLevel(m_CurrentLevel);
+				System::Print("Level Loaded!");
 			}
 		}
 		else
@@ -389,6 +391,7 @@ void MainMenu::GoToSplash()
 	SetEverythingHidden();
 	m_SplashScreenTexture->SetVisibility(true);
 	m_State = MenuState::Splash;
+	System::Print("Going to Splash");
 }
 void MainMenu::GoToCampaignSelect()
 {
@@ -405,6 +408,7 @@ void MainMenu::GoToCampaignSelect()
 	mouseOffset = XMFLOAT2(0.03, 0);
 
 	Themp::System::tSys->m_Audio->Play(FileManager::GetSound("NICELAND.WAV"),true);
+	System::Print("Going to Campaign Select");
 }
 void MainMenu::GoToContinue()
 {
@@ -431,12 +435,14 @@ void MainMenu::GoToLoading()
 	SetEverythingHidden();
 	m_State = MenuState::Loading;
 	m_LoadingScreenTexture->SetVisibility(true);
+	System::Print("Going to Loading");
 }
 void MainMenu::GoToIntro()
 {
 	SetEverythingHidden();
 	m_State = MenuState::Intro;
 	m_VideoObject->isVisible = true;
+	System::Print("Going to Intro");
 }
 void MainMenu::GoToMenu()
 {
@@ -456,6 +462,7 @@ void MainMenu::GoToMenu()
 	}
 	m_TextObject->SetVisibility(true);
 	mouseOffset = XMFLOAT2(0.166, 0.18);
+	System::Print("Going to Menu");
 }
 void MainMenu::SetEverythingHidden()
 {
@@ -483,6 +490,7 @@ void MainMenu::SetEverythingHidden()
 }
 void MainMenu::Stop()
 {
+	System::Print("Stopping Menu!");
 	if (!m_IsDone)
 	{
 		if (m_Video)
@@ -546,8 +554,11 @@ void MainMenu::Stop()
 			delete m_Cursor;
 			m_Cursor = nullptr;
 		}
+		if (m_VideoObject)
+		{
+			m_VideoObject->isVisible = false;
+		}
 		System::tSys->m_Game->m_Objects3D.clear();
-		m_VideoObject->isVisible = false;
 		m_IsDone = true;
 	}
 }

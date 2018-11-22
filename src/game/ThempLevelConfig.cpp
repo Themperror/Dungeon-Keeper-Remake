@@ -1,6 +1,7 @@
 #include "ThempSystem.h"
 #include "ThempLevelConfig.h"
 #include "ThempFileManager.h"
+#include "ThempTileArrays.h"
 #include <sstream>
 #include <unordered_map>
 using namespace Themp;
@@ -730,4 +731,28 @@ bool LevelConfig::LoadConfiguration()
 		}
 	}
 	return true;
+}
+int LevelConfig::TypeToRoom(uint16_t type)
+{
+	type = type & 0xFF;
+	switch (type)
+	{
+		case Type_Portal: return ROOM_ENTRANCE;
+		case Type_Treasure_Room: return ROOM_TREASURE_ROOM;
+		case Type_Library:return ROOM_RESEARCH_ROOM;
+		case Type_Prison:return ROOM_PRISON_ROOM;
+		case Type_Torture_Room :return ROOM_TORTURE_ROOM;
+		case Type_Training_Room :return ROOM_TRAINING_AREA;
+		case Type_Dungeon_Heart:return ROOM_DUNGEON_HEART;
+		case Type_Workshop:return ROOM_WORKSHOP_ROOM;
+		case Type_Scavenger_Room:return ROOM_SCAVENGER;
+		case Type_Temple:return ROOM_TEMPLE;
+		case Type_Graveyard:return ROOM_GRAVEYARD;
+		case Type_Hatchery :return ROOM_HATCHERY;
+		case Type_Lair:return ROOM_LAIR;
+		case Type_Barracks:return ROOM_BARRACK_ROOM;
+		case Type_Bridge:return ROOM_BRIDGE;
+		case Type_Guardpost:return ROOM_GUARD_POST;
+	}
+	return 0;
 }

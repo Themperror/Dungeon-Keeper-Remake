@@ -43,6 +43,20 @@ namespace Themp
 		Object3D* m_Renderable = nullptr;
 		Sprite* m_Sprite = nullptr;
 
+
+		// creature base data
+		CreatureData m_CreatureData;
+		//creature current data
+		int m_CurrentGoldHold = 0;
+		int m_CurrentHungerLevel = 0;
+		int m_CurrentHappiness = 0;
+		
+		
+		/////////
+
+
+
+
 		CreatureData::CreatureType m_CreatureID = CreatureData::CREATURE_IMP;
 		CreatureData::CreatureSpriteIndex m_CreatureSpriteIndex = CreatureData::CreatureSprite_Imp;
 		CreatureData::AnimationState m_AnimState = CreatureData::AnimationState::Walking;
@@ -58,11 +72,11 @@ namespace Themp
 
 		float m_PowerCooldownTimer[10];
 		float m_ImpSpecialTimer = 0.0f; //Dig, Claim etc..
+		float m_ImpTaskSearchTimer = 0.0f;
 
 		CreatureTaskManager::Order m_Order = CreatureTaskManager::Order(false, XMINT2(-1, -1), XMINT2(-1, -1), -1, nullptr);
 		micropather::MPVector<void*> m_Path;
 		CreatureConstantBuffer m_CreatureCBData;
-		CreatureData m_CreatureData;
 		ID3D11Buffer* m_CreatureCB = nullptr;
 	};
 };

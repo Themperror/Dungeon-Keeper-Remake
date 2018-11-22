@@ -463,6 +463,8 @@ namespace Themp
 
 		static bool LoadConfiguration();
 
+		static int TypeToRoom(uint16_t type);
+
 		static CreatureData creatureData[32];
 		static RoomData roomData[17];
 		static MagicData magicData[20];

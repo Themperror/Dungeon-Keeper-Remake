@@ -14,6 +14,7 @@ namespace Themp
 	public:
 		CreatureTaskManager();
 		~CreatureTaskManager();
+		enum OrderType { Order_None, Order_Mine, Order_Claim, Order_Reinforce, Order_DeliverGold };
 		struct Task
 		{
 			Task()
@@ -69,6 +70,7 @@ namespace Themp
 		static Order GetSoloMiningTask(Creature * requestee, int areaCode);
 		static Order GetClaimingTask(Creature* requestee, int areaCode);
 		static Order GetReinforcingTask(Creature* requestee, int areaCode);
+		static Order GetAvailableTreasury(Creature * requestee, int areaCode);
 		static void UnlistCreatureFromTask(Creature* requestee);
 
 		static std::unordered_map<Tile*,Task> MiningTasks[4];

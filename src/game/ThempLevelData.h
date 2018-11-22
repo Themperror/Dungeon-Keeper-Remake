@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <stack>
 #include "ThempTileArrays.h"
 #include "ThempFileManager.h"
 namespace Themp
@@ -7,6 +8,47 @@ namespace Themp
 	class LevelData
 	{
 	public:
+		struct Room
+		{
+			struct RoomTile
+			{
+				int tileValue;
+				int x, y;
+				Tile* tile;
+			};
+			//Actual room data
+			int health;
+			int biggestSquare;
+			int tilecount;
+			int areaCode;
+			int roomID;
+			int roomType;
+			int roomEfficiency;
+			int roomFillAmount;
+			int roomFillPercentage;
+			std::unordered_map<Tile*, RoomTile> tiles;
+			Room& operator+=(const Room& rhs)
+			{
+				health += rhs.health;
+				biggestSquare = biggestSquare >= rhs.biggestSquare ? biggestSquare : rhs.biggestSquare;
+				tilecount += rhs.tilecount;
+				roomFillAmount += rhs.roomFillAmount;
+				auto& it = rhs.tiles.begin();
+				while (it != rhs.tiles.end())
+				{
+					tiles[it->first] = it->second;
+					it++;
+				}
+				assert(tilecount == tiles.size());
+				return *this;
+			}
+			void RecalcRoomData()
+			{
+				//recalc efficiency / fill amount
+				roomEfficiency = 100;
+				//roomFillPercentage = tilecount / roomFillAmount * 100;
+			}
+		};
 		struct clm_data
 		{
 			//Bit 0: Permanent - if set, the column is never overwritten
@@ -51,13 +93,20 @@ namespace Themp
 		bool MarkTile(uint8_t player, int y, int x);
 		void UnMarkTile(uint8_t player, int y, int x);
 		void UpdateArea(int minY, int maxY, int minX, int maxX);
+		uint16_t GetTileType(int y, int x);
 		bool HasLandNeighbour(const int pos[4], int position, int y, int x);
+		void SetRoomFloodID(int ID, int startID, uint16_t type, int y, int x);
+		void UpdateSurroundingRoomsAdd(uint16_t type, int y, int x);
+		void UpdateSurroundingRoomsRemove(uint16_t type, int y, int x);
+		Entity * GetMapEntity();
+		void AdjustRoomTile(const LevelData::Room & room, const LevelData::Room::RoomTile & roomTile);
 		void UpdateAreaCode(uint32_t newCode, uint16_t currentType, int ty, int tx);
 		bool CollectiveClaimRoom(uint16_t type, int ty, int tx);
 		void ClaimRoom(uint8_t newOwner, uint16_t type, int ty, int tx);
 		bool IsClaimableCorner(int y, int x);
 		bool IsOwnedRoom(uint8_t player, int y, int x);
 		void ClaimTile(uint8_t player, int y, int x);
+		bool BuildRoom(uint16_t type, uint8_t owner, int y, int x);
 		static XMINT2 WorldToTile(XMFLOAT3 pos);
 		static XMFLOAT3 TileToWorld(XMINT2 tPos);
 		static XMFLOAT3 WorldToSubtileFloat(XMFLOAT3 pos);
@@ -67,13 +116,17 @@ namespace Themp
 		void LoadLevelFileData();
 		int CreateFromTile(const Tile & tile, RenderTile & out);
 		int m_CurrentLevelNr;
-		static bool PathsInvalidated;
-		
+
+		std::stack<Entity*> m_MapEntityPool;
+		std::vector<Entity*> m_MapEntityUsed;
 		//Map that keeps the initial state of the map (for water/lava blocks)
 		TileMap m_OriginalMap;
 		//Map which the current changes to it (mined/dug out blocks, rooms etc..)
 		static TileMap m_Map;
+		static bool PathsInvalidated;
 		//Map in subtile format, used for pathfinding/picking
 		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
+
+		std::unordered_map<int32_t,Room> m_Rooms[6];
 	};
 };

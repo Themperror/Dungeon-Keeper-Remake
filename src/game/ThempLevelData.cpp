@@ -9,6 +9,7 @@
 #include "ThempCreatureTaskManager.h"
 #include "ThempAudio.h"
 #include "ThempVoxelObject.h"
+#include "ThempEntity.h"
 #include "../Library/imgui.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
@@ -23,19 +24,40 @@ using namespace Themp;
 
 TileMap LevelData::m_Map;
 bool LevelData::PathsInvalidated;
-
 uint32_t NextAreaCode = 0;
+int32_t nextRoomID = 0;
 LevelData::~LevelData()
 {
-
+	for (int i = 0; i < m_MapEntityUsed.size(); i++)
+	{
+		delete m_MapEntityUsed[i];
+	}
+	while(m_MapEntityPool.size() > 0)
+	{
+		delete m_MapEntityPool.top();
+		m_MapEntityPool.pop();
+	}
 }
 
 
 LevelData::LevelData(int levelIndex)
 {
 	m_CurrentLevelNr = levelIndex;
-	LoadLevelFileData();
 	PathsInvalidated = true;
+	m_Rooms[0].reserve(24);
+	m_Rooms[1].reserve(24);
+	m_Rooms[2].reserve(24);
+	m_Rooms[3].reserve(24);
+	m_Rooms[4].reserve(24);
+	m_Rooms[5].reserve(24);
+	for (int i = 0; i < 128; i++)
+	{
+		Entity* e = new Entity(Entity::Entity_Gold0_FP);
+		System::tSys->m_Game->AddEntity(e);
+		e->SetVisibility(false);
+		m_MapEntityPool.push(e);
+	}
+	LoadLevelFileData();
 }
 void LevelData::Init()
 {
@@ -190,6 +212,11 @@ END:
 	return hitData;
 }
 
+bool IsClaimableRoom(uint16_t type)
+{
+	return ((type >= Type_Portal && type <= Type_Barracks || type == Type_Bridge || type == Type_Guardpost) && type != Type_Dungeon_Heart);
+}
+
 //Selects a belonging RenderTile for the inputted tile (takes care of selecting the specific pieces of a room)
 int LevelData::CreateFromTile(const Tile& tile, RenderTile& out)
 {
@@ -234,6 +261,14 @@ int LevelData::CreateFromTile(const Tile& tile, RenderTile& out)
 	case Type_Dungeon_Heart:
 		memcpy(&out, &RenderTileMap[Tile_DUNGEON_HEART + usingType], sizeof(RenderTile));
 		numSolidBlocks += RenderTileMap[Tile_DUNGEON_HEART + usingType].activeBlocks;
+		break;
+	case Type_Treasure_Room:
+		memcpy(&out, &RenderTileMap[Tile_TREASURY + usingType], sizeof(RenderTile));
+		numSolidBlocks += RenderTileMap[Tile_TREASURY + usingType].activeBlocks;
+		break;
+	case Type_Hatchery:
+		memcpy(&out, &RenderTileMap[Tile_HATCHERY + usingType], sizeof(RenderTile));
+		numSolidBlocks += RenderTileMap[Tile_HATCHERY + usingType].activeBlocks;
 		break;
 	}
 
@@ -315,30 +350,39 @@ TileNeighbours LevelData::CheckNeighbours(uint16_t type, int y, int x)
 TileNeighbourTiles LevelData::GetNeighbourTiles(int y, int x)
 {
 	TileNeighbourTiles nInfo = { 0 };
-	nInfo.NorthWest.owner = m_Map.m_Tiles[y + 1][x - 1].owner;
-	nInfo.NorthWest.type = m_Map.m_Tiles[y + 1][x - 1].type;
-	nInfo.NorthWest.areaCode = m_Map.m_Tiles[y + 1][x - 1].areaCode;
-	nInfo.North.owner = m_Map.m_Tiles[y + 1][x].owner;
-	nInfo.North.type = m_Map.m_Tiles[y + 1][x].type;
-	nInfo.North.areaCode = m_Map.m_Tiles[y + 1][x].areaCode;
-	nInfo.NorthEast.owner = m_Map.m_Tiles[y + 1][x + 1].owner;
-	nInfo.NorthEast.type = m_Map.m_Tiles[y + 1][x + 1].type;
-	nInfo.NorthEast.areaCode = m_Map.m_Tiles[y + 1][x + 1].areaCode;
-	nInfo.SouthWest.owner = m_Map.m_Tiles[y - 1][x - 1].owner;
-	nInfo.SouthWest.type = m_Map.m_Tiles[y - 1][x - 1].type;
-	nInfo.SouthWest.areaCode = m_Map.m_Tiles[y - 1][x - 1].areaCode;
-	nInfo.South.owner = m_Map.m_Tiles[y - 1][x].owner;
-	nInfo.South.type = m_Map.m_Tiles[y - 1][x].type;
-	nInfo.South.areaCode = m_Map.m_Tiles[y - 1][x].areaCode;
-	nInfo.SouthEast.owner = m_Map.m_Tiles[y - 1][x + 1].owner;
-	nInfo.SouthEast.type = m_Map.m_Tiles[y - 1][x + 1].type;
-	nInfo.SouthEast.areaCode = m_Map.m_Tiles[y - 1][x + 1].areaCode;
-	nInfo.East.owner = m_Map.m_Tiles[y][x + 1].owner;
-	nInfo.East.type = m_Map.m_Tiles[y][x + 1].type;
-	nInfo.East.areaCode = m_Map.m_Tiles[y][x + 1].areaCode;
-	nInfo.West.owner = m_Map.m_Tiles[y][x - 1].owner;
-	nInfo.West.type = m_Map.m_Tiles[y][x - 1].type;
-	nInfo.West.areaCode = m_Map.m_Tiles[y][x - 1].areaCode;
+	//nInfo.NorthWest.owner = m_Map.m_Tiles[y + 1][x - 1].owner;
+	//nInfo.NorthWest.type = m_Map.m_Tiles[y + 1][x - 1].type;
+	//nInfo.NorthWest.areaCode = m_Map.m_Tiles[y + 1][x - 1].areaCode;
+	//nInfo.North.owner = m_Map.m_Tiles[y + 1][x].owner;
+	//nInfo.North.type = m_Map.m_Tiles[y + 1][x].type;
+	//nInfo.North.areaCode = m_Map.m_Tiles[y + 1][x].areaCode;
+	//nInfo.NorthEast.owner = m_Map.m_Tiles[y + 1][x + 1].owner;
+	//nInfo.NorthEast.type = m_Map.m_Tiles[y + 1][x + 1].type;
+	//nInfo.NorthEast.areaCode = m_Map.m_Tiles[y + 1][x + 1].areaCode;
+	//nInfo.SouthWest.owner = m_Map.m_Tiles[y - 1][x - 1].owner;
+	//nInfo.SouthWest.type = m_Map.m_Tiles[y - 1][x - 1].type;
+	//nInfo.SouthWest.areaCode = m_Map.m_Tiles[y - 1][x - 1].areaCode;
+	//nInfo.South.owner = m_Map.m_Tiles[y - 1][x].owner;
+	//nInfo.South.type = m_Map.m_Tiles[y - 1][x].type;
+	//nInfo.South.areaCode = m_Map.m_Tiles[y - 1][x].areaCode;
+	//nInfo.SouthEast.owner = m_Map.m_Tiles[y - 1][x + 1].owner;
+	//nInfo.SouthEast.type = m_Map.m_Tiles[y - 1][x + 1].type;
+	//nInfo.SouthEast.areaCode = m_Map.m_Tiles[y - 1][x + 1].areaCode;
+	//nInfo.East.owner = m_Map.m_Tiles[y][x + 1].owner;
+	//nInfo.East.type = m_Map.m_Tiles[y][x + 1].type;
+	//nInfo.East.areaCode = m_Map.m_Tiles[y][x + 1].areaCode;
+	//nInfo.West.owner = m_Map.m_Tiles[y][x - 1].owner;
+	//nInfo.West.type = m_Map.m_Tiles[y][x - 1].type;
+	//nInfo.West.areaCode = m_Map.m_Tiles[y][x - 1].areaCode;
+
+	nInfo.NorthWest = &m_Map.m_Tiles[y + 1][x - 1];
+	nInfo.North = &m_Map.m_Tiles[y + 1][x];
+	nInfo.NorthEast = &m_Map.m_Tiles[y + 1][x + 1];
+	nInfo.SouthWest = &m_Map.m_Tiles[y - 1][x - 1];
+	nInfo.South = &m_Map.m_Tiles[y - 1][x];
+	nInfo.SouthEast = &m_Map.m_Tiles[y - 1][x + 1];
+	nInfo.East = &m_Map.m_Tiles[y][x + 1];
+	nInfo.West = &m_Map.m_Tiles[y][x - 1];
 	return nInfo;
 }
 
@@ -411,7 +455,7 @@ uint8_t Themp::LevelData::GetSubtileHeight(int tileY, int tileX, int subTileY, i
 uint16_t LevelData::HandleSpecialCases(int yPos, int xPos)
 {
 	uint16_t type = m_Map.m_Tiles[yPos][xPos].type & 0xFF;
-	if (type != Type_Dungeon_Heart && type != Type_Portal) return type;
+	if (type != Type_Dungeon_Heart && type != Type_Portal && !IsClaimableRoom(type)) return type;
 	if (yPos >= 1 && yPos < MAP_SIZE_TILES && xPos >= 1 && xPos < MAP_SIZE_TILES)
 	{
 		if (L8(m_Map.m_Tiles[yPos - 1][xPos].type) != type && L8(m_Map.m_Tiles[yPos + 1][xPos].type) == type) // U
@@ -560,11 +604,11 @@ void LevelData::DestroyTile(int y, int x)
 		uint32_t lowestAreaCode = NextAreaCode;
 		for (int i = 0; i < 4; i++)
 		{
-			if (neighbours.Axii[i].areaCode > 0 && (neighbours.Axii[i].type & 0xFF) != Type_Lava)
+			if (neighbours.Axii[i]->areaCode > 0 && (neighbours.Axii[i]->type & 0xFF) != Type_Lava)
 			{
-				if (neighbours.Axii[i].areaCode < lowestAreaCode)
+				if (neighbours.Axii[i]->areaCode < lowestAreaCode)
 				{
-					lowestAreaCode = neighbours.Axii[i].areaCode;
+					lowestAreaCode = neighbours.Axii[i]->areaCode;
 				}
 			}
 		}
@@ -617,10 +661,6 @@ void LevelData::UnMarkTile(uint8_t player, int y, int x)
 	CreatureTaskManager::RemoveMiningTask(player, &m_Map.m_Tiles[y][x]);
 	System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("DIGMARK.WAV"));
 }
-bool IsClaimableRoom(uint16_t type)
-{
-	return ((type >= Type_Portal && type <= Type_Barracks || type == Type_Bridge || type == Type_Guardpost) && type != Type_Dungeon_Heart);
-}
 
 //in Tile Positions
 void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
@@ -662,9 +702,10 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				}
 				for (int i = 0; i < 4; i++)
 				{
-					if(neighbourTiles.Axii[i].owner != Owner_PlayerWhite && neighbourTiles.Axii[i].owner != Owner_PlayerNone && ( (neighbourTiles.Axii[i].type & 0xFF) == Type_Claimed_Land || IsClaimableRoom(neighbourTiles.Axii[i].type & 0xFF)))
+					uint16_t nType = (neighbourTiles.Axii[i]->type & 0xFF);
+					if(neighbourTiles.Axii[i]->owner != Owner_PlayerWhite && neighbourTiles.Axii[i]->owner != Owner_PlayerNone && (nType == Type_Claimed_Land || IsClaimableRoom(nType)))
 					{
-						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i].owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
+						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i]->owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
 					}
 				}
 			}
@@ -676,9 +717,10 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				}
 				for (int i = 0; i < 4; i++)
 				{
-					if (neighbourTiles.Axii[i].owner != m_Map.m_Tiles[y][x].owner && neighbourTiles.Axii[i].owner != Owner_PlayerWhite && neighbourTiles.Axii[i].owner != Owner_PlayerNone && ((neighbourTiles.Axii[i].type & 0xFF) == Type_Claimed_Land || IsClaimableRoom(neighbourTiles.Axii[i].type & 0xFF)))
+					uint16_t nType = (neighbourTiles.Axii[i]->type & 0xFF);
+					if (neighbourTiles.Axii[i]->owner != m_Map.m_Tiles[y][x].owner && neighbourTiles.Axii[i]->owner != Owner_PlayerWhite && neighbourTiles.Axii[i]->owner != Owner_PlayerNone && (nType == Type_Claimed_Land || IsClaimableRoom(nType)))
 					{
-						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i].owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
+						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i]->owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
 					}
 				}
 			}
@@ -690,9 +732,10 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				}
 				for (int i = 0; i < 4; i++)
 				{
-					if (neighbourTiles.Axii[i].owner != m_Map.m_Tiles[y][x].owner && neighbourTiles.Axii[i].owner != Owner_PlayerWhite && neighbourTiles.Axii[i].owner != Owner_PlayerNone && ((neighbourTiles.Axii[i].type & 0xFF) == Type_Claimed_Land || IsClaimableRoom(neighbourTiles.Axii[i].type & 0xFF)))
+					uint16_t nType = (neighbourTiles.Axii[i]->type & 0xFF);
+					if (neighbourTiles.Axii[i]->owner != m_Map.m_Tiles[y][x].owner && neighbourTiles.Axii[i]->owner != Owner_PlayerWhite && neighbourTiles.Axii[i]->owner != Owner_PlayerNone && (nType == Type_Claimed_Land || IsClaimableRoom(nType)))
 					{
-						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i].owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
+						CreatureTaskManager::AddClaimingTask(neighbourTiles.Axii[i]->owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
 					}
 				}
 			}
@@ -714,7 +757,8 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 
 						if (!markers[player])
 						{
-							if (neighbourTiles.Axii[i].owner == player && ((neighbourTiles.Axii[i].type & 0xFF) == Type_Claimed_Land || IsClaimableRoom(neighbourTiles.Axii[i].type & 0xFF)))
+							uint16_t nType = (neighbourTiles.Axii[i]->type & 0xFF);
+							if (neighbourTiles.Axii[i]->owner == player && (nType == Type_Claimed_Land || IsClaimableRoom(nType)))
 							{
 								CreatureTaskManager::AddReinforcingTask(player, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
 							}
@@ -741,6 +785,10 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 		}
 	}
 }
+uint16_t LevelData::GetTileType(int y, int x)
+{
+	return (m_Map.m_Tiles[y][x].type & 0xFF);
+}
 bool LevelData::HasLandNeighbour(const int pos[4], int position, int y, int x)
 {
 	//for (size_t i = 0; i < 4; i++)
@@ -750,7 +798,8 @@ bool LevelData::HasLandNeighbour(const int pos[4], int position, int y, int x)
 			TileNeighbourTiles n = GetNeighbourTiles(y, x);
 			for (size_t j = 0; j < 4; j++)
 			{
-				if (n.Axii[j].type == Type_Claimed_Land || n.Axii[j].type == Type_Unclaimed_Path)
+				uint16_t type = (n.Axii[j]->type & 0xFF);
+				if (type == Type_Claimed_Land || type == Type_Unclaimed_Path)
 				{
 					return true;
 				}
@@ -759,6 +808,166 @@ bool LevelData::HasLandNeighbour(const int pos[4], int position, int y, int x)
 	}
 	return false;
 }
+constexpr bool DebugRoomIDs = false;
+void LevelData::SetRoomFloodID(int ID, int startID,uint16_t type, int y, int x)
+{
+	//if this tile is already the same code, return
+	if (m_Map.m_Tiles[y][x].roomID == ID) return;
+
+	//tile is of a space seperating type, return
+	uint16_t nType = m_Map.m_Tiles[y][x].type & 0xFF;
+	if (nType != type) return;
+	
+	if (DebugRoomIDs && ID != -1)
+	{
+		Entity* e = nullptr;
+		if (m_Map.m_Tiles[y][x].placedEntities[0][0])
+		{
+			e = m_Map.m_Tiles[y][x].placedEntities[0][0];
+		}
+		else
+		{
+			e = GetMapEntity();
+			m_Map.m_Tiles[y][x].placedEntities[0][0] = e;
+		}
+		e->m_EntityID = (Entity::EntityType)(ID * 2);
+		e->SetSprite(ID *2);
+		e->m_Renderable->SetPosition(TileToWorld(XMINT2(x, y)));
+	}
+	m_Map.m_Tiles[y][x].roomID = ID;
+
+	SetRoomFloodID(ID, startID,type, y - 1, x);
+	SetRoomFloodID(ID, startID,type, y + 1, x);
+	SetRoomFloodID(ID, startID,type, y, x - 1);
+	SetRoomFloodID(ID, startID,type, y, x + 1);
+}
+
+void Themp::LevelData::UpdateSurroundingRoomsAdd(uint16_t cType, int y, int x)
+{
+	uint16_t type = cType & 0xFF;
+	uint8_t owner = m_Map.m_Tiles[y][x].owner;
+	m_Map.m_Tiles[y][x].roomID = -1;
+	TileNeighbourTiles n = GetNeighbourTiles(y, x);
+	const XMINT2 Directions[4] =
+	{
+		{0, 1 },
+		{0,-1 },
+		{-1, 0 },
+		{1,0},
+	};
+	//check if the same room exists in each direction, if so.. Get the lowest ID, remove those rooms from the Room Array, floodFill set to that ID, and add this room 
+
+	int lowestID = INT32_MAX;
+	Room rooms[4] = { 0 };
+	int roomCount = 0;
+	for (int i = 0; i < 4; i++)
+	{
+		Tile* t = n.Axii[i];
+		if ((t->type&0xFF) == type && t->owner == owner && t->roomID != -1)
+		{
+			if (t->roomID < lowestID)
+			{
+				lowestID = t->roomID;
+			}
+			rooms[roomCount] = m_Rooms[owner][t->roomID];
+			m_Rooms[owner].erase(t->roomID);
+			roomCount++;
+
+			SetRoomFloodID(-1, t->roomID,type, y + Directions[i].y, x + Directions[i].x);
+		}
+	}
+	m_Map.m_Tiles[y][x].roomID = -1;
+
+	if (roomCount == 0) //no neighbouring rooms but a new one
+	{
+		nextRoomID++;
+		lowestID = nextRoomID;
+		Room r = { 0 };
+		r.areaCode = m_Map.m_Tiles[y][x].areaCode;
+		r.biggestSquare = 1;
+		r.health = LevelConfig::roomData[LevelConfig::TypeToRoom(type)].Health;
+		r.roomID = nextRoomID;
+		r.roomType = type;
+		r.tilecount = 1;
+		m_Rooms[owner][nextRoomID] = r;
+		m_Rooms[owner][nextRoomID].tiles[&m_Map.m_Tiles[y][x]] = { 0,x,y, &m_Map.m_Tiles[y][x] };
+	}
+	else
+	{
+		Room mergedRoom = { 0 };
+		mergedRoom.areaCode = m_Map.m_Tiles[y][x].areaCode;
+		mergedRoom.biggestSquare = 1;
+		mergedRoom.health = LevelConfig::roomData[LevelConfig::TypeToRoom(type)].Health;
+		mergedRoom.roomID = lowestID;
+		mergedRoom.roomType = type;
+		mergedRoom.tilecount = 1;
+		mergedRoom.tiles[&m_Map.m_Tiles[y][x]] = { 0,x,y, &m_Map.m_Tiles[y][x] };
+		for (int i = 0; i < roomCount; i++)
+		{
+			mergedRoom += rooms[i];
+		}
+		mergedRoom.RecalcRoomData();
+		m_Rooms[owner][lowestID] = mergedRoom;
+	}	
+	m_Map.m_Tiles[y][x].type = type;
+	SetRoomFloodID(lowestID, -1, type, y, x);
+	assert(m_Rooms[owner][lowestID].tilecount == m_Rooms[owner][lowestID].tiles.size());
+}
+Entity* LevelData::GetMapEntity()
+{
+	Entity* e = nullptr;
+	if (m_MapEntityPool.size() > 0)
+	{
+		e = m_MapEntityPool.top();
+		m_MapEntityPool.pop();
+	}
+	else
+	{
+		e = new Entity(Entity::EntityType::Entity_Gold0_FP);
+		System::tSys->m_Game->AddEntity(e);
+	}
+	m_MapEntityUsed.push_back(e);
+	e->SetVisibility(true);
+	return e;
+}
+void LevelData::AdjustRoomTile(const LevelData::Room& room, const LevelData::Room::RoomTile& roomTile)
+{
+	//create or adjust entity on this tile
+	if (room.roomType == Type_Treasure_Room)
+	{
+		if (roomTile.tile->placedEntities[1][1] == nullptr)
+		{
+			roomTile.tile->placedEntities[1][1] = GetMapEntity();
+		}
+		//middle of the room
+		const int v = roomTile.tileValue;
+		//TODO: Use Game settings!
+		roomTile.tile->placedEntities[1][1]->m_EntityID = (v >= 1020 ? Entity::Entity_Gold4_FP : v > 750 ? Entity::Entity_Gold3_FP : v > 5000 ? Entity::Entity_Gold2_FP : v >= 250 ? Entity::Entity_Gold1_FP : Entity::Entity_Gold0_FP);
+		XMFLOAT3 entityPos = TileToWorld(XMINT2(roomTile.x, roomTile.y));
+		entityPos.y = 2;
+		roomTile.tile->placedEntities[1][1]->m_Renderable->SetPosition(entityPos);
+	}
+	else
+	{
+		System::Print("LevelData::AdjustRoomTile || Unsupported room found! %i", room.roomType);
+	}
+}
+void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
+{
+	TileNeighbourTiles n = GetNeighbourTiles(y, x);
+	const XMINT2 Directions[4] =
+	{
+		{0, 1 },
+		{0,-1 },
+		{1, 0 },
+		{0, -1},
+	};
+	//remove current room
+	//check if the same room exists in each direction, if so.. Flood fill each direction to 0 afterwards.
+	//Then flood fill each side to the increasing Room ID one by one, and see if the other neigbours aren't 0 (if that's the case they're connected), if they aren't the same ID it's a seperate room -> Add to list
+	 
+}
+
 void LevelData::UpdateAreaCode(uint32_t newCode, uint16_t currentType, int ty, int tx)
 {
 	//if this tile is already the same code, return
@@ -817,10 +1026,10 @@ void LevelData::ClaimRoom(uint8_t newOwner, uint16_t type, int ty, int tx)
 bool LevelData::IsClaimableCorner(int y, int x)
 {
 	TileNeighbourTiles n = GetNeighbourTiles(y, x);
-	if ((   n.SouthEast.type == Type_Claimed_Land || IsOwnedRoom(n.SouthEast.owner,y-1,x+1)) && (IsWall(n.South.type) && IsWall(n.East.type))
-		|| (n.SouthWest.type == Type_Claimed_Land || IsOwnedRoom(n.SouthWest.owner, y - 1, x - 1)) && (IsWall(n.South.type) && IsWall(n.West.type))
-		|| (n.NorthEast.type == Type_Claimed_Land || IsOwnedRoom(n.NorthEast.owner, y + 1, x + 1)) && (IsWall(n.North.type) && IsWall(n.East.type))
-		|| (n.NorthWest.type == Type_Claimed_Land || IsOwnedRoom(n.NorthWest.owner, y + 1, x - 1)) && (IsWall(n.North.type) && IsWall(n.West.type)))
+	if ((   (n.SouthEast->type & 0xFF) == Type_Claimed_Land || IsOwnedRoom(n.SouthEast->owner, y - 1, x + 1)) && (IsWall((n.South->type & 0xFF)) && IsWall((n.East->type & 0xFF)))
+		|| ((n.SouthWest->type & 0xFF) == Type_Claimed_Land || IsOwnedRoom(n.SouthWest->owner, y - 1, x - 1)) && (IsWall((n.South->type & 0xFF)) && IsWall((n.West->type & 0xFF)))
+		|| ((n.NorthEast->type & 0xFF) == Type_Claimed_Land || IsOwnedRoom(n.NorthEast->owner, y + 1, x + 1)) && (IsWall((n.North->type & 0xFF)) && IsWall((n.East->type & 0xFF)))
+		|| ((n.NorthWest->type & 0xFF) == Type_Claimed_Land || IsOwnedRoom(n.NorthWest->owner, y + 1, x - 1)) && (IsWall((n.North->type & 0xFF)) && IsWall((n.West->type & 0xFF))))
 	{
 		return true;
 	}
@@ -844,10 +1053,10 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 	uint16_t type = m_Map.m_Tiles[y][x].type & 0xFF;
 	TileNeighbourTiles neighbourTiles = GetNeighbourTiles(y, x);
 
-	if ((neighbourTiles.North.type == Type_Claimed_Land && neighbourTiles.North.owner == player) || IsOwnedRoom(player,y+1,x)
-		|| (neighbourTiles.South.type == Type_Claimed_Land && neighbourTiles.South.owner == player) || IsOwnedRoom(player, y - 1, x)
-		|| (neighbourTiles.East.type == Type_Claimed_Land && neighbourTiles.East.owner == player) || IsOwnedRoom(player, y, x + 1)
-		|| (neighbourTiles.West.type == Type_Claimed_Land && neighbourTiles.West.owner == player) || IsOwnedRoom(player, y, x - 1))
+	if ((	(neighbourTiles.North->type&0xFF) == Type_Claimed_Land && neighbourTiles.North->owner == player) || IsOwnedRoom(player,y+1,x)
+		|| ((neighbourTiles.South->type&0xFF) == Type_Claimed_Land && neighbourTiles.South->owner == player) || IsOwnedRoom(player, y - 1, x)
+		||  ((neighbourTiles.East->type&0xFF) == Type_Claimed_Land  && neighbourTiles.East->owner == player) || IsOwnedRoom(player, y, x + 1)
+		||  ((neighbourTiles.West->type&0xFF) == Type_Claimed_Land  && neighbourTiles.West->owner == player) || IsOwnedRoom(player, y, x - 1))
 	{
 		if (type == Type_Unclaimed_Path)
 		{
@@ -867,27 +1076,27 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 
 			int xPos[4] = { -100 }; //some tile far enough to never have a neigbour
 			int yPos[4] = { -100 }; //some tile far enough to never have a neigbour
-			if (neighbourTiles.North.owner == player && neighbour.North == N_WALKABLE)
+			if (neighbourTiles.North->owner == player && neighbour.North == N_WALKABLE)
 			{
 				yPos[0] = y + 1;
 				xPos[0] = x;
 			}
-			if (neighbourTiles.South.owner == player && neighbour.South == N_WALKABLE)
+			if (neighbourTiles.South->owner == player && neighbour.South == N_WALKABLE)
 			{
 				yPos[2] = y - 1;
 				xPos[2] = x;
 			}
-			if (neighbourTiles.East.owner == player && neighbour.East == N_WALKABLE)
+			if (neighbourTiles.East->owner == player && neighbour.East == N_WALKABLE)
 			{
 				yPos[1] = y;
 				xPos[1] = x + 1;
 			}
-			if (neighbourTiles.West.owner == player && neighbour.West == N_WALKABLE)
+			if (neighbourTiles.West->owner == player && neighbour.West == N_WALKABLE)
 			{
 				yPos[3] = y;
 				xPos[3] = x - 1;
 			}
-			if ((neighbourTiles.North.type == Type_Earth || neighbourTiles.North.type == Type_Earth_Torch) && (neighbour.NorthEast == N_SAME || neighbour.NorthWest == N_SAME))
+			if ((neighbourTiles.North->type == Type_Earth || neighbourTiles.North->type == Type_Earth_Torch) && (neighbour.NorthEast == N_SAME || neighbour.NorthWest == N_SAME))
 			{
 				if (IsClaimableCorner(y+1,x))
 				{
@@ -896,7 +1105,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 					m_Map.m_Tiles[y + 1][x].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
-			if ((neighbourTiles.South.type == Type_Earth || neighbourTiles.South.type == Type_Earth_Torch) && (neighbour.SouthEast == N_SAME || neighbour.SouthWest == N_SAME))
+			if ((neighbourTiles.South->type == Type_Earth || neighbourTiles.South->type == Type_Earth_Torch) && (neighbour.SouthEast == N_SAME || neighbour.SouthWest == N_SAME))
 			{
 				if (IsClaimableCorner(y - 1, x))
 				{
@@ -905,7 +1114,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 					m_Map.m_Tiles[y - 1][x].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
-			if ((neighbourTiles.East.type == Type_Earth || neighbourTiles.East.type == Type_Earth_Torch) && (neighbour.NorthEast == N_SAME || neighbour.SouthEast == N_SAME))
+			if ((neighbourTiles.East->type == Type_Earth || neighbourTiles.East->type == Type_Earth_Torch) && (neighbour.NorthEast == N_SAME || neighbour.SouthEast == N_SAME))
 			{
 				if (IsClaimableCorner(y, x + 1))
 				{
@@ -914,7 +1123,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 					m_Map.m_Tiles[y][x + 1].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
-			if ((neighbourTiles.West.type == Type_Earth || neighbourTiles.West.type == Type_Earth_Torch) && (neighbour.NorthWest == N_SAME || neighbour.SouthWest == N_SAME))
+			if ((neighbourTiles.West->type == Type_Earth || neighbourTiles.West->type == Type_Earth_Torch) && (neighbour.NorthWest == N_SAME || neighbour.SouthWest == N_SAME))
 			{
 				if (IsClaimableCorner(y, x - 1))
 				{
@@ -935,6 +1144,22 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 			ClaimRoom(player, type, y, x);
 		}
 	}
+}
+bool LevelData::BuildRoom(uint16_t type, uint8_t owner, int y, int x)
+{
+	if ((m_Map.m_Tiles[y][x].type & 0xFF) == Type_Claimed_Land && m_Map.m_Tiles[y][x].owner == owner)
+	{
+		UpdateSurroundingRoomsAdd(type, y, x);
+		UpdateArea(y - 1, y + 1, x - 1, x + 1);
+		System::Print("Built room!");
+		return true;
+	}
+	else
+	{
+		System::Print("Nope.jpg");
+		return false;
+	}
+	return false;
 }
 
 XMINT2 LevelData::WorldToTile(XMFLOAT3 pos)
@@ -998,7 +1223,7 @@ void LevelData::LoadLevelFileData()
 	//	4 bytes : XY Location
 	//	2 bytes : Range
 	//	2 bytes : Action point number(points are usually in order, but they don't have to be.
-	FileData map_apt = FileManager::GetFileData(LevelPath + L".apt");
+	//FileData map_apt = FileManager::GetFileData(LevelPath + L".apt");
 
 	//Description:Along with the.dat file, this determines the graphics for the level.Each entry gives the data for a subtile.
 	//Format :
@@ -1014,18 +1239,18 @@ void LevelData::LoadLevelFileData()
 	//	5 - 6 : Baseblock - determines the very lowest level(below the lowest cube).I think the block numbers here are different to the ones used by the cubes, but I'm not sure yet. This entry is mostly useful for water, lava, and hatcheries.
 	//	7 : Orientation(always 0)
 	//	8 - 23 : Cubes - there are 8 cubes, each having a 2 byte entry.The first cube usually forms the floor, etc, up to the ceiling.
-	FileData map_clm = FileManager::GetFileData(LevelPath + L".clm");
+	//FileData map_clm = FileManager::GetFileData(LevelPath + L".clm");
 
 	//Description: Determines the graphics at the start of the game.When new areas are dug out or rooms are changed, computer automatically generates different graphics for these areas, but otherwise everything is in this file.
 	//Format : Subtile map format, with 2 bytes per entry.
-	FileData map_dat = FileManager::GetFileData(LevelPath + L".dat");
+	//FileData map_dat = FileManager::GetFileData(LevelPath + L".dat");
 
 	//Description: Specifies the landscape style, or in other words, texture file number(making the dungeon icy, for instance).
 	//Format : Always 1 byte, which is a 0 for all but the following maps :
 	//	 01 for maps 13, 14, 15, 16, 17, 104
 	//	 02 for maps 9, 10
 	//	 03 for maps 19, 20
-	FileData map_inf = FileManager::GetFileData(LevelPath + L".inf");
+	//FileData map_inf = FileManager::GetFileData(LevelPath + L".inf");
 
 	//Description: Provides extra lighting.
 	//Format :
@@ -1037,7 +1262,7 @@ void LevelData::LoadLevelFileData()
 	//	 6 bytes : XYZ Location
 	//	 2 bytes : unknown.
 	//	 2 bytes : always - 1 (0xffff).
-	FileData map_lgt = FileManager::GetFileData(LevelPath + L".lgt");
+	//FileData map_lgt = FileManager::GetFileData(LevelPath + L".lgt");
 
 	//Description: Determine ownership of tiles.
 	//Notes: in subtile format. (each tile = 3x3 subtiles)
@@ -1056,24 +1281,24 @@ void LevelData::LoadLevelFileData()
 	//	7 : Thing subtype(eg creature race, trap type)
 	//	8 : Owner
 	//	9 - 20 : Type specific data
-	FileData map_tng = FileManager::GetFileData(LevelPath + L".tng");
+	//FileData map_tng = FileManager::GetFileData(LevelPath + L".tng");
 
 	//Description: Level script which determines victory conditions, enemy keepers actions, training mode, etc.
 	//Format: Text file.
 	//This is a pretty simple scripting language. There are no loops or jumps, and condition testing is very basic. There are only three statement forms - conditions, commands, and condition terminators. Conditions are naturally nested, but that's about as complicated as it gets.
 	//Each line contains a single instruction.Whitespace in the form of spaces and tabs is ignored.Comments begin with REM.All unconditional commands(ie ones outside any condition statements) are executed at the beginning of the game, then ignored.All conditions are checked at regular intervals.
-	FileData map_txt = FileManager::GetFileData(LevelPath + L".txt");
+	//FileData map_txt = FileManager::GetFileData(LevelPath + L".txt");
 
 	//Description: Determines which subtiles are animated.
 	//Format : Subtile map with single byte entries.Each byte is 00, 01, or 02 :
 	//00 : Display the subtile without any change
 	//01 : Skew the subtile slightly(default)
 	//02 : Animate the subtile
-	FileData map_wib = FileManager::GetFileData(LevelPath + L".wib");
+	//FileData map_wib = FileManager::GetFileData(LevelPath + L".wib");
 
 	//Description: Determines type of liquid each tile is. (Water/Lava)
 	//Format: 85 lines of 85 tiles, each having one byte entry.
-	FileData map_wlb = FileManager::GetFileData(LevelPath + L".wlb");
+	//FileData map_wlb = FileManager::GetFileData(LevelPath + L".wlb");
 
 
 	int slb_index = 0;
@@ -1146,7 +1371,7 @@ void LevelData::LoadLevelFileData()
 			mapTile.marked[3] = false;
 		}
 	}
-	Tile m_AdjustedMap[85][85];
+	auto m_AdjustedMap = new Tile[85][85];
 	memcpy(m_AdjustedMap, m_Map.m_Tiles, sizeof(m_Map.m_Tiles));
 
 	int own_index = 0; //skip the first rown of subtiles
@@ -1182,15 +1407,47 @@ void LevelData::LoadLevelFileData()
 		yIndex++;
 	}
 
+	bool PlayerHeartsPlaced[6] = { false,false,false,false,false,false };
 	for (int y = 0; y < MAP_SIZE_TILES; y++)
 	{
 		for (int x = 0; x < MAP_SIZE_TILES; x++)
 		{
 			Tile& mapTile = m_Map.m_Tiles[y][x];
-
-			//Walls NEVER occur along map borders, so checking x-1 or x+1 or y-1 or y+1 without boundary checks is fine
-			if (mapTile.type == Type_Wall0)
+			const uint16_t type = mapTile.type & 0xFF;
+			if (type == Type_Dungeon_Heart && !PlayerHeartsPlaced[mapTile.owner])
 			{
+				int heartroomsize = 1;
+				while ((m_Map.m_Tiles[y][x + heartroomsize].type & 0xFF) == Type_Dungeon_Heart)
+				{
+					heartroomsize++;
+				}
+				int middleTile = (heartroomsize / 2);
+				Entity* e = GetMapEntity();
+				e->m_EntityID = Entity::Entity_DungeonHeart_FP;
+				XMFLOAT3 wPos = TileToWorld(XMINT2(x + middleTile, y + middleTile));
+				if (heartroomsize & 1) // is odd
+				{
+					//1x1,3x3,5x5 etc..
+					wPos.y = 5; //dungeon heart table is always on 5 high
+					e->m_Renderable->SetPosition(wPos);
+					m_AdjustedMap[y][x].placedEntities[1][1] = e;
+				}
+				else //even 
+				{
+					//2x2, 4x4, 6x6 etc..
+					wPos.x += 1.5f;
+					wPos.z += 1.5f;
+					wPos.y = 5;
+					e->m_Renderable->SetPosition(wPos);
+					m_AdjustedMap[y][x].placedEntities[2][2] = e;
+				}
+				e->ResetScale();
+
+				PlayerHeartsPlaced[mapTile.owner] = true;
+			}
+			else if (type == Type_Wall0)
+			{
+				//Walls NEVER occur along map borders, so checking x-1 or x+1 or y-1 or y+1 without boundary checks is fine
 				m_AdjustedMap[y][x].type = Type_Wall0;
 				bool northWall = m_Map.m_Tiles[y + 1][x].type == Type_Wall0;
 				bool southWall = m_Map.m_Tiles[y - 1][x].type == Type_Wall0;
@@ -1278,6 +1535,7 @@ void LevelData::LoadLevelFileData()
 
 	memcpy(m_Map.m_Tiles, m_AdjustedMap, sizeof(m_Map.m_Tiles));
 	memcpy(m_OriginalMap.m_Tiles, m_Map.m_Tiles, sizeof(m_Map.m_Tiles));
+	delete[] m_AdjustedMap;
 }
 
 
@@ -1476,6 +1734,13 @@ void LevelData::DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int 
 				m_BlockMap[5][yP + sx][xP].uv[2] = tex0[1];
 			}
 		}
+
+		//walls use same texture for water and lava neigbours
+		if (neighbour.West == N_LAVA) neighbour.West = N_WATER;
+		if (neighbour.East == N_LAVA) neighbour.East = N_WATER;
+		if (neighbour.North == N_LAVA) neighbour.North = N_WATER;
+		if (neighbour.South == N_LAVA) neighbour.South = N_WATER;
+
 		if (neighbour.West == N_WALKABLE || neighbour.West == N_WATER)
 		{
 			uint16_t texIndexRoom = TypeToTexture(m_Map.m_Tiles[y][x - 1].type);
@@ -1683,6 +1948,12 @@ void LevelData::DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int 
 			}
 		}
 
+		//walls use same texture for water and lava neigbours
+		if (neighbour.West == N_LAVA) neighbour.West = N_WATER;
+		if (neighbour.East == N_LAVA) neighbour.East = N_WATER;
+		if (neighbour.North == N_LAVA) neighbour.North = N_WATER;
+		if (neighbour.South == N_LAVA) neighbour.South = N_WATER;
+
 		if (neighbour.West == N_WALKABLE || neighbour.West == N_WATER)
 		{
 			uint16_t texIndexRoom = TypeToTexture(m_Map.m_Tiles[y][x - 1].type);
@@ -1823,7 +2094,11 @@ void LevelData::DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int 
 			}
 		}
 
-
+		//walls use same texture for water and lava neigbours
+		if (neighbour.West == N_LAVA) neighbour.West = N_WATER;
+		if (neighbour.East == N_LAVA) neighbour.East = N_WATER;
+		if (neighbour.North == N_LAVA) neighbour.North = N_WATER;
+		if (neighbour.South == N_LAVA) neighbour.South = N_WATER;
 
 		//Set the wall side to their respective texture
 		if (neighbour.West == N_WALKABLE || neighbour.West == N_WATER)

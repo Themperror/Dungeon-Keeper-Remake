@@ -552,7 +552,8 @@ void FileManager::LoadCreatures()
 	{
 		Sprite* sprite = new Sprite();
 		sprite->numAnim = SpriteFileData[i].frames;
-	
+		sprite->unscaledW = SpriteFileData[i].width;
+		sprite->unscaledH = SpriteFileData[i].height;
 		int width = SpriteFileData[i].src_dx * sprite->numAnim;
 		int singleWidth = SpriteFileData[i].src_dx;
 		int height = SpriteFileData[i].src_dy;
