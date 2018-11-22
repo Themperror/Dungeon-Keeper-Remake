@@ -170,6 +170,7 @@
     <ClCompile Include="src\Game\ThempCreature.cpp" />
     <ClCompile Include="src\Game\ThempCreatureData.cpp" />
     <ClCompile Include="src\Game\ThempCreatureTaskManager.cpp" />
+    <ClCompile Include="src\Game\ThempEntity.cpp" />
     <ClCompile Include="src\Game\ThempFileManager.cpp" />
     <ClCompile Include="src\Game\ThempFont.cpp" />
     <ClCompile Include="src\Game\ThempGame.cpp" />
@@ -205,6 +206,7 @@
     <ClInclude Include="src\Game\ThempCreature.h" />
     <ClInclude Include="src\Game\ThempCreatureData.h" />
     <ClInclude Include="src\Game\ThempCreatureTaskManager.h" />
+    <ClInclude Include="src\Game\ThempEntity.h" />
     <ClInclude Include="src\Game\ThempFileManager.h" />
     <ClInclude Include="src\Game\ThempFont.h" />
     <ClInclude Include="src\Game\ThempGame.h" />

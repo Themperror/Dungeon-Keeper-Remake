@@ -147,6 +147,9 @@
     <ClCompile Include="src\Game\ThempLevelConfig.cpp">
       <Filter>Source Files\Game\Level</Filter>
     </ClCompile>
+    <ClCompile Include="src\Game\ThempEntity.cpp">
+      <Filter>Source Files\Game</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Engine\ThempSystem.h">
@@ -259,6 +262,9 @@
     </ClInclude>
     <ClInclude Include="src\Game\ThempLevelConfig.h">
       <Filter>Header Files\Game\Level</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempEntity.h">
+      <Filter>Header Files\Game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
