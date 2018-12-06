@@ -46,7 +46,7 @@
     <OutDir>bin\</OutDir>
     <IntDir>$(SolutionDir)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)d</TargetName>
-    <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Game\VoxelModels;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Debug;</LibraryPath>
     <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
     <CustomBuildBeforeTargets>BuildCompile</CustomBuildBeforeTargets>
@@ -56,7 +56,7 @@
     <OutDir>bin\</OutDir>
     <IntDir>$(SolutionDir)\$(Configuration)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
-    <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Game\VoxelModels;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Release;</LibraryPath>
     <LinkIncremental>
     </LinkIncremental>
@@ -218,6 +218,42 @@
     <ClInclude Include="src\Game\ThempObject2D.h" />
     <ClInclude Include="src\Game\ThempTileArrays.h" />
     <ClInclude Include="src\Game\ThempVoxelObject.h" />
+    <ClInclude Include="src\Game\VoxelModels\Barracks.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\DungeonHeart.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\FullBlock.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\GroundBlock.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Library.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\LiquidBlock.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Portal.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Rock.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\RoomWithPillars.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="src\Library\BitStream.h" />
     <ClInclude Include="src\Library\imconfig.h" />
     <ClInclude Include="src\Library\imgui.h" />

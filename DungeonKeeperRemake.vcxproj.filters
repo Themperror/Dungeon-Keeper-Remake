@@ -46,6 +46,9 @@
     <Filter Include="Source Files\Game\Creature">
       <UniqueIdentifier>{6fdba452-e8d5-48fa-83cd-fe128aa821bc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Game\VoxelModels">
+      <UniqueIdentifier>{937b7bcb-ad00-464d-8f55-2b4cfdf5d486}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Engine\ThempSystem.cpp">
@@ -265,6 +268,33 @@
     </ClInclude>
     <ClInclude Include="src\Game\ThempEntity.h">
       <Filter>Header Files\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Barracks.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\DungeonHeart.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\FullBlock.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\GroundBlock.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Library.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\LiquidBlock.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Portal.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\Rock.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\VoxelModels\RoomWithPillars.h">
+      <Filter>Header Files\Game\VoxelModels</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
