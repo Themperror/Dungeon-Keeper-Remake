@@ -87,9 +87,6 @@ namespace Themp
 		float m_ScreenWidth = 0;
 		float m_ScreenHeight = 0;
 
-		Object3D* m_FullScreenQuad = nullptr;
-		Object3D* m_Skybox = nullptr;
-
 		static D3D* s_D3D;
 		static D3D11_INPUT_ELEMENT_DESC DefaultInputLayoutDesc[];
 		static uint32_t DefaultInputLayoutNumElements;

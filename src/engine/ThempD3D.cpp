@@ -207,20 +207,10 @@ namespace Themp
 		D3D::DefaultMaterial = Resources::TRes->GetMaterial("G-Buffer", defaultTextures, defaultTypes, "",  false);
 
 		System::Print("D3D11 Initialisation success!");
-
-		m_FullScreenQuad = new Object3D();
-		m_FullScreenQuad->CreateQuad("ScreenSpace", false);
-
+		
 #ifdef _DEBUG
 		DebugDraw::DefaultLineMaterial = Resources::TRes->GetMaterial("DebugLine", "", "DebugLine", false, DebugDraw::DefaultLineInputLayoutDesc, 2, false);
 #endif // _DEBUG
-
-		//m_ShadowUnfiltered = new ShadowUnfiltered();
-		//m_ShadowPCF = new ShadowPCF();
-		//m_ShadowCascade = new ShadowCascade(m_ConstantBufferData.num_cascades);
-		//m_ShadowCascade->SetCascade(m_ConstantBufferData.num_cascades, 0.1, 500);
-		//m_ShadowVariance = new ShadowVariance();
-		//m_ShadowMoment = new ShadowMoment();
 
 		return true;
 	}
