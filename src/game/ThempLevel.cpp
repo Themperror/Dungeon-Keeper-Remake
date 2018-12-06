@@ -96,6 +96,8 @@ Level::Level(int levelIndex)
 }
 
 int SelectedTool = 0;
+int SelectedRoom = 0;
+bool IsMarking = false;
 
 void Level::Update(float delta)
 {
@@ -116,37 +118,34 @@ void Level::Update(float delta)
 
 	ImGui::Text("Controls: WASD for movement.\nHold Right Click to rotate the camera.\nPress T to use the tool on the current hovered Tile.\nPress 1 to set Pathfind Start, 2 to set Pathfind End, 3 to calculate Path.\nLeft click (and/or hold) to Mark tiles\n");
 	
-	char* ToolNames[7] =
+
+	char* RoomNames[3] =
 	{
-		"None",
-		"Destroy",
-		"Claim",
-		"Marker",
 		"Treasure Room",
+		"Lair",
 		"Hatchery",
-		"UnMarker",
 	};
+	char* ToolNames[3] =
+	{
+		"Select",
+		"Build",
+		"Destroy",
+	};
+
 	ImGui::Text("Current Selected Tool: %s", ToolNames[SelectedTool]);
-	if (ImGui::Button("Tool: None"))
+	if (ImGui::Button("Tool: Select"))
 	{
 		SelectedTool = 0;
 	}
-	if (ImGui::Button("Tool: Destroy"))
+	if (ImGui::Button("Tool: Build"))
 	{
 		SelectedTool = 1;
 	}
-	if (ImGui::Button("Tool: Claim (Red)"))
+	if (ImGui::Button("Tool: Destroy"))
 	{
 		SelectedTool = 2;
 	}
-	if (ImGui::Button("Tool: Build Treasure Room"))
-	{
-		SelectedTool = 4;
-	}
-	if (ImGui::Button("Tool: Build Hatchery Room"))
-	{
-		SelectedTool = 5;
-	}
+	ImGui::ListBox("Rooms", &SelectedRoom, RoomNames, 3);
 
 	XMFLOAT3 mouseDir = g->m_Camera->ScreenToWorld(g->m_CursorWindowedX, g->m_CursorWindowedY);
 	XMFLOAT3 dir = Normalize(mouseDir - camPos);
@@ -163,46 +162,50 @@ void Level::Update(float delta)
 		{
 			XMFLOAT3 worldTilePos = LevelData::TileToWorld(tilePos);
 			tileIndicator->SetPosition(worldTilePos + XMFLOAT3(0, 0.01f, 0));
-			if (g->m_Keys['T'] == 2)
+			
+			if (g->m_Keys[256] == 2)
 			{
-				if (SelectedTool == 1)
+				if (SelectedTool == 0)
 				{
-					m_LevelData->DestroyTile(tilePos.y, tilePos.x);
+					if (m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
+					{
+						IsMarking = false;
+						m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+					}
+					else if (m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x))
+					{
+						IsMarking = true;
+					}
+				}
+				else if (SelectedTool == 1)
+				{
+					switch (SelectedRoom)
+					{
+					case 0: m_LevelData->BuildRoom(Type_Treasure_Room, Owner_PlayerRed, tilePos.y, tilePos.x);
+						break;
+					case 1: m_LevelData->BuildRoom(Type_Lair, Owner_PlayerRed, tilePos.y, tilePos.x);
+						break;
+					case 2:m_LevelData->BuildRoom(Type_Hatchery, Owner_PlayerRed, tilePos.y, tilePos.x);
+						break;
+					}
 				}
 				else if (SelectedTool == 2)
 				{
-					m_LevelData->ClaimTile(Owner_PlayerRed, tilePos.y, tilePos.x);
-				}
-			}
-			if (g->m_Keys[256] == 2)
-			{
-				if (SelectedTool == 4)
-				{
-					m_LevelData->BuildRoom(Type_Treasure_Room, Owner_PlayerRed, tilePos.y, tilePos.x);
-				}
-				else if (SelectedTool == 5)
-				{
-					m_LevelData->BuildRoom(Type_Hatchery, Owner_PlayerRed, tilePos.y, tilePos.x);
-				}
-				else if (m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
-				{
-					SelectedTool = 6;
-					m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
-				}
-				else if(m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x))
-				{
-					SelectedTool = 3;
+					m_LevelData->DeleteRoom(Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
 			}
 			else if (g->m_Keys[256])
 			{
-				if (SelectedTool == 3)
+				if (SelectedTool == 0)
 				{
-					m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
-				}
-				else if (SelectedTool == 6)
-				{
-					m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+					if (IsMarking)
+					{
+						m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+					}
+					else
+					{
+						m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+					}
 				}
 			}
 		}
@@ -237,8 +240,26 @@ void Level::Update(float delta)
 	{
 		m_Pather->Reset();
 	}
+	ImGui::Begin("Creature Info");
 	for (int i = 0; i < m_Creatures.size(); i++)
 	{
+		std::string text = "Creature: ";
+		char buf[32];
+		sprintf(buf, "%i",i);
+		text.append(buf);
+
+		ImGui::BulletText(text.c_str());
+		ImGui::TreePush(text.c_str());
+
+		//Different behaviour whether the game is ran with or without debugger
+		//This.. kind of scares me but I don't want people to use break without a debugger attached as it just appears to crash/abort() ?
+		if (IsDebuggerPresent())
+		{
+			if (ImGui::Button("Break"))
+			{
+				DebugBreak();
+			}
+		}
 		m_Creatures[i]->Update(delta);
 		if (LevelData::PathsInvalidated)
 		{
@@ -246,7 +267,9 @@ void Level::Update(float delta)
 			m_Pather->Reset();
 			LevelData::PathsInvalidated = false;
 		}
+		ImGui::TreePop();
 	}
+	ImGui::End();
 	for (int i = 0; i < m_LevelData->m_MapEntityUsed.size(); i++)
 	{
 		m_LevelData->m_MapEntityUsed[i]->Update(delta);

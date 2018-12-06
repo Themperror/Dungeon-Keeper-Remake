@@ -84,8 +84,10 @@ namespace Themp
 		NeighbourSubTiles GetNeighbourSubTiles(int y, int x);
 		uint8_t GetSubtileHeight(int tileY, int tileX, int subTileY, int subTileX);
 		void DoUVs(uint16_t type, int x, int y);
-		void DoWallUVs(TileNeighbours neighbour, int type, int texIndex, int x, int y);
-		uint16_t HandleSpecialCases(int yPos, int xPos);
+		void DoRoomUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
+		void DoWallUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
+		uint16_t Handle3by3Rooms(int yPos, int xPos);
+		uint16_t HandleNon3by3RoomsPillars(int yPos, int xPos);
 		void UpdateWalls(int y, int x);
 		bool MineTile(int y, int x);
 		bool ReinforceTile(uint8_t owner, int y, int x);
@@ -96,6 +98,8 @@ namespace Themp
 		uint16_t GetTileType(int y, int x);
 		bool HasLandNeighbour(const int pos[4], int position, int y, int x);
 		void SetRoomFloodID(int ID, int startID, uint16_t type, int y, int x);
+		void CreateRoomFromTile(Room & room, int ID, int startID, uint16_t type, int y, int x);
+		int CreateRoomFromArea(uint16_t type, int y, int x);
 		void UpdateSurroundingRoomsAdd(uint16_t type, int y, int x);
 		void UpdateSurroundingRoomsRemove(uint16_t type, int y, int x);
 		Entity * GetMapEntity();
@@ -107,6 +111,7 @@ namespace Themp
 		bool IsOwnedRoom(uint8_t player, int y, int x);
 		void ClaimTile(uint8_t player, int y, int x);
 		bool BuildRoom(uint16_t type, uint8_t owner, int y, int x);
+		bool DeleteRoom(uint8_t owner, int y, int x);
 		static XMINT2 WorldToTile(XMFLOAT3 pos);
 		static XMFLOAT3 TileToWorld(XMINT2 tPos);
 		static XMFLOAT3 WorldToSubtileFloat(XMFLOAT3 pos);

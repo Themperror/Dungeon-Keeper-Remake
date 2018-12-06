@@ -16,6 +16,7 @@
 #include <DirectXMath.h>
 #include <unordered_map>
 #include <array>
+#include <imgui.h>
 using namespace Themp;
 
 //2 types (FP or World), 5 directions, 12 states
@@ -457,7 +458,8 @@ void Creature::Update(float delta)
 		//CreatureTaskManager::RemoveClaimingTask()
 		//CreatureTaskManager::RemoveReinforcingTask()
 		//
-		
+
+		char* taskString = "No Task";
 		if (!m_Order.valid)
 		{
 			m_ImpTaskSearchTimer -= delta;
@@ -471,7 +473,6 @@ void Creature::Update(float delta)
 				}
 			}
 		}
-		
  		if (m_Order.valid)
 		{
 			int pathingResult = micropather::MicroPather::SOLVED;
@@ -484,6 +485,7 @@ void Creature::Update(float delta)
 				pathingResult = System::tSys->m_Game->m_CurrentLevel->PathFind(XMINT2(subTilePos.x, subTilePos.z), m_Order.subTilePos, m_Path, PathCost, true);
 				if (pathingResult != micropather::MicroPather::SOLVED && pathingResult != micropather::MicroPather::START_END_SAME)
 				{
+					taskString = "Invalid Path!";
 					System::Print("Imp could not find path, resetting world pathing");
 					LevelData::PathsInvalidated = true;
 					CreatureTaskManager::UnlistCreatureFromTask(this);
@@ -505,6 +507,7 @@ void Creature::Update(float delta)
 			
 				if (m_CurrentPathIndex < m_Path.size())
 				{
+					taskString = "Pathing to task!";
 					if (m_CurrentPathIndex > 0)
 					{
 						OldPathX = (float)(((uint64_t)m_Path[m_CurrentPathIndex - 1]) & 0xFFFFFFF);
@@ -523,13 +526,24 @@ void Creature::Update(float delta)
 						m_Direction.z = dir.y;
 					}
 					const int8_t height = Level::s_CurrentLevel->m_LevelData->GetSubtileHeight(nPos.y/3, nPos.x/3, ((int)nPos.y) % 3, ((int)nPos.x) % 3);
-					m_Renderable->SetPosition(nPos.x, height, nPos.y);
+					if(height<=5)
+						m_Renderable->SetPosition(nPos.x, height, nPos.y);
 					m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Walking;
 				}
 				else
 				{
+					const XMFLOAT3 worldPosTile = LevelData::TileToWorld(m_Order.targetTilePos);
+					m_Direction.x = m_Renderable->m_Position.x - worldPosTile.x;
+					m_Direction.y = 0;
+					m_Direction.z = m_Renderable->m_Position.z - worldPosTile.z;
+					m_Direction = Normalize(m_Direction);
+
+
+					const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
+					const int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
 					if (m_Order.orderType == CreatureTaskManager::Order_Mine)//Mine
 					{
+						taskString = "Executing task: Mining!";
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Attacking;
 						if (m_ImpSpecialTimer <= 0.0f)
 						{
@@ -545,7 +559,7 @@ void Creature::Update(float delta)
 								StopOrder();
 								CreatureTaskManager::RemoveMiningTask(m_Owner, m_Order.tile);
 							}
-							if (m_CurrentGoldHold >= m_CreatureData.GoldHold)
+							if (m_CurrentGoldHold >= m_CreatureData.GoldHold && CreatureTaskManager::IsTreasuryAvailable(this, areaCode))
 							{						
 								CreatureTaskManager::UnlistCreatureFromTask(this);
 								GetTask();
@@ -554,6 +568,7 @@ void Creature::Update(float delta)
 					}
 					else if(m_Order.orderType == CreatureTaskManager::Order_Claim) //Claim
 					{
+						taskString = "Executing task: Claiming!";
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Claiming;
 						if (m_ImpSpecialTimer <= 0.0f)
 						{
@@ -570,6 +585,7 @@ void Creature::Update(float delta)
 					}
 					else if(m_Order.orderType == CreatureTaskManager::Order_Reinforce) //Reinforce
 					{
+						taskString = "Executing task: Reinforcing!";
 						m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Claiming;
 						if (m_ImpSpecialTimer <= 0.0f)
 						{
@@ -586,6 +602,8 @@ void Creature::Update(float delta)
 					}
 					else if (m_Order.orderType == CreatureTaskManager::Order_DeliverGold)
 					{
+
+						taskString = "Executing task: Delivering Gold!";
 						auto& room = Level::s_CurrentLevel->m_LevelData->m_Rooms[m_Owner][m_Order.tile->roomID];
 						room.roomFillAmount += m_CurrentGoldHold;
 						auto&& t = room.tiles.find(m_Order.tile);
@@ -594,12 +612,11 @@ void Creature::Update(float delta)
 						m_CurrentGoldHold = 0;
 						StopOrder();
 						GetTask();
-
 					//	System::Print("Creature.cpp || Unimplemented task: %i Deliver Gold!", m_Order.orderType);
 					}
 					else
 					{
-						
+						taskString = "Executing task: Unimplemented Task!";
 						System::Print("Creature.cpp || Unimplemented task: %i", m_Order.orderType);
 					}
 				}
@@ -610,8 +627,8 @@ void Creature::Update(float delta)
 			//Do Idle stuff
 			m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Idling;
 		}
+		ImGui::Text(taskString);
 	}
-
 	m_AnimationTime += delta;
 	if (m_AnimationTime > 1.0f / 10.0f)
 	{
@@ -653,7 +670,7 @@ void Creature::GetTask()
 	//Reinforce walls
 	//Build traps
 	//Deliver ANY gold
-	if (m_CurrentGoldHold >= m_CreatureData.GoldHold)
+	if (m_CurrentGoldHold >= m_CreatureData.GoldHold && CreatureTaskManager::IsTreasuryAvailable(this,areaCode))
 	{
 		m_Order = CreatureTaskManager::GetAvailableTreasury(this, areaCode);
 		if (m_Order.valid) return;

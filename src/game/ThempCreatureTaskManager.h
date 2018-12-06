@@ -70,6 +70,7 @@ namespace Themp
 		static Order GetSoloMiningTask(Creature * requestee, int areaCode);
 		static Order GetClaimingTask(Creature* requestee, int areaCode);
 		static Order GetReinforcingTask(Creature* requestee, int areaCode);
+		static bool IsTreasuryAvailable(Creature * requestee, int areaCode);
 		static Order GetAvailableTreasury(Creature * requestee, int areaCode);
 		static void UnlistCreatureFromTask(Creature* requestee);
 
