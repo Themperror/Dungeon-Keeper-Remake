@@ -14,7 +14,7 @@ namespace Themp
 	{
 		float x, y, z;
 		float nx, ny, nz;
-		float u, v;
+		float u, v, visible;
 		uint32_t doAnimate;
 	};
 	class Material;

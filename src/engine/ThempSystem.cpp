@@ -496,9 +496,8 @@ void Themp::System::Print(const char* message, ...)
 	strftime(msg, fmtMsgSize, "[%T", localtime(&t.time));
 	timestamp.insert(0, msg);
 	timestamp.append(":");
-	memset(msg, 0, 4);
 	short msVal = t.millitm;
-	timestamp.append(itoa(t.millitm, msg, 10));
+	timestamp.append(std::to_string(t.millitm));
 	timestamp.append(msVal < 10 ? "00] " : (msVal < 100 ? "0] " : "] "));
 	va_list args;
 	va_start(args, message);
@@ -529,9 +528,8 @@ void Themp::System::Print(const std::string& message, ...)
 	strftime(msg, fmtMsgSize, "[%T", localtime(&t.time));
 	timestamp.insert(0, msg);
 	timestamp.append(":");
-	memset(msg, 0, 4);
 	short msVal = t.millitm;
-	timestamp.append(itoa(t.millitm, msg, 10));
+	timestamp.append(std::to_string(t.millitm));
 	timestamp.append(msVal < 10 ? "00] " : (msVal < 100 ? "0] " : "] "));
 	va_list args;
 	va_start(args, &message);

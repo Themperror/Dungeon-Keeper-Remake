@@ -10,6 +10,7 @@
 
 #pragma warning( disable : 4996) //disables warning unsafe function: freopen() fopen() .. etc
 
+constexpr auto PI = 3.14159265359f;
 #define ReportLiveObjects (0)
 #define LOG_MISSING_MATERIALS (0)
 #define CLEAN(x) if(x){x->Release();x=nullptr;}
@@ -23,8 +24,8 @@
 #define SVAR_ANISOTROPIC_FILTERING "Anisotropic_Filtering"
 #define SVAR_MULTISAMPLE "Multisample"
 
-//The original game has a fluctuating turns per second depending on FPS, but the target is 18 turns, as we have the ability to use delta times we can work with this.
-#define GAME_TURNS_PER_SECOND (18.0f)
+//The original game has a fluctuating turns per second depending on FPS, but the target is 20 turns, as we have the ability to use delta times we can work with this.
+#define GAME_TURNS_PER_SECOND (20.0f)
 #define GAME_TURNS_TO_SECOND(x) (((float)x) / GAME_TURNS_PER_SECOND)
 
 namespace Themp

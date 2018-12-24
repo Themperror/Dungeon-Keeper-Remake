@@ -23,7 +23,7 @@ namespace Themp
 	DirectX::XMFLOAT3 Add(DirectX::XMFLOAT3 a, DirectX::XMFLOAT3 b);
 	DirectX::XMFLOAT4 Add4(DirectX::XMFLOAT3 a, DirectX::XMFLOAT3 b);
 	DirectX::XMFLOAT3 Clamp(const DirectX::XMFLOAT3& val, float a_min, float a_max);
-	float Dot(const DirectX::XMFLOAT3 x, const DirectX::XMFLOAT3 y);
+	float Dot(const DirectX::XMFLOAT3& x, const DirectX::XMFLOAT3& y);
 	DirectX::XMFLOAT3 Cross(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b);
 	float Lerp(float v0, float v1, float t);
 	DirectX::XMFLOAT2 Lerp(const DirectX::XMFLOAT2& v0, const DirectX::XMFLOAT2& v1, float t);

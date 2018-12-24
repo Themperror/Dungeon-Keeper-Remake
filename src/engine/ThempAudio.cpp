@@ -50,6 +50,7 @@ namespace Themp
 #ifdef _DEBUG
 		XAUDIO2_DEBUG_CONFIGURATION dbg = { 0 };
 		dbg.TraceMask = XAUDIO2_LOG_ERRORS;
+		//dbg.BreakMask = XAUDIO2_LOG_ERRORS;
 		m_Audio->SetDebugConfiguration(&dbg);
 #endif
 		if (res != S_OK)
@@ -63,6 +64,7 @@ namespace Themp
 			System::Print("Failed to initialize Audio subsystem");
 			return;
 		}
+		m_MasterVoice->SetVolume(0.5);
 		m_OneShots.reserve(128);
 		m_Sounds.reserve(256);
 		m_Initialized = true;

@@ -88,7 +88,7 @@ namespace Themp
 	{
 		return XMFLOAT3(std::min(std::max(val.x, a_min), a_max), std::min(std::max(val.y, a_min), a_max), std::min(std::max(val.z, a_min), a_max));
 	}
-	float Dot(const DirectX::XMFLOAT3 a, const DirectX::XMFLOAT3 b)
+	float Dot(const DirectX::XMFLOAT3& a, const DirectX::XMFLOAT3& b)
 	{
 		return (a.x*b.x + a.y * b.y + a.z * b.z);
 	}

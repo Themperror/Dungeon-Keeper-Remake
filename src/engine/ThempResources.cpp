@@ -12,7 +12,6 @@
 
 namespace Themp
 {
-
 	std::unordered_map<std::string,std::vector<BYTE>> ShaderFiles =
 	{
 #ifndef _DEBUG
