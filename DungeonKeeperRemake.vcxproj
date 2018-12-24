@@ -167,6 +167,11 @@
     <ClCompile Include="src\Engine\ThempAudio.cpp" />
     <ClCompile Include="src\Engine\ThempSystem.cpp" />
     <ClCompile Include="src\Engine\ThempVideo.cpp" />
+    <ClCompile Include="src\Game\Players\ThempCPUPlayer.cpp" />
+    <ClCompile Include="src\Game\Players\ThempGoodPlayer.cpp" />
+    <ClCompile Include="src\Game\Players\ThempNeutralPlayer.cpp" />
+    <ClCompile Include="src\Game\Players\ThempPlayer.cpp" />
+    <ClCompile Include="src\Game\Players\ThempPlayerBase.cpp" />
     <ClCompile Include="src\Game\ThempCreature.cpp" />
     <ClCompile Include="src\Game\ThempCreatureData.cpp" />
     <ClCompile Include="src\Game\ThempCreatureTaskManager.cpp" />
@@ -178,6 +183,7 @@
     <ClCompile Include="src\Game\ThempLevel.cpp" />
     <ClCompile Include="src\Game\ThempLevelConfig.cpp" />
     <ClCompile Include="src\Game\ThempLevelData.cpp" />
+    <ClCompile Include="src\Game\ThempLevelScript.cpp" />
     <ClCompile Include="src\Game\ThempMainMenu.cpp" />
     <ClCompile Include="src\Game\ThempObject2D.cpp" />
     <ClCompile Include="src\Game\ThempTileArrays.cpp" />
@@ -190,6 +196,7 @@
     <ClCompile Include="src\Library\BitStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\Engine\ThempCamera.h" />
     <ClInclude Include="src\Engine\ThempD3D.h" />
     <ClInclude Include="src\Engine\ThempDebugDraw.h" />
@@ -203,6 +210,11 @@
     <ClInclude Include="src\Engine\ThempAudio.h" />
     <ClInclude Include="src\Engine\ThempSystem.h" />
     <ClInclude Include="src\Engine\ThempVideo.h" />
+    <ClInclude Include="src\Game\Players\ThempCPUPlayer.h" />
+    <ClInclude Include="src\Game\Players\ThempGoodPlayer.h" />
+    <ClInclude Include="src\Game\Players\ThempNeutralPlayer.h" />
+    <ClInclude Include="src\Game\Players\ThempPlayer.h" />
+    <ClInclude Include="src\Game\Players\ThempPlayerBase.h" />
     <ClInclude Include="src\Game\ThempCreature.h" />
     <ClInclude Include="src\Game\ThempCreatureData.h" />
     <ClInclude Include="src\Game\ThempCreatureTaskManager.h" />
@@ -214,6 +226,7 @@
     <ClInclude Include="src\Game\ThempLevel.h" />
     <ClInclude Include="src\Game\ThempLevelConfig.h" />
     <ClInclude Include="src\Game\ThempLevelData.h" />
+    <ClInclude Include="src\Game\ThempLevelScript.h" />
     <ClInclude Include="src\Game\ThempMainMenu.h" />
     <ClInclude Include="src\Game\ThempObject2D.h" />
     <ClInclude Include="src\Game\ThempTileArrays.h" />
@@ -264,6 +277,7 @@
     <ClInclude Include="src\Library\stb_rect_pack.h" />
     <ClInclude Include="src\Library\stb_textedit.h" />
     <ClInclude Include="src\Library\stb_truetype.h" />
+    <ClInclude Include="src\Library\WavLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="resources\shaders\creature_ps.hlsl" />
@@ -351,7 +365,11 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VShader</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="icon.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
