@@ -5,12 +5,14 @@ struct VS_OUTPUT
     float4 position : SV_POSITION;
     float3 normal : NORMAL;
     float2 uv : UV;
+    float visible : VISIBLE;
 };
 struct VS_INPUT
 {
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 uv : UV;
+    float visible : VISIBLE;
     uint doAnimate : ANIMATE;
 };
 cbuffer ObjectBuffer : register(b0)
@@ -47,5 +49,6 @@ VS_OUTPUT VShader(VS_INPUT input)
     output.position = mul(pos, mul(_modelMatrix, mul(_viewMatrix, _projectionMatrix)));
     output.uv = input.uv;
     output.normal = input.normal;
+    output.visible = input.visible;
     return output;
 }
