@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
+#include "ThempCreatureData.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -12,9 +13,11 @@ namespace Themp
 	class CreatureTaskManager
 	{
 	public:
-		CreatureTaskManager();
-		~CreatureTaskManager();
+		CreatureTaskManager() = delete;
+		~CreatureTaskManager() = delete;
 		enum OrderType { Order_None, Order_Mine, Order_Claim, Order_Reinforce, Order_DeliverGold };
+		enum ActivityType { Activity_None, Activity_GoToHeart, Activity_Sleep, Activity_GetFood, Activity_GoToBed,Activity_Eat, Activity_Train, Activity_Explore, Activity_Tunnel, Activity_CreateLair};
+
 		struct Task
 		{
 			Task()
@@ -52,14 +55,36 @@ namespace Themp
 				orderType = typeOrder;
 				tile = tilePtr;
 			}
-			bool valid;
+			bool valid = false;
 			uint8_t orderType = 0;
 			XMINT2 subTilePos;
 			XMINT2 targetTilePos;
-			Tile* tile;
+			Tile* tile = nullptr;
+		};
+		struct Activity
+		{
+			Activity(bool validTask, XMINT2 subtile, XMINT2 targetTile, uint8_t typeActivity, Tile* tilePtr)
+			{
+				subTilePos = subtile;
+				targetTilePos = targetTile;
+				valid = validTask;
+				activityType = typeActivity;
+				tile = tilePtr;
+			}
+			bool valid = false;
+			uint8_t activityType = 0;
+			XMINT2 subTilePos;
+			XMINT2 targetTilePos;
+			Tile* tile = nullptr;
 		};
 
 		static void Update(float delta);
+		static Activity GetDungeonEnteredActivity(Creature* requestee, int areaCode);
+		static Activity GetFoodActivity(Creature* requestee, int areaCode);
+		static Activity GetCreateLairActivity(Creature* requestee, int areaCode);
+		static Activity GetSleepActivity(Creature* requestee, int areaCode);
+		static Activity GetActivityByJob(Creature * requestee, int areaCode, CreatureData::Jobs job);
+		static Activity GetExploreActivity(Creature * requestee, int areaCode);
 		static void RemoveMiningTask(uint8_t player, Tile* tile);
 		static void RemoveClaimingTask(uint8_t player, Tile* tile);
 		static void RemoveReinforcingTask(uint8_t player, Tile* tile);
@@ -72,11 +97,11 @@ namespace Themp
 		static Order GetReinforcingTask(Creature* requestee, int areaCode);
 		static bool IsTreasuryAvailable(Creature * requestee, int areaCode);
 		static Order GetAvailableTreasury(Creature * requestee, int areaCode);
-		static void UnlistCreatureFromTask(Creature* requestee);
+		static void UnlistImpFromTask(Creature* requestee);
 
 		static std::unordered_map<Tile*,Task> MiningTasks[4];
 		static std::unordered_map<Tile*, Task> ClaimingTasks[4];
 		static std::unordered_map<Tile*, Task> ReinforcingTasks[4];
-		static std::unordered_map<Creature*, Task> TaskedCreatures[4];
+		static std::unordered_map<Creature*, Task> TaskedImps[4];
 	};
 };

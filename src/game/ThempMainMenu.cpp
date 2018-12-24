@@ -83,17 +83,15 @@ void Themp::MainMenu::Start()
 		std::wstring path = L"LDATA\\DKMAP";
 		std::wstring pathwnd = L"LDATA\\DKWIND";
 
-		memset(buf, 0, 8);
-		_itow(i, buf, 10);
-
+		std::wstring textNr = std::to_wstring(i);
 		if (i < 10)
 		{
 			path.append(1, L'0');
 			pathwnd.append(1, L'0');
 		}
 
-		path.append(buf);
-		pathwnd.append(buf);
+		path.append(textNr);
+		pathwnd.append(textNr);
 
 		m_MapFiles[i] = new Object2D(path, L".RAW");
 
@@ -298,6 +296,9 @@ void Themp::MainMenu::Update(double dt)
 			m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
 			m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
 			m_LevelSelectFlag->SetPosition(0, 0, 0.85f);
+
+			//Themp::System::tSys->m_Audio->Stop(FileManager::GetAtlasGoodSound(m_CurrentLevel - 1 >= 0 ? 0 : 20));
+			//Themp::System::tSys->m_Audio->Play(FileManager::GetAtlasGoodSound(m_CurrentLevel));
 		}
 		if (g->m_Keys[VK_ESCAPE] == 2)
 		{
@@ -408,6 +409,7 @@ void MainMenu::GoToCampaignSelect()
 	mouseOffset = XMFLOAT2(0.03, 0);
 
 	Themp::System::tSys->m_Audio->Play(FileManager::GetSound("NICELAND.WAV"),true);
+	//Themp::System::tSys->m_Audio->Play(FileManager::GetAtlasGoodSound(m_CurrentLevel));
 	System::Print("Going to Campaign Select");
 }
 void MainMenu::GoToContinue()

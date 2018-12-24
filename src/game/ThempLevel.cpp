@@ -9,6 +9,7 @@
 #include "ThempResources.h"
 #include "ThempVoxelObject.h"
 #include "ThempEntity.h"
+#include "ThempLevelScript.h"
 #include "../Library/imgui.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
@@ -17,13 +18,16 @@
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
+#include "Players/ThempPlayer.h"
+#include "Players/ThempCPUPlayer.h"
+#include "Players/ThempGoodPlayer.h"
+#include "Players/ThempNeutralPlayer.h"
 #include "ThempCreature.h"
 #include <DirectXMath.h>
 using namespace Themp;
 
 Level* Level::s_CurrentLevel = nullptr;
 BYTE* m_MiniMapScratchData = nullptr;
-micropather::MicroPather* m_Pather = nullptr;
 
 Level::~Level()
 {
@@ -31,11 +35,15 @@ Level::~Level()
 	delete m_MapObject;
 	delete m_MinimapData.texture;
 	delete m_LevelData;
+	delete m_LevelScript;
 	if(m_Pather)
 		delete m_Pather;
-	for (int i = 0; i < m_Creatures.size(); i++)
+	for (int i = 0; i < 6; i++)
 	{
-		delete m_Creatures[i];
+		if (m_Players[i] != nullptr)
+		{
+			delete m_Players[i];
+		}
 	}
 }
 XMFLOAT2 cursorOffset = XMFLOAT2(0.03f, 0);
@@ -47,19 +55,27 @@ Level::Level(int levelIndex)
 {
 	s_CurrentLevel = this;
 	m_LevelData = new LevelData(levelIndex);
+	m_LevelScript = new LevelScript(LevelData::LevelIDtoString(levelIndex));
 	m_MapObject = new VoxelObject(m_LevelData);
 	m_MapObject->m_Obj3D->m_Meshes[0]->m_Material->SetTexture(FileManager::GetBlockTexture(0));
 	Themp::System::tSys->m_Game->AddObject3D(m_MapObject->m_Obj3D);
+	m_Players[Owner_PlayerRed] = new Player(Owner_PlayerRed);
+	//White is the "Good" player, always exists
+	m_Players[Owner_PlayerWhite] = new GoodPlayer(Owner_PlayerWhite);
+	//None is the "Neutral" player, always exists
+	m_Players[Owner_PlayerNone] = new NeutralPlayer(Owner_PlayerNone);
+
 	//System::tSys->m_Game->m_Camera->SetOrtho(20, 20);
 	//System::tSys->m_Game->m_Camera->SetProjection(Camera::CameraType::Orthographic)
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 6; i++)
 	{
 		Creature* creature = new Themp::Creature(CreatureData::CREATURE_IMP);
-		m_Creatures.push_back(creature);
+		m_Players[Owner_PlayerRed]->m_Creatures.push_back(creature);
 		System::tSys->m_Game->AddCreature(creature);
 		creature->m_Renderable->SetPosition(42*3 +i, 2, 43*3);
 	}
+	LevelScript::GameValues[Owner_PlayerRed]["TOTAL_IMPS"] = 6;
 
 
 	tileIndicator = new Object3D();
@@ -88,16 +104,36 @@ Level::Level(int levelIndex)
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	m_LevelData->Init();
-	
 	m_Pather = new micropather::MicroPather(&m_LevelData->m_Map,260,8,false);
 
 	System::tSys->m_Game->m_Camera->SetPosition(42 * 3, 12, 38 * 3);
 	System::tSys->m_Game->m_Camera->SetTarget(XMFLOAT3(42 * 3, 12, 38 * 3));
+
+	m_LevelScript->RunInitCommands();
 }
 
 int SelectedTool = 0;
 int SelectedRoom = 0;
 bool IsMarking = false;
+
+struct RoomAvailableObject
+{
+	uint16_t type;
+	std::string name;
+};
+std::vector<RoomAvailableObject> availableRoomsList;
+void Level::AvailableRoomsChanged()
+{
+	availableRoomsList.clear();
+	for (auto& r : LevelScript::AvailableRooms[0])
+	{
+		if (r.second.isAvailable)
+		{
+			availableRoomsList.push_back({ r.first,RoomTypeToString.at(r.first) });
+		}
+	}
+}
+
 
 void Level::Update(float delta)
 {
@@ -116,15 +152,9 @@ void Level::Update(float delta)
 	//Some level stuff
 	ImGui::Checkbox("Wireframe", &D3D::s_D3D->m_Wireframe);
 
-	ImGui::Text("Controls: WASD for movement.\nHold Right Click to rotate the camera.\nPress T to use the tool on the current hovered Tile.\nPress 1 to set Pathfind Start, 2 to set Pathfind End, 3 to calculate Path.\nLeft click (and/or hold) to Mark tiles\n");
-	
+	ImGui::Text("Controls: WASD for movement.\nSelect a Room and Press Build \n");
+	ImGui::Text("\n\nGold: %i", LevelScript::GameValues[Owner_PlayerRed]["MONEY"]);
 
-	char* RoomNames[3] =
-	{
-		"Treasure Room",
-		"Lair",
-		"Hatchery",
-	};
 	char* ToolNames[3] =
 	{
 		"Select",
@@ -132,12 +162,17 @@ void Level::Update(float delta)
 		"Destroy",
 	};
 
-	ImGui::Text("Current Selected Tool: %s", ToolNames[SelectedTool]);
-	if (ImGui::Button("Tool: Select"))
+
+	std::vector<const char*> roomNameList;
+	roomNameList.reserve(availableRoomsList.size()+1);
+	for (int i = 0; i < availableRoomsList.size(); i++)
 	{
-		SelectedTool = 0;
+		roomNameList.push_back(availableRoomsList[i].name.c_str());
 	}
-	if (ImGui::Button("Tool: Build"))
+	roomNameList.push_back("None");
+
+	ImGui::Text("Current Selected Tool: %s", ToolNames[SelectedTool]);
+	if (ImGui::ListBox("Rooms", &SelectedRoom, roomNameList.data(), availableRoomsList.size()))
 	{
 		SelectedTool = 1;
 	}
@@ -145,7 +180,12 @@ void Level::Update(float delta)
 	{
 		SelectedTool = 2;
 	}
-	ImGui::ListBox("Rooms", &SelectedRoom, RoomNames, 3);
+
+	if (g->m_Keys[257] == 2)
+	{
+		SelectedTool = 0;
+		SelectedRoom = roomNameList.size()-1;
+	}
 
 	XMFLOAT3 mouseDir = g->m_Camera->ScreenToWorld(g->m_CursorWindowedX, g->m_CursorWindowedY);
 	XMFLOAT3 dir = Normalize(mouseDir - camPos);
@@ -154,6 +194,7 @@ void Level::Update(float delta)
 	//tileIndicator->SetPosition((camTilePosX-42)*3, 6, (camTilePosY-42)*3);
 	if (hit.hit)
 	{
+		tileIndicator->isVisible = true;
 		//DebugDraw::Line(camPos-XMFLOAT3(0,1,0), SubtileToWorld(XMFLOAT3(hit.posX, hit.posY, hit.posZ)), 2.0f);
 		XMFLOAT3 hitPos = LevelData::SubtileToWorld(XMINT3(hit.posX, hit.posY, hit.posZ));
 		XMINT2 tilePos = LevelData::WorldToTile(hitPos);
@@ -179,15 +220,7 @@ void Level::Update(float delta)
 				}
 				else if (SelectedTool == 1)
 				{
-					switch (SelectedRoom)
-					{
-					case 0: m_LevelData->BuildRoom(Type_Treasure_Room, Owner_PlayerRed, tilePos.y, tilePos.x);
-						break;
-					case 1: m_LevelData->BuildRoom(Type_Lair, Owner_PlayerRed, tilePos.y, tilePos.x);
-						break;
-					case 2:m_LevelData->BuildRoom(Type_Hatchery, Owner_PlayerRed, tilePos.y, tilePos.x);
-						break;
-					}
+					m_LevelData->BuildRoom(availableRoomsList[SelectedRoom].type, Owner_PlayerRed, tilePos.y, tilePos.x);
 				}
 				else if (SelectedTool == 2)
 				{
@@ -212,7 +245,7 @@ void Level::Update(float delta)
 	}
 	else
 	{
-		tileIndicator->SetPosition(0, -1, 0);
+		tileIndicator->isVisible = false;
 	}
 
 
@@ -240,40 +273,40 @@ void Level::Update(float delta)
 	{
 		m_Pather->Reset();
 	}
-	ImGui::Begin("Creature Info");
-	for (int i = 0; i < m_Creatures.size(); i++)
+
+	m_CreatureGenerateTurnTimer += delta;
+	const float turnDelta = 1.0f / GAME_TURNS_PER_SECOND;
+	if (m_CreatureGenerateTurnTimer > turnDelta)
 	{
-		std::string text = "Creature: ";
-		char buf[32];
-		sprintf(buf, "%i",i);
-		text.append(buf);
-
-		ImGui::BulletText(text.c_str());
-		ImGui::TreePush(text.c_str());
-
-		//Different behaviour whether the game is ran with or without debugger
-		//This.. kind of scares me but I don't want people to use break without a debugger attached as it just appears to crash/abort() ?
-		if (IsDebuggerPresent())
+		m_CreatureGenerateTurnTimer -= turnDelta;
+		m_CreatureGenerateTurns++;
+		int generateSpeed = LevelScript::GameValues[Owner_PlayerRed]["GENERATE_SPEED"];
+		if (m_CreatureGenerateTurns >= generateSpeed)
 		{
-			if (ImGui::Button("Break"))
+			m_CreatureGenerateTurns -= generateSpeed;
+			for (int i = 0; i < 6; i++)
 			{
-				DebugBreak();
+				SpawnCreature(i);
 			}
 		}
-		m_Creatures[i]->Update(delta);
-		if (LevelData::PathsInvalidated)
+		if (m_CreatureGenerateTurnTimer > turnDelta * 2)
 		{
-			//one of the creatures did an action that invalidated the paths somehow, reset it again
-			m_Pather->Reset();
-			LevelData::PathsInvalidated = false;
+			m_CreatureGenerateTurnTimer = turnDelta * 2;
 		}
-		ImGui::TreePop();
 	}
-	ImGui::End();
+
+	for (int player = 0; player < 6; player++)
+	{
+		if (m_Players[player] == nullptr) continue;
+		m_Players[player]->Update(delta);
+	}
+
 	for (int i = 0; i < m_LevelData->m_MapEntityUsed.size(); i++)
 	{
 		m_LevelData->m_MapEntityUsed[i]->Update(delta);
 	}
+
+	m_LevelScript->Update(delta);
 	
 }
 
@@ -340,98 +373,108 @@ void Level::UpdateMinimap()
 			const Tile& tile = m_LevelData->m_Map.m_Tiles[yTile][xTile];
 			const unsigned int texPos = (x + y * MAP_SIZE_SUBTILES) * 4;
 			uint16_t tileType = tile.type & 0xFF;
-			if (tileType == Type_Claimed_Land)
+			if (tile.visible)
 			{
-				m_MiniMapScratchData[texPos + 0] = OwnerColorsPath[tile.owner][0];
-				m_MiniMapScratchData[texPos + 1] = OwnerColorsPath[tile.owner][1];
-				m_MiniMapScratchData[texPos + 2] = OwnerColorsPath[tile.owner][2];
-				m_MiniMapScratchData[texPos + 3] = OwnerColorsPath[tile.owner][3];
+				if (tileType == Type_Claimed_Land)
+				{
+					m_MiniMapScratchData[texPos + 0] = OwnerColorsPath[tile.owner][0];
+					m_MiniMapScratchData[texPos + 1] = OwnerColorsPath[tile.owner][1];
+					m_MiniMapScratchData[texPos + 2] = OwnerColorsPath[tile.owner][2];
+					m_MiniMapScratchData[texPos + 3] = OwnerColorsPath[tile.owner][3];
+				}
+				else if (tileType == Type_Unclaimed_Path)
+				{
+					m_MiniMapScratchData[texPos + 0] = OwnerColorsPath[Owner_PlayerNone][0];
+					m_MiniMapScratchData[texPos + 1] = OwnerColorsPath[Owner_PlayerNone][1];
+					m_MiniMapScratchData[texPos + 2] = OwnerColorsPath[Owner_PlayerNone][2];
+					m_MiniMapScratchData[texPos + 3] = OwnerColorsPath[Owner_PlayerNone][3];
+				}
+				else if (tileType == Type_Rock)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x00;
+					m_MiniMapScratchData[texPos + 1] = 0x00;
+					m_MiniMapScratchData[texPos + 2] = 0x00;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType == Type_Lava)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x38;
+					m_MiniMapScratchData[texPos + 1] = 0x1C;
+					m_MiniMapScratchData[texPos + 2] = 0x00;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType == Type_Water)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x65;
+					m_MiniMapScratchData[texPos + 1] = 0x4D;
+					m_MiniMapScratchData[texPos + 2] = 0x49;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (IsWall(tileType))
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x5D;
+					m_MiniMapScratchData[texPos + 1] = 0x45;
+					m_MiniMapScratchData[texPos + 2] = 0x1C;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType == Type_Earth || tileType == Type_Earth_Torch)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x30;
+					m_MiniMapScratchData[texPos + 1] = 0x20;
+					m_MiniMapScratchData[texPos + 2] = 0x04;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType == Type_Gold)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x71;
+					m_MiniMapScratchData[texPos + 1] = 0x6D;
+					m_MiniMapScratchData[texPos + 2] = 0x18;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType >= Type_Portal && tileType <= Type_Barracks)
+				{
+					if (tile.owner == Owner_PlayerNone)
+					{
+						m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[UnownedRoomColorIndex][0];
+						m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[UnownedRoomColorIndex][1];
+						m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[UnownedRoomColorIndex][2];
+						m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[UnownedRoomColorIndex][3];
+					}
+					else
+					{
+						m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[tile.owner][0];
+						m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[tile.owner][1];
+						m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[tile.owner][2];
+						m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[tile.owner][3];
+					}
+				}
+				else if (tileType >= Type_Wooden_DoorH && tileType <= Type_Magic_DoorV)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0x92;
+					m_MiniMapScratchData[texPos + 1] = 0x9A;
+					m_MiniMapScratchData[texPos + 2] = 0x51;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else if (tileType >= Type_Wooden_DoorH_Locked && tileType <= Type_Magic_DoorV_Locked)
+				{
+					m_MiniMapScratchData[texPos + 0] = 0xF7;
+					m_MiniMapScratchData[texPos + 1] = 0x86;
+					m_MiniMapScratchData[texPos + 2] = 0x5D;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
+				else
+				{
+					m_MiniMapScratchData[texPos + 0] = 0xFF;
+					m_MiniMapScratchData[texPos + 1] = 0x0;
+					m_MiniMapScratchData[texPos + 2] = 0xFF;
+					m_MiniMapScratchData[texPos + 3] = 0xFF;
+				}
 			}
-			else if (tileType == Type_Unclaimed_Path)
-			{
-				m_MiniMapScratchData[texPos + 0] = OwnerColorsPath[Owner_PlayerNone][0];
-				m_MiniMapScratchData[texPos + 1] = OwnerColorsPath[Owner_PlayerNone][1];
-				m_MiniMapScratchData[texPos + 2] = OwnerColorsPath[Owner_PlayerNone][2];
-				m_MiniMapScratchData[texPos + 3] = OwnerColorsPath[Owner_PlayerNone][3];
-			}
-			else if (tileType == Type_Rock)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x00;
-				m_MiniMapScratchData[texPos + 1] = 0x00;
-				m_MiniMapScratchData[texPos + 2] = 0x00;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType == Type_Lava)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x38;
-				m_MiniMapScratchData[texPos + 1] = 0x1C;
-				m_MiniMapScratchData[texPos + 2] = 0x00;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType == Type_Water)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x65;
-				m_MiniMapScratchData[texPos + 1] = 0x4D;
-				m_MiniMapScratchData[texPos + 2] = 0x49;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (IsWall(tileType))
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x5D;
-				m_MiniMapScratchData[texPos + 1] = 0x45;
-				m_MiniMapScratchData[texPos + 2] = 0x1C;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType == Type_Earth || tileType == Type_Earth_Torch)
+			else
 			{
 				m_MiniMapScratchData[texPos + 0] = 0x30;
 				m_MiniMapScratchData[texPos + 1] = 0x20;
 				m_MiniMapScratchData[texPos + 2] = 0x04;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType == Type_Gold)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x71;
-				m_MiniMapScratchData[texPos + 1] = 0x6D;
-				m_MiniMapScratchData[texPos + 2] = 0x18;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType >= Type_Portal && tileType <= Type_Barracks)
-			{
-				if (tile.owner == Owner_PlayerNone)
-				{
-					m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[UnownedRoomColorIndex][0];
-					m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[UnownedRoomColorIndex][1];
-					m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[UnownedRoomColorIndex][2];
-					m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[UnownedRoomColorIndex][3];
-				}
-				else
-				{
-					m_MiniMapScratchData[texPos + 0] = OwnerColorsRoom[tile.owner][0];
-					m_MiniMapScratchData[texPos + 1] = OwnerColorsRoom[tile.owner][1];
-					m_MiniMapScratchData[texPos + 2] = OwnerColorsRoom[tile.owner][2];
-					m_MiniMapScratchData[texPos + 3] = OwnerColorsRoom[tile.owner][3];
-				}
-			}
-			else if (tileType >= Type_Wooden_DoorH && tileType <= Type_Magic_DoorV)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0x92;
-				m_MiniMapScratchData[texPos + 1] = 0x9A;
-				m_MiniMapScratchData[texPos + 2] = 0x51;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else if (tileType >= Type_Wooden_DoorH_Locked && tileType <= Type_Magic_DoorV_Locked)
-			{
-				m_MiniMapScratchData[texPos + 0] = 0xF7;
-				m_MiniMapScratchData[texPos + 1] = 0x86;
-				m_MiniMapScratchData[texPos + 2] = 0x5D;
-				m_MiniMapScratchData[texPos + 3] = 0xFF;
-			}
-			else
-			{
-				m_MiniMapScratchData[texPos + 0] = 0xFF;
-				m_MiniMapScratchData[texPos + 1] = 0x0;
-				m_MiniMapScratchData[texPos + 2] = 0xFF;
 				m_MiniMapScratchData[texPos + 3] = 0xFF;
 			}
 			if (tile.marked[Owner_PlayerRed])
@@ -489,18 +532,18 @@ void Level::UpdateMinimap()
 		},
 
 	};
-	for (int c = 0; c < m_Creatures.size(); c++)
+	for (int c = 0; c < m_Players[Owner_PlayerRed]->m_Creatures.size(); c++)
 	{
-		for (unsigned int i = 0; i < m_Creatures[0]->m_Path.size(); i++)
+		for (unsigned int i = 0; i < m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path.size(); i++)
 		{
-			int PathX = (((uint64_t)m_Creatures[0]->m_Path[i]) & 0xFFFFFFF);
-			int PathY = ((((uint64_t)m_Creatures[0]->m_Path[i]) >> 32) & 0xFFFFFFF);
+			int PathX = (((uint64_t)m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path[i]) & 0xFFFFFFF);
+			int PathY = ((((uint64_t)m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path[i]) >> 32) & 0xFFFFFFF);
 
 			const unsigned int texPos = (PathX + (254 - PathY) * MAP_SIZE_SUBTILES) * 4;
 
-			m_MiniMapScratchData[texPos + 0] = cols[0][c];
-			m_MiniMapScratchData[texPos + 1] = cols[1][c];
-			m_MiniMapScratchData[texPos + 2] = cols[2][c];
+			m_MiniMapScratchData[texPos + 0] = cols[0][c % 8];
+			m_MiniMapScratchData[texPos + 1] = cols[1][c % 8];
+			m_MiniMapScratchData[texPos + 2] = cols[2][c % 8];
 			m_MiniMapScratchData[texPos + 3] = 0xFF;
 		}
 	}
@@ -508,4 +551,49 @@ void Level::UpdateMinimap()
 	
 
 	m_MinimapData.texture->Load(m_MiniMapScratchData, m_MinimapData.height * m_MinimapData.width * 4);
+}
+
+
+
+void Themp::Level::SpawnCreature(uint8_t player)
+{
+	
+	std::vector<LevelData::Room*> entrances;
+	for (auto& room : m_LevelData->m_Rooms[player])
+	{
+		if (room.second.roomType == Type_Portal)
+		{
+			entrances.push_back(&room.second);
+		}
+	}
+	if (entrances.size() > 0)
+	{
+		int randRoom = rand() % entrances.size();
+		LevelData::Room* room = entrances[randRoom];
+		for (auto& tile : room->tiles)
+		{
+			//find the middle tile (naive method atm)
+			if (tile.first->type == (tile.first->GetType() + (5 << 8)))
+			{
+				std::vector<int> available;
+				for (int i = 0; i < m_AvailableCreatures.size(); i++)
+				{
+					if (m_AvailableCreatures[i].amount > 0 && LevelScript::AvailableCreatures[player][m_AvailableCreatures[i].type].isAvailable)
+					{
+						available.push_back(i);
+					}
+				}
+				if (available.size() == 0)
+				{
+					return;
+				}
+				int selectedindex = rand() % available.size();
+				Creature* c = new Creature(m_AvailableCreatures[available[selectedindex]].type);
+				m_Players[player]->AddCreature(c);
+				c->m_Renderable->SetPosition(tile.second.x*3 + 1,tile.first->pathSubTiles[1][1].height+1,tile.second.y*3 + 1);
+				m_AvailableCreatures[available[selectedindex]].amount--;
+				break;
+			}
+		}
+	}
 }

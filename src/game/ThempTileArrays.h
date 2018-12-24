@@ -2,6 +2,7 @@
 #include <DirectXMath.h>
 #include "../Library/micropather.h"
 #include <array>
+#include <unordered_map>
 using namespace DirectX;
 
 #define MAP_SIZE_HEIGHT (8)
@@ -60,6 +61,28 @@ static constexpr int Type_Iron_DoorH_Locked = 58;
 static constexpr int Type_Iron_DoorV_Locked = 59;
 static constexpr int Type_Magic_DoorH_Locked = 60;
 static constexpr int Type_Magic_DoorV_Locked = 61;
+
+
+const std::unordered_map<uint16_t, std::string> RoomTypeToString
+{
+	{Type_Portal		 , "Portal" },
+	{Type_Treasure_Room	 , "Treasure Room" },
+	{Type_Library		 , "Library" },
+	{Type_Prison		 , "Prison" },
+	{Type_Torture_Room	 , "Torture Chamber" },
+	{Type_Training_Room	 , "Training Room" },
+	{Type_Dungeon_Heart	 , "Dungeon Heart" },
+	{Type_Workshop		 , "Workshop" },
+	{Type_Scavenger_Room , "Scavenge Room" },
+	{Type_Temple		 , "Temple" },
+	{Type_Graveyard		 , "Graveyard" },
+	{Type_Hatchery		 , "Hatchery" },
+	{Type_Lair			 , "Lair" },
+	{Type_Barracks		 , "Barracks" },
+	{Type_Guardpost		 , "Guardpost" },
+	{Type_Bridge		 , "Bridge" },
+};
+
 
 static bool IsWall(uint16_t type)
 {
@@ -208,6 +231,7 @@ namespace Themp
 	{
 		Tile()
 		{
+			visible = false;
 			owner = Owner_PlayerNone;
 			type = Type_Rock;
 			numBlocks = 6 * 3 * 3;
@@ -231,6 +255,7 @@ namespace Themp
 		{
 			return (type & 0xFF);
 		}
+		bool visible;
 		uint8_t owner;
 		uint16_t type;
 		uint16_t numBlocks;
@@ -397,6 +422,15 @@ namespace Themp
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 			},
 		},
 		//side
@@ -456,13 +490,22 @@ namespace Themp
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+			},
+			{
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 			},
 			{
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
+				XMFLOAT2(0,0), //black
 			},
 			{
+				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black
 				XMFLOAT2(0,0), //black

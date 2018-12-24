@@ -25,6 +25,7 @@ void Themp::Game::Start()
 	m_Camera->Rotate(0, 0);
 	m_Camera->SetAspectRatio(Themp::D3D::s_D3D->m_ScreenWidth / Themp::D3D::s_D3D->m_ScreenHeight);
 	m_Camera->SetFoV(75);
+	m_Camera->SetProjection(Camera::CameraType::Perspective);
 	m_Camera->SetNear(0.1f);
 	m_Camera->SetFar(1000.0f);
 
@@ -54,6 +55,8 @@ void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)
 	outY -= 2;
 	outY = -outY;
 }
+float OrthoSize = 10;
+bool IsOrtho = true;
 void Themp::Game::Update(double dt)
 {
 	m_CursorWindowedX = m_CursorWindowedX < 0 ? 0 : m_CursorWindowedX > D3D::s_D3D->m_ScreenWidth  ? D3D::s_D3D->m_ScreenWidth  : m_CursorWindowedX;

@@ -81,6 +81,7 @@ namespace Themp
 			Begging,
 			Dying,
 			Held,
+			Happy,
 			Sleeping,
 			Slapped,
 			Eating,
@@ -88,7 +89,7 @@ namespace Themp
 		};
 		enum Animations
 		{
-			FP_WALK_Forward,
+			FP_WALK_Forward = 0,
 			FP_WALK_DiagForwardRight,
 			FP_WALK_Right,
 			FP_WALK_DiagBackRight,
@@ -168,6 +169,8 @@ namespace Themp
 			W_PISS_Right,
 			W_PISS_DiagBackRight,
 			W_PISS_Back,
+			FP_NULL = 0,
+			W_NULL = 0,
 		};
 		enum ImpAnimationState
 		{
@@ -308,6 +311,37 @@ namespace Themp
 			EatFood,
 			InHand,
 		};
+		enum class Jobs
+		{
+			Null = 0,
+			Tunnel = 1,
+			Dig = 2,
+			Research = 4,
+			Train = 8,
+			Manufacture = 16,
+			Scavenge = 32,
+			KinkyTorture = 64,
+			Fight = 128 ,
+			SeekTheEnemy = 256 ,
+			Guard = 512,
+			Group = 1024,
+			Barrack = 2048,
+			Temple = 4092,
+			FreezePrisoners = 8192,
+			Explore = 16384,
+		};
+		enum class AngerJobs
+		{
+			Null = 0,
+			KillCreatures = 1,
+			DestroyRooms = 2,
+			LeaveDungeons = 4,
+			StealGold = 8,
+			DamageWalls = 16,
+			MadPsycho = 32,
+			Persuade = 64,
+			JoinEnemy = 128,
+		};
 
 		bool Flying;
 		bool ImmuneToGas;
@@ -396,5 +430,8 @@ namespace Themp
 		uint16_t ThingSizeXY;
 		uint16_t ThingSizeYZ;
 		int16_t Annoyance[21];
+
+
+		static const CreatureData::Jobs JobArray[16];
 	};
 };

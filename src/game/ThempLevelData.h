@@ -96,10 +96,12 @@ namespace Themp
 		void UnMarkTile(uint8_t player, int y, int x);
 		void UpdateArea(int minY, int maxY, int minX, int maxX);
 		uint16_t GetTileType(int y, int x);
-		bool HasLandNeighbour(const int pos[4], int position, int y, int x);
+		bool HasWalkableNeighbour(int y, int x, int areaCode);
+		XMINT2 GetWalkableNeighbour(int y, int x, int areaCode);
 		void SetRoomFloodID(int ID, int startID, uint16_t type, int y, int x);
 		void CreateRoomFromTile(Room & room, int ID, int startID, uint16_t type, int y, int x);
-		int CreateRoomFromArea(uint16_t type, int y, int x);
+		int CreateRoomFromArea(uint16_t type, int initialRoomID, int y, int x);
+		void ClaimRoomFromEnemy(uint8_t newOwner, uint16_t type, int y, int x);
 		void UpdateSurroundingRoomsAdd(uint16_t type, int y, int x);
 		void UpdateSurroundingRoomsRemove(uint16_t type, int y, int x);
 		Entity * GetMapEntity();
@@ -117,9 +119,14 @@ namespace Themp
 		static XMFLOAT3 WorldToSubtileFloat(XMFLOAT3 pos);
 		static XMINT3 WorldToSubtile(XMFLOAT3 pos);
 		static XMFLOAT3 SubtileToWorld(XMINT3 pos);
+		static XMINT2 TileToSubtile(XMINT2 pos);
+
+		static std::wstring LevelIDtoString(int levelID);
 
 		void LoadLevelFileData();
 		int CreateFromTile(const Tile & tile, RenderTile & out);
+		static bool IsMineable(uint16_t type);
+		static bool IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player);
 		int m_CurrentLevelNr;
 
 		std::stack<Entity*> m_MapEntityPool;
@@ -133,5 +140,7 @@ namespace Themp
 		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
 
 		std::unordered_map<int32_t,Room> m_Rooms[6];
+
+		std::unordered_map<Tile*,XMINT2> m_UnexploredTiles;
 	};
 };

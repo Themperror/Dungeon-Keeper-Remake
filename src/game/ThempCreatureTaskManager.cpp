@@ -15,17 +15,9 @@ using namespace Themp;
 std::unordered_map<Tile*,CreatureTaskManager::Task> CreatureTaskManager::MiningTasks[4];
 std::unordered_map<Tile*, CreatureTaskManager::Task> CreatureTaskManager::ClaimingTasks[4];
 std::unordered_map<Tile*, CreatureTaskManager::Task> CreatureTaskManager::ReinforcingTasks[4];
-std::unordered_map<Creature*,CreatureTaskManager::Task> CreatureTaskManager::TaskedCreatures[4];
+std::unordered_map<Creature*,CreatureTaskManager::Task> CreatureTaskManager::TaskedImps[4];
 
-Themp::CreatureTaskManager::~CreatureTaskManager()
-{
-	
-}
 
-Themp::CreatureTaskManager::CreatureTaskManager()
-{
-
-}
 void CreatureTaskManager::Update(float delta)
 {
 
@@ -47,16 +39,12 @@ void Themp::CreatureTaskManager::RemoveMiningTask(uint8_t player, Tile*  tile)
 				creatures[numCreatures] = it->second.takenPositions[j];
 				it->second.takenPositions[j]->StopOrder();
 				numCreatures++;
-				auto taskIt = TaskedCreatures[player].find(it->second.takenPositions[j]);
-				if(taskIt != TaskedCreatures[player].end())
-					TaskedCreatures[player].erase(taskIt);
+				auto taskIt = TaskedImps[player].find(it->second.takenPositions[j]);
+				if(taskIt != TaskedImps[player].end())
+					TaskedImps[player].erase(taskIt);
 			}
 		}
 		MiningTasks[player].erase(tile);
-	}
-	for (size_t i = 0; i < numCreatures; i++)
-	{
-		creatures[i]->GetTask();
 	}
 }
 void Themp::CreatureTaskManager::RemoveClaimingTask(uint8_t player, Tile*  tile)
@@ -70,15 +58,11 @@ void Themp::CreatureTaskManager::RemoveClaimingTask(uint8_t player, Tile*  tile)
 		{
 			it->second.takenPositions[0]->StopOrder();
 
-			auto taskIt = TaskedCreatures[player].find(it->second.takenPositions[0]);
-			if (taskIt != TaskedCreatures[player].end())
-				TaskedCreatures[player].erase(taskIt);
+			auto taskIt = TaskedImps[player].find(it->second.takenPositions[0]);
+			if (taskIt != TaskedImps[player].end())
+				TaskedImps[player].erase(taskIt);
 		}
 		ClaimingTasks[player].erase(tile);
-	}
-	for (size_t i = 0; i < numCreatures; i++)
-	{
-		creatures[i]->GetTask();
 	}
 }
 void Themp::CreatureTaskManager::RemoveReinforcingTask(uint8_t player, Tile* tile)
@@ -93,20 +77,21 @@ void Themp::CreatureTaskManager::RemoveReinforcingTask(uint8_t player, Tile* til
 			if (it->second.takenPositions[j])
 			{
 				it->second.takenPositions[j]->StopOrder();
-				auto taskIt = TaskedCreatures[player].find(it->second.takenPositions[j]);
-				if (taskIt != TaskedCreatures[player].end())
-					TaskedCreatures[player].erase(taskIt);
+				auto taskIt = TaskedImps[player].find(it->second.takenPositions[j]);
+				if (taskIt != TaskedImps[player].end())
+					TaskedImps[player].erase(taskIt);
 			}
 		}
 		ReinforcingTasks[player].erase(tile);
 	}
-	for (size_t i = 0; i < numCreatures; i++)
-	{
-		creatures[i]->GetTask();
-	}
 }
 void Themp::CreatureTaskManager::AddMiningTask(uint8_t player, XMINT2 tilePos, Tile* tile)
 {
+	uint16_t type = tile->GetType();
+	if (player != tile->owner && type >= Type_Wall0  && type <= Type_Wall5) return;
+
+	if (type < Type_Gold && type > Type_Wall5 && type != Type_Gem) return;
+
 	auto foundIt = MiningTasks[player].find(tile);
 	if (foundIt == MiningTasks[player].end())
 	{
@@ -201,7 +186,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetMiningTask(Creature* r
 		}
 
 		i->second.assignedCreatures++;
-		TaskedCreatures[player][requestee] = task;
+		TaskedImps[player][requestee] = task;
 		return Order(true, creatureSubtilePos, task.tilePosition, Order_Mine, task.tile);
 	}
 	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
@@ -276,7 +261,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 		}
 
 		i->second.assignedCreatures++;
-		TaskedCreatures[player][requestee] = task;
+		TaskedImps[player][requestee] = task;
 		return Order(true, creatureSubtilePos, task.tilePosition, Order_Mine, task.tile);
 	}
 	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
@@ -297,7 +282,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetClaimingTask(Creature*
 			}
 			task.takenPositions[0] = requestee;
 			i->second.assignedCreatures++;
-			TaskedCreatures[player][requestee] = task;
+			TaskedImps[player][requestee] = task;
 			return Order(true, XMINT2(creaturePos.x,creaturePos.z), task.tilePosition, Order_Claim, task.tile);
 		}
 	}
@@ -351,7 +336,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 		}
 		task.takenPositions[cameFrom] = requestee;
 		i->second.assignedCreatures++;
-		TaskedCreatures[player][requestee] = task;
+		TaskedImps[player][requestee] = task;
 		return Order(true, creaturePos, task.tilePosition, Order_Reinforce, task.tile);
 	}
 	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None,nullptr);
@@ -404,11 +389,11 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetAvailableTreasury(Crea
 
 	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
 }
-void Themp::CreatureTaskManager::UnlistCreatureFromTask(Creature * requestee)
+void Themp::CreatureTaskManager::UnlistImpFromTask(Creature * requestee)
 {
 	const uint8_t player = requestee->m_Owner;
-	auto it = TaskedCreatures[player].find(requestee);
-	if (it != TaskedCreatures[player].end())
+	auto it = TaskedImps[player].find(requestee);
+	if (it != TaskedImps[player].end())
 	{
 		auto mineIt = MiningTasks[player].find(it->second.tile);
 		auto claimIt = ClaimingTasks[player].find(it->second.tile);
@@ -426,7 +411,7 @@ void Themp::CreatureTaskManager::UnlistCreatureFromTask(Creature * requestee)
 					break;
 				}
 			}
-			TaskedCreatures[player].erase(it);
+			TaskedImps[player].erase(it);
 			return;
 		}
 		else if (claimIt != ClaimingTasks[player].end())
@@ -434,7 +419,7 @@ void Themp::CreatureTaskManager::UnlistCreatureFromTask(Creature * requestee)
 			claimIt->second.takenPositions[0]->StopOrder();
 			claimIt->second.takenPositions[0] = nullptr;
 			claimIt->second.assignedCreatures--;
-			TaskedCreatures[player].erase(it);
+			TaskedImps[player].erase(it);
 			return;
 		}
 		else if (reinforceIt != ReinforcingTasks[player].end())
@@ -449,8 +434,135 @@ void Themp::CreatureTaskManager::UnlistCreatureFromTask(Creature * requestee)
 					break;
 				}
 			}
-			TaskedCreatures[player].erase(it);
+			TaskedImps[player].erase(it);
 			return;
 		}
 	}
+}
+
+
+//Locate the players Dungeon Heart, and walk to it (and heal it a bit)
+CreatureTaskManager::Activity CreatureTaskManager::GetDungeonEnteredActivity(Creature* requestee, int areaCode)
+{
+	const uint8_t owner = requestee->m_Owner;
+	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
+	auto& it = rooms.begin();
+	while (it != rooms.end())
+	{
+		if (it->second.areaCode == areaCode && it->second.roomType == Type_Dungeon_Heart)
+		{
+			for (auto& tile : it->second.tiles)
+			{
+				//find the middle tile (naive method atm), though its only 9 tiles anyhow
+				if (tile.first->type == (tile.first->GetType() + (5 << 8)))
+				{
+					return Activity(true, XMINT2(tile.second.x*3 +1, tile.second.y*3 +1), XMINT2(tile.second.x, tile.second.y), Activity_GoToHeart, tile.first);
+				}
+			}
+		}
+		it++;
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
+CreatureTaskManager::Activity CreatureTaskManager::GetFoodActivity(Creature* requestee, int areaCode)
+{
+	const uint8_t owner = requestee->m_Owner;
+	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
+	auto& it = rooms.begin();
+	while (it != rooms.end())
+	{
+		if (it->second.areaCode == areaCode && it->second.roomType == Type_Hatchery)
+		{
+			//should target a random chicken inside the hatchery to feed upon, might do that when we are actually inside the hatchery though..
+
+			//Wow this is a shitty way to get a reference to a random tile..
+			auto& tileIt = it->second.tiles.begin();
+			int off = (rand() % it->second.tiles.size());
+			for (int i = 0; i < off; i++)
+			{
+				tileIt++;
+			}
+			LevelData::Room::RoomTile& tile = tileIt->second;
+			return Activity(true, XMINT2(tile.x * 3 + 1, tile.y * 3 + 1), XMINT2(tile.x, tile.y), Activity_GetFood, tile.tile);
+		}
+		it++;
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
+CreatureTaskManager::Activity CreatureTaskManager::GetCreateLairActivity(Creature* requestee, int areaCode)
+{
+	const uint8_t owner = requestee->m_Owner;
+	if (requestee->m_LairLocation.x == -1 && requestee->m_LairLocation.y == -1)
+	{
+		std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
+		auto& it = rooms.begin();
+		while (it != rooms.end())
+		{
+			if (it->second.areaCode == areaCode && it->second.roomType == Type_Lair)
+			{
+				for (auto& tile = it->second.tiles.begin(); tile != it->second.tiles.end(); tile++)
+				{
+					if (tile->second.tileValue == 0)
+					{
+						tile->second.tileValue = 1;
+						return Activity(true, XMINT2(tile->second.x * 3 + 1, tile->second.y * 3 + 1), XMINT2(tile->second.x, tile->second.y), Activity_CreateLair, tile->first);
+					}
+				}
+			}
+			it++;
+		}
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
+CreatureTaskManager::Activity CreatureTaskManager::GetSleepActivity(Creature* requestee, int areaCode)
+{
+	if (requestee->m_LairLocation.x != -1 && requestee->m_LairLocation.y != -1)
+	{
+		XMFLOAT3 subTilePos = LevelData::TileToWorld(requestee->m_LairLocation);
+		return Activity(true, XMINT2(subTilePos.x, subTilePos.z), requestee->m_LairLocation, Activity_GoToBed, &Level::s_CurrentLevel->m_LevelData->m_Map.m_Tiles[requestee->m_LairLocation.y][requestee->m_LairLocation.x]);
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
+
+CreatureTaskManager::Activity CreatureTaskManager::GetActivityByJob(Creature* requestee, int areaCode, CreatureData::Jobs job)
+{
+	switch (job)
+	{
+		case CreatureData::Jobs::Null: break;
+		case CreatureData::Jobs::Tunnel: break;
+		case CreatureData::Jobs::Dig: break;
+		case CreatureData::Jobs::Research: break;
+		case CreatureData::Jobs::Train: break;
+		case CreatureData::Jobs::Manufacture: break;
+		case CreatureData::Jobs::Scavenge: break;
+		case CreatureData::Jobs::KinkyTorture: break;
+		case CreatureData::Jobs::Fight: break;
+		case CreatureData::Jobs::SeekTheEnemy: break;
+		case CreatureData::Jobs::Guard: break;
+		case CreatureData::Jobs::Group: break;
+		case CreatureData::Jobs::Barrack: break;
+		case CreatureData::Jobs::Temple: break;
+		case CreatureData::Jobs::FreezePrisoners: break;
+		case CreatureData::Jobs::Explore: 
+			return GetExploreActivity(requestee, areaCode);
+			break;
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
+
+CreatureTaskManager::Activity CreatureTaskManager::GetExploreActivity(Creature* requestee, int areaCode)
+{
+	LevelData* l = Level::s_CurrentLevel->m_LevelData;
+	if (l->m_UnexploredTiles.size() > 0)
+	{
+		for (auto& it = l->m_UnexploredTiles.begin(); it != l->m_UnexploredTiles.end(); it++)
+		{
+			if (l->HasWalkableNeighbour(it->second.y, it->second.x,areaCode))
+			{
+				XMINT2 tile = l->GetWalkableNeighbour(it->second.y, it->second.x, areaCode);
+				return Activity(true, LevelData::TileToSubtile(tile), tile, Activity_Explore, it->first);
+			}
+		}
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
 }

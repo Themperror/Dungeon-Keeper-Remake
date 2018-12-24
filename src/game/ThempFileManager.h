@@ -133,7 +133,10 @@ namespace Themp
 		//only used for testing purposes, not ingame
 		static Sound * GetSoundByIndex(int index);
 
+		static std::string GetText(int i);
 		static Sound* GetSound(std::string name);
+		static Sound * GetAtlasGoodSound(int index);
+		static Sound * GetAtlasBadSound(int index);
 		static std::vector<GUITexture>* GetFont(int source);
 
 
@@ -141,6 +144,7 @@ namespace Themp
 	private:
 		void LoadFilesFromDirectory(std::wstring dir);
 		FileData LoadFileData(std::wstring& path);
+		void LoadAtlasSpeech();
 		void LoadCreatures();
 		void LoadGUITextures(std::wstring datFile, std::wstring tabFile, std::vector<GUITexture>& guiTexVector, bool keepCPUData = false);
 		void LoadBlockTextures(std::wstring datFile, std::vector<Texture*>& TexVector);

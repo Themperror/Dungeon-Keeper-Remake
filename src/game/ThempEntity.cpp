@@ -32,8 +32,12 @@ const std::vector<int> EntityIDs
 	/*Entity_Gold4 =*/ 2229,
 	/*Dungeon_Heart*/  2232,
 	/*Dungeon_Heart*/  2233,
+	/*Entity_LairFly_FP,*/ 2225,
+	/*Entity_LairFly_W,*/ 2225,
+	/*Entity_LairBeetle_FP*/ 2225,
+	/*Entity_LairBeetle_W,*/ 2225,
 };
-const std::array<std::string, 12> EntityIDToName =
+const std::vector<std::string> EntityIDToName =
 {
 	"Entity_Gold0_FP",
 	"Entity_Gold0_W" ,
@@ -47,6 +51,10 @@ const std::array<std::string, 12> EntityIDToName =
 	"Entity_Gold4_W" ,
 	"Entity_DungeonHeart_FP",
 	"Entity_DungeonHeart_W",
+	"Entity_LairFly_FP",
+	"Entity_LairFly_W",
+	"Entity_LairBeetle_FP",
+	"Entity_LairBeetle_W",
 };
 
 Themp::Entity::~Entity()
@@ -104,6 +112,12 @@ Themp::Entity::Entity(Entity::EntityType entityType)
 	}
 	
 	m_Renderable->m_Meshes[0]->m_ConstantBuffer = m_EntityCB;
+}
+void Entity::SetSpriteFromType(Entity::EntityType entityType)
+{
+	m_EntityID = entityType;
+	m_EntitySpriteIndex = EntityIDs[entityType];
+	SetSprite(m_EntitySpriteIndex);
 }
 void Entity::SetSprite(int SpriteID)
 {

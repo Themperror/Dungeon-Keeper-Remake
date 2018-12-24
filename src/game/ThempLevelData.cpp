@@ -19,6 +19,7 @@
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
 #include "ThempLevelConfig.h"
+#include "ThempLevelScript.h"
 #include <DirectXMath.h>
 using namespace Themp;
 using namespace DirectX;
@@ -77,6 +78,14 @@ void LevelData::Init()
 			}
 		}
 	}
+	for (int i = 0; i < 6; i++)
+	{
+		for (auto& it = m_Rooms[i].begin(); it != m_Rooms[i].end(); it++)
+		{
+			it->second.areaCode = it->second.tiles.begin()->first->areaCode;
+		}
+	}
+	
 }
 
 float mod(float val, float mod)
@@ -164,7 +173,7 @@ LevelData::HitData LevelData::Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float
 			yPos < MAP_SIZE_HEIGHT && yPos >= 0 &&
 			zPos < MAP_SIZE_SUBTILES_RENDER && zPos >= 0))
 		{
-			if (m_BlockMap[(int)round(yPos)][(int)round(zPos)][(int)round(xPos)].active)
+			if (m_BlockMap[yPos][zPos][xPos].active || !m_Map.m_Tiles[zPos/3][xPos/3].visible)
 			{
 				//HitData hitData;
 				hitData.hit = true;
@@ -292,6 +301,23 @@ int LevelData::CreateFromTile(const Tile& tile, RenderTile& out)
 	}
 
 	return numSolidBlocks;
+}
+
+bool LevelData::IsMineable(uint16_t type)
+{
+	return (type >= Type_Gold && type <= Type_Wall5 || type == Type_Gem);
+}
+bool LevelData::IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player)
+{
+	if ((type >= Type_Gold && type < Type_Wall0 || type == Type_Gem))
+	{
+		return true;
+	}
+	else if(type >= Type_Wall0 && type <= Type_Wall5)
+	{
+		return tileOwner == player;
+	}
+	return false;
 }
 
 uint8_t LevelData::GetNeighbourInfo(uint16_t currentType, uint16_t nType)
@@ -738,8 +764,8 @@ bool LevelData::MarkTile(uint8_t player, int y, int x)
 {
 	if (m_Map.m_Tiles[y][x].owner == Owner_PlayerRed || m_Map.m_Tiles[y][x].owner == Owner_PlayerNone)
 	{
-		uint16_t type = m_Map.m_Tiles[y][x].type & 0xFF;
-		if (type >= Type_Gold && type <= Type_Wall5 || type == Type_Gem) //If the tile is a full block (mineable)
+		uint16_t type = m_Map.m_Tiles[y][x].GetType();
+		if (IsMineableForPlayer(type, m_Map.m_Tiles[y][x].owner, player)) 
 		{
 			if (m_Map.m_Tiles[y][x].marked[player])return true;
 			m_Map.m_Tiles[y][x].marked[player] = true;
@@ -749,6 +775,16 @@ bool LevelData::MarkTile(uint8_t player, int y, int x)
 			{
 				CreatureTaskManager::AddMiningTask(player, XMINT2(x, y),&m_Map.m_Tiles[y][x]);
 			}
+			System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("DIGMARK.WAV"));
+			return true;
+		}
+		else if(!m_Map.m_Tiles[y][x].visible)
+		{
+			if (LevelData::m_Map.m_Tiles[y][x].marked[player])
+			{
+				return false;
+			}
+			LevelData::m_Map.m_Tiles[y][x].marked[player] = true;
 			System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("DIGMARK.WAV"));
 			return true;
 		}
@@ -870,10 +906,19 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 					{
 						bool* bnMarkers = m_Map.m_Tiles[y + directions[i].y][x + directions[i].x].marked;
 						Tile* tile = &m_Map.m_Tiles[y + directions[i].y][x + directions[i].x];
-					
-						if (bnMarkers[player])
-							CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
 
+						uint16_t type = tile->GetType();
+						if (IsMineableForPlayer(type,tile->owner, player))
+						{
+							if (bnMarkers[player])
+							{
+								CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
+							}
+							else
+							{
+								bnMarkers[player] = false;
+							}
+						}
 						if (!markers[player])
 						{
 							uint16_t nType = (neighbourTiles.Axii[i]->type & 0xFF);
@@ -895,10 +940,20 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				{
 					bool* markers = m_Map.m_Tiles[y + directions[i].y][x + directions[i].x].marked;
 					Tile* tile = &m_Map.m_Tiles[y + directions[i].y][x + directions[i].x];
+					uint16_t type = tile->GetType(); 
 					for (int player = 0; player < 4; player++)
 					{
 						if (markers[player])
-							CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
+						{
+							if (IsMineableForPlayer(type, tile->owner, player))
+							{
+								CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
+							}
+							else
+							{
+								markers[player] = false;
+							}
+						}
 					}
 				}
 			}
@@ -909,24 +964,42 @@ uint16_t LevelData::GetTileType(int y, int x)
 {
 	return (m_Map.m_Tiles[y][x].type & 0xFF);
 }
-bool LevelData::HasLandNeighbour(const int pos[4], int position, int y, int x)
+
+
+
+bool LevelData::HasWalkableNeighbour(int y, int x, int areaCode)
 {
-	//for (size_t i = 0; i < 4; i++)
+	TileNeighbourTiles n = GetNeighbourTiles(y, x);
+	for (size_t j = 0; j < 4; j++)
 	{
-		//if (abs(pos[i] - position) < 2)
+		uint16_t type = (n.Axii[j]->type & 0xFF);
+		if (type == Type_Claimed_Land || type == Type_Unclaimed_Path || type == Type_Water)
 		{
-			TileNeighbourTiles n = GetNeighbourTiles(y, x);
-			for (size_t j = 0; j < 4; j++)
+			if (n.Axii[j]->areaCode == areaCode)
 			{
-				uint16_t type = (n.Axii[j]->type & 0xFF);
-				if (type == Type_Claimed_Land || type == Type_Unclaimed_Path)
-				{
-					return true;
-				}
+				return true;
 			}
 		}
 	}
 	return false;
+}
+
+XMINT2 LevelData::GetWalkableNeighbour(int y, int x, int areaCode)
+{
+	const XMINT2 directions[4] = { XMINT2(0,1), XMINT2(0,-1), XMINT2(-1,0), XMINT2(1,0), };
+	TileNeighbourTiles n = GetNeighbourTiles(y, x);
+	for (size_t j = 0; j < 4; j++)
+	{
+		uint16_t type = (n.Axii[j]->type & 0xFF);
+		if (type == Type_Claimed_Land || type == Type_Unclaimed_Path || type == Type_Water)
+		{
+			if (n.Axii[j]->areaCode == areaCode)
+			{
+				return XMINT2(x+directions[j].x,y+directions[j].y);
+			}
+		}
+	}
+	return XMINT2(-1,-1);
 }
 
 void LevelData::SetRoomFloodID(int ID, int startID,uint16_t type, int y, int x)
@@ -1107,18 +1180,45 @@ void LevelData::CreateRoomFromTile(Room& room,int ID, int startID, uint16_t type
 	CreateRoomFromTile(room, ID, startID, type, y, x - 1);
 	CreateRoomFromTile(room, ID, startID, type, y, x + 1);
 }
-int LevelData::CreateRoomFromArea(uint16_t type, int y, int x)
+int LevelData::CreateRoomFromArea(uint16_t type, int initialRoomID, int y, int x)
 {
 	nextRoomID++;
 	Room newRoom = { 0 };
-	CreateRoomFromTile(newRoom, nextRoomID, -1, type, y, x);
+	CreateRoomFromTile(newRoom, nextRoomID, initialRoomID, type, y, x);
 
 	if (newRoom.tilecount > 0)
 	{
+		newRoom.roomID = nextRoomID;
+		newRoom.roomType = type;
+		newRoom.areaCode = m_Map.m_Tiles[y][x].areaCode;
 		m_Rooms[m_Map.m_Tiles[y][x].owner][nextRoomID] = newRoom;
 		return nextRoomID;
 	}
 	return -1;
+}
+void LevelData::ClaimRoomFromEnemy(uint8_t newOwner,uint16_t type, int y, int x)
+{
+	uint8_t prevOwner = m_Map.m_Tiles[y][x].owner;
+	int roomID = m_Map.m_Tiles[y][x].roomID;
+	if (roomID == MAXINT32)
+	{
+		roomID = CreateRoomFromArea(type, MAXINT32, y, x);
+	}
+	int tilecount = m_Rooms[prevOwner][roomID].tilecount;
+	if (newOwner != prevOwner)
+	{
+		//copy the previous owner's room to the new owner
+		m_Rooms[newOwner][roomID] = m_Rooms[prevOwner][roomID];
+		//remove it from the old owner;
+		m_Rooms[prevOwner].erase(roomID);
+		//remove their room tiles from the game data
+		//actually mark it claimed
+		ClaimRoom(newOwner, type, y, x);
+
+		//update game data
+		LevelScript::AddRoom(prevOwner, type, -tilecount); //remove tiles from prev owner
+	}
+	LevelScript::AddRoom(newOwner, type, tilecount); //add tiles to the new owner
 }
 void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
 {
@@ -1174,7 +1274,7 @@ void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
 			//this is a tile that just got set to -1 (non room tiles have INT32_MAX)
 			if (t->roomID == -1)
 			{
-				int newRoomID = CreateRoomFromArea(type, y + Directions[i].y, x + Directions[i].x);
+				int newRoomID = CreateRoomFromArea(type,-1, y + Directions[i].y, x + Directions[i].x);
 				if (newRoomID != -1)
 				{
 					newRooms[numRooms] = newRoomID;
@@ -1256,7 +1356,7 @@ void LevelData::ClaimRoom(uint8_t newOwner, uint16_t type, int ty, int tx)
 	if (newOwner == m_Map.m_Tiles[ty][tx].owner) return;
 
 	//tile is of a different type, return
-	uint16_t nType = m_Map.m_Tiles[ty][tx].type & 0xFF;
+	uint16_t nType = m_Map.m_Tiles[ty][tx].GetType();
 	if (type != nType) return;
 
 	CreatureTaskManager::RemoveClaimingTask(newOwner, &m_Map.m_Tiles[ty][tx]);
@@ -1296,7 +1396,8 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 {
 	assert(y > 0 && y < MAP_SIZE_TILES);
 	assert(x > 0 && x < MAP_SIZE_TILES);
-	uint16_t type = m_Map.m_Tiles[y][x].type & 0xFF;
+	uint16_t type = m_Map.m_Tiles[y][x].GetType();
+	if (m_Map.m_Tiles[y][x].owner == player) return;
 	TileNeighbourTiles neighbourTiles = GetNeighbourTiles(y, x);
 
 	if ((	(neighbourTiles.North->type&0xFF) == Type_Claimed_Land && neighbourTiles.North->owner == player) || IsOwnedRoom(player,y+1,x)
@@ -1387,17 +1488,18 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 		else if (IsClaimableRoom(type))
 		{
 			System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("TAKEOVER.WAV"));
-			ClaimRoom(player, type, y, x);
+			ClaimRoomFromEnemy(player, type, y, x);
 		}
 	}
 }
 bool LevelData::BuildRoom(uint16_t type, uint8_t owner, int y, int x)
 {
-	if ((m_Map.m_Tiles[y][x].type & 0xFF) == Type_Claimed_Land && m_Map.m_Tiles[y][x].owner == owner)
+	if (m_Map.m_Tiles[y][x].GetType() == Type_Claimed_Land && m_Map.m_Tiles[y][x].owner == owner)
 	{
 		UpdateSurroundingRoomsAdd(type, y, x);
 		UpdateArea(y - 1, y + 1, x - 1, x + 1);
 		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("SLAB3.WAV"));
+		LevelScript::AddRoom(owner, type, 1);
 		return true;
 	}
 	else
@@ -1415,6 +1517,7 @@ bool LevelData::DeleteRoom(uint8_t owner, int y, int x)
 		UpdateSurroundingRoomsRemove(type, y, x);
 		UpdateArea(y - 1, y + 1, x - 1, x + 1);
 		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("SUCK.WAV"));
+		LevelScript::AddRoom(owner, type, -1);
 	}
 	else
 	{
@@ -1426,7 +1529,7 @@ bool LevelData::DeleteRoom(uint8_t owner, int y, int x)
 
 XMINT2 LevelData::WorldToTile(XMFLOAT3 pos)
 {
-	return XMINT2(((int)pos.x) / 3, ((int)pos.z) / 3);
+	return XMINT2(((int)round(pos.x)) / 3, ((int)round(pos.z)) / 3);
 }
 XMFLOAT3 LevelData::TileToWorld(XMINT2 tPos)
 {
@@ -1438,41 +1541,42 @@ XMFLOAT3 LevelData::WorldToSubtileFloat(XMFLOAT3 pos)
 }
 XMINT3 LevelData::WorldToSubtile(XMFLOAT3 pos)
 {
-	return XMINT3(pos.x, pos.y, pos.z);
+	return XMINT3(round(pos.x), round(pos.y), round(pos.z));
 }
 XMFLOAT3 LevelData::SubtileToWorld(XMINT3 pos)
 {
 	return XMFLOAT3(pos.x, pos.y, pos.z);
 }
-
-void LevelData::LoadLevelFileData()
+XMINT2 LevelData::TileToSubtile(XMINT2 pos)
 {
-	//"MAP00001"
+	return XMINT2(pos.x * 3 + 1, pos.y * 3 + 1);
+}
+std::wstring LevelData::LevelIDtoString(int levelID)
+{
+	//ouput example for LevelID==1: "LEVELS\\MAP00001"
 	std::wstring LevelPath = L"LEVELS\\MAP0";
 
-	//local scope so we don't waste the variable names
+	std::wstring levelNr = L"";
+	//Now we add the pre-trailing 0's since itoa 1 == "1" and we need "0001" or 10 being "0010"
+	if (levelID < 10)
 	{
-		wchar_t buf[32]; //should only ever have 4 or less chars, but safety first..
-		memset(buf, 0, 32);
-		_itow(m_CurrentLevelNr, buf, 10); //Though I guess I shouldn't be using such a unsafe function then heh...
-		std::wstring levelNr = L"";
-
-		//Now we add the pre-trailing 0's since itoa 1 == "1" and we need "0001" or 10 being "0010"
-		if (m_CurrentLevelNr < 10)
-		{
-			levelNr.append(3, L'0'); //000
-		}
-		else if (m_CurrentLevelNr < 100)
-		{
-			levelNr.append(2, L'0'); //00
-		}
-		else if (m_CurrentLevelNr < 1000)
-		{
-			levelNr.append(1, L'0'); //0
-		}
-		levelNr.append(buf); //append the resulting number to the zero's resulting in XXXN (X being a 0 or number)
-		LevelPath.append(levelNr); //append it to the complete path "LEVELS\\MAP0NNNN" 
+		levelNr.append(3, L'0'); //000
 	}
+	else if (levelID < 100)
+	{
+		levelNr.append(2, L'0'); //00
+	}
+	else if (levelID < 1000)
+	{
+		levelNr.append(1, L'0'); //0
+	}
+	levelNr.append(std::to_wstring(levelID)); //append the resulting number to the zero's resulting in XXXN (X being a 0 or number)
+	LevelPath.append(levelNr); //append it to the complete path "LEVELS\\MAP0NNNN" 
+	return LevelPath;
+}
+void LevelData::LoadLevelFileData()
+{
+	std::wstring LevelPath = LevelIDtoString(m_CurrentLevelNr);
 
 	//All these files are needed to completely load a single level, so I guess we'll just grab em already.
 	//Source: http://keeper.lubiki.pl/dk1_docs/dk_mapfiles_ref.htm
@@ -1633,8 +1737,8 @@ void LevelData::LoadLevelFileData()
 			mapTile.marked[3] = false;
 		}
 	}
-	auto m_AdjustedMap = new Tile[85][85];
-	memcpy(m_AdjustedMap, m_Map.m_Tiles, sizeof(m_Map.m_Tiles));
+	auto adjustedMap = new Tile[MAP_SIZE_TILES][MAP_SIZE_TILES];
+	memcpy(adjustedMap, m_Map.m_Tiles, sizeof(m_Map.m_Tiles));
 
 	int own_index = 0; //skip the first rown of subtiles
 	int yIndex = 0;
@@ -1658,7 +1762,8 @@ void LevelData::LoadLevelFileData()
 			}
 			assert(own_index < map_own.size);
 			uint8_t owner = map_own.data[own_index];
-			m_AdjustedMap[yIndex][xIndex].owner = owner;
+			adjustedMap[yIndex][xIndex].owner = owner;
+			m_Map.m_Tiles[yIndex][xIndex].owner = owner; //so we can claim the rooms to the right player in the next loop
 			own_index += 3; //skip a whole tile
 			x += 3;
 			xIndex++;
@@ -1674,12 +1779,16 @@ void LevelData::LoadLevelFileData()
 	{
 		for (int x = 0; x < MAP_SIZE_TILES; x++)
 		{
-			Tile& mapTile = m_Map.m_Tiles[y][x];
+			if (adjustedMap[y][x].owner == Owner_PlayerRed)
+			{
+				adjustedMap[y][x].visible = true;
+			}
+			Tile& mapTile = adjustedMap[y][x];
 			const uint16_t type = mapTile.type & 0xFF;
 			if (type == Type_Dungeon_Heart && !PlayerHeartsPlaced[mapTile.owner])
 			{
 				int heartroomsize = 1;
-				while ((m_Map.m_Tiles[y][x + heartroomsize].type & 0xFF) == Type_Dungeon_Heart)
+				while ((adjustedMap[y][x + heartroomsize].type & 0xFF) == Type_Dungeon_Heart)
 				{
 					heartroomsize++;
 				}
@@ -1692,7 +1801,7 @@ void LevelData::LoadLevelFileData()
 					//1x1,3x3,5x5 etc..
 					wPos.y = 5; //dungeon heart table is always on 5 high
 					e->m_Renderable->SetPosition(wPos);
-					m_AdjustedMap[y][x].placedEntities[1][1] = e;
+					adjustedMap[y][x].placedEntities[1][1] = e;
 				}
 				else //even 
 				{
@@ -1701,16 +1810,18 @@ void LevelData::LoadLevelFileData()
 					wPos.z += 1.5f;
 					wPos.y = 5;
 					e->m_Renderable->SetPosition(wPos);
-					m_AdjustedMap[y][x].placedEntities[2][2] = e;
+					adjustedMap[y][x].placedEntities[2][2] = e;
 				}
 				e->ResetScale();
 
 				PlayerHeartsPlaced[mapTile.owner] = true;
+				//CreateRoomFromArea(Type_Dungeon_Heart, INT32_MAX, y, x);
+				ClaimRoomFromEnemy(mapTile.owner, Type_Dungeon_Heart, y, x);
 			}
 			else if (type == Type_Wall0)
 			{
 				//Walls NEVER occur along map borders, so checking x-1 or x+1 or y-1 or y+1 without boundary checks is fine
-				m_AdjustedMap[y][x].type = Type_Wall0;
+				adjustedMap[y][x].type = Type_Wall0;
 				bool northWall = m_Map.m_Tiles[y + 1][x].type == Type_Wall0;
 				bool southWall = m_Map.m_Tiles[y - 1][x].type == Type_Wall0;
 				bool westWall = m_Map.m_Tiles[y][x - 1].type == Type_Wall0;
@@ -1726,30 +1837,30 @@ void LevelData::LoadLevelFileData()
 					{//eastern piece is a walltype
 						if (northRock && westRock)
 						{ //both other sides are not walls
-							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+							adjustedMap[y][x].type = Type_Wall3; //This is a corner piece
 						}
 						else if (!northWall || !westWall)
 						{//only 1 side is not a wall
-							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+							adjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
 						}
 						else
 						{//otherwise this is a wall
-							m_AdjustedMap[y][x].type = Type_Wall0;
+							adjustedMap[y][x].type = Type_Wall0;
 						}
 					}
 					else if (westWall)
 					{//Western piece is a walltype
 						if (northRock && eastRock)
 						{ //both other sides are not walls
-							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+							adjustedMap[y][x].type = Type_Wall3; //This is a corner piece
 						}
 						else if (!northWall || !eastWall)
 						{//only 1 northRock is not a wall
-							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+							adjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
 						}
 						else
 						{//otherwise this is a wall
-							m_AdjustedMap[y][x].type = Type_Wall0;
+							adjustedMap[y][x].type = Type_Wall0;
 						}
 					}
 				}
@@ -1759,45 +1870,67 @@ void LevelData::LoadLevelFileData()
 					{//eastern piece is a walltype
 						if (southRock && westRock)
 						{ //both other sides are not walls
-							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+							adjustedMap[y][x].type = Type_Wall3; //This is a corner piece
 						}
 						else if (!southWall || !eastWall)
 						{//only 1 side is not a wall
-							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+							adjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
 						}
 						else
 						{//otherwise this is a wall
-							m_AdjustedMap[y][x].type = Type_Wall0;
+							adjustedMap[y][x].type = Type_Wall0;
 						}
 					}
 					else if (westWall)
 					{//Western piece is a walltype
 						if (southRock && eastRock)
 						{ //both other sides are not walls
-							m_AdjustedMap[y][x].type = Type_Wall3; //This is a corner piece
+							adjustedMap[y][x].type = Type_Wall3; //This is a corner piece
 							continue;
 						}
 						else if (!southWall || !eastWall)
 						{//only 1 side is not a wall
-							m_AdjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
+							adjustedMap[y][x].type = Type_Wall2; //this is a wall AND a cornerpiece
 							continue;
 						}
 						else
 						{//otherwise this is a wall
-							m_AdjustedMap[y][x].type = Type_Wall0;
+							adjustedMap[y][x].type = Type_Wall0;
 							continue;
 
 						}
 					}
 				}
-
+			}
+			else if (type == Type_Gold || type == Type_Gem || type == Type_Portal || type == Type_Rock)
+			{
+				adjustedMap[y][x].visible = true;
+				if (type == Type_Portal)
+				{
+					if (adjustedMap[y][x - 1].GetType() != Type_Portal)
+					{
+						adjustedMap[y][x - 1].visible = true;
+					}
+					if (adjustedMap[y][x + 1].GetType() != Type_Portal)
+					{
+						adjustedMap[y][x + 1].visible = true;
+					}
+					if (adjustedMap[y - 1][x].GetType() != Type_Portal)
+					{
+						adjustedMap[y - 1][x].visible = true;
+					}
+					if (adjustedMap[y+1][x].GetType() != Type_Portal)
+					{
+						adjustedMap[y+1][x].visible = true;
+					}
+				}
 			}
 		}
 	}
 
-	memcpy(m_Map.m_Tiles, m_AdjustedMap, sizeof(m_Map.m_Tiles));
+	memcpy(m_Map.m_Tiles, adjustedMap, sizeof(m_Map.m_Tiles));
 	memcpy(m_OriginalMap.m_Tiles, m_Map.m_Tiles, sizeof(m_Map.m_Tiles));
-	delete[] m_AdjustedMap;
+	delete[] adjustedMap;
 }
 
 

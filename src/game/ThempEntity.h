@@ -25,6 +25,10 @@ namespace Themp
 			Entity_Gold4_W,
 			Entity_DungeonHeart_FP,
 			Entity_DungeonHeart_W,
+			Entity_LairFly_FP,
+			Entity_LairFly_W,
+			Entity_LairBeetle_FP,
+			Entity_LairBeetle_W,
 		};
 		struct CreatureConstantBuffer
 		{
@@ -42,6 +46,7 @@ namespace Themp
 
 		//spriteIndex = CreatureData::Creature_X
 		Entity(EntityType spriteIndex);
+		void SetSpriteFromType(Entity::EntityType entityType);
 		void SetSprite(int SpriteID);
 		void ResetScale();
 		void Update(float delta);

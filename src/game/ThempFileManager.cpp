@@ -8,6 +8,12 @@
 #include "../Engine/ThempMaterial.h"
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
+
+#define DR_WAV_IMPLEMENTATION
+
+#include <WavLoader.h>
+
+
 #include <DirectXMath.h>
 #include <lbrncbase.h>
 
@@ -58,6 +64,8 @@ std::unordered_map<std::wstring, std::vector<std::string>> Localized_Strings; //
 
 //Sounds
 std::unordered_map<std::string, Sound*> Sounds;
+std::vector<Sound*> AtlasGoodSounds;
+std::vector<Sound*> AtlasBadSounds;
 
 std::wstring GetFileExtension(std::wstring const& file);
 
@@ -166,6 +174,7 @@ FileManager::FileManager()
 
 	LoadFilesFromDirectory(L"LDATA\\");
 	LoadFilesFromDirectory(L"SOUND\\");
+	LoadFilesFromDirectory(L"SOUND\\ATLAS\\ENGLISH\\");
 	LoadFilesFromDirectory(L"LEVELS\\");
 	LoadFilesFromDirectory(L"SAVE\\");
 
@@ -329,6 +338,7 @@ FileManager::FileManager()
 	}
 
 	LoadSounds(L"SOUND\\SOUND.DAT");
+	LoadAtlasSpeech();
 
 	FileManager::fileManager = this;
 }
@@ -494,6 +504,19 @@ Sound* Themp::FileManager::GetSound(std::string name)
 	}
 	return it->second;
 }
+Sound* Themp::FileManager::GetAtlasGoodSound(int index)
+{
+	return AtlasGoodSounds[index % AtlasGoodSounds.size()];
+}
+Sound* Themp::FileManager::GetAtlasBadSound(int index)
+{
+	return AtlasBadSounds[index % AtlasBadSounds.size()];
+}
+
+std::string FileManager::GetText(int i)
+{
+	return Localized_Strings[L"INSTALLED"][i];
+}
 std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 {
 	switch (source)
@@ -505,6 +528,84 @@ std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 		case 3: return &Font_Menu1Textures; break;
 		case 4: return &Font_Menu2Textures; break;
 		case 5: return &Font_Menu3Textures; break;
+	}
+}
+
+void FileManager::LoadAtlasSpeech()
+{
+	Audio* audio = Themp::System::tSys->m_Audio;
+	for (size_t i = 1; i <= 20; i++)
+	{
+		std::wstring textNr = std::to_wstring(i);
+		std::wstring fileNameGood = L"SOUND\\ATLAS\\ENGLISH\\GOOD";
+		std::wstring fileNameBad = L"SOUND\\ATLAS\\ENGLISH\\BAD";
+		if (i < 10)
+		{
+			fileNameGood += '0';
+			fileNameBad += '0';
+		};
+		fileNameGood.append(textNr);
+		fileNameGood.append(L".WAV");
+		fileNameBad.append(textNr);
+		fileNameBad.append(L".WAV");
+
+		FileData soundGood = GetFileData(fileNameGood);
+		FileData soundBad = GetFileData(fileNameBad);
+
+		{
+			//uint32_t tag = soundGood.ReadUInt32();
+			//if (tag == MKTAG('F', 'F', 'I', 'R'))
+			//{ 
+			//	WAVEFORMATEX format = { 0 };
+			//	int currentOffset = soundGood.currentOffset;
+			//	uint32_t chunkSize = soundGood.ReadUInt32();
+			//	//skip WAVE and FMT tag
+			//	soundGood.SkipBytes(8);
+			//	uint32_t subChunkSize = soundGood.ReadUInt32();
+			//	uint16_t audioFormat = soundGood.ReadUInt16();
+			//	//assert(audioFormat == 1);
+			//
+			//	uint16_t numChannels = soundGood.ReadUInt16();
+			//	uint32_t sampleRate = soundGood.ReadUInt32();
+			//	uint32_t byteRate = soundGood.ReadUInt32();
+			//	uint16_t blockAlign = soundGood.ReadUInt16();
+			//	uint16_t bitsPerSample = soundGood.ReadUInt16();
+			//
+			//	if (soundGood.ReadUInt32() == MKTAG('a', 't', 'a', 'd'))
+			//	{
+			//		uint32_t dataSize = soundGood.ReadUInt32();
+			//
+			//		format.nSamplesPerSec = sampleRate;
+			//		format.nChannels = numChannels;
+			//		format.wBitsPerSample = 16;
+			//		format.wFormatTag = WAVE_FORMAT_ADPCM;
+			//		format.nBlockAlign = blockAlign;
+			//		format.nAvgBytesPerSec = byteRate;
+			//
+			//	}
+			//	Sound* s = audio->MakeSoundBuffer(format);
+			//	audio->AddSoundData(s, soundGood.CurrentAddress(), (sampleRate * numChannels * bitsPerSample) / 8, false);
+			//
+			//	AtlasGoodSounds.push_back(s);
+			//}
+		}
+		{
+			//drwav wav;
+			//drwav_init_memory(&wav, soundBad.data, soundBad.size);
+			//ADPCMWAVEFORMAT format = {};
+			//format.wfx.wFormatTag = WAVE_FORMAT_ADPCM;
+			//format.wfx.nChannels = wav.channels;
+			//format.wfx.nSamplesPerSec = wav.sampleRate;
+			//format.wfx.wBitsPerSample = wav.bitsPerSample;
+			//format.aCoef->iCoef1 = wav.msadpcm.delta[0];
+			//format.aCoef->iCoef2 = wav.msadpcm.delta[1];
+			//format.wNumCoef = 2;
+			//format.wSamplesPerBlock = wav.msadpcm.cachedSampleCount;
+			//Sound* s = audio->MakeSoundBuffer(format);
+			//audio->AddSoundData(s, &soundBad.data[wav.dataChunkDataPos], wav.dataChunkDataSize, false);
+			//
+			//AtlasBadSounds.push_back(s);
+		}
 	}
 }
 void FileManager::LoadCreatures()

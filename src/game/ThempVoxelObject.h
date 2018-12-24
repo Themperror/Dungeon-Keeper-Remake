@@ -15,6 +15,10 @@ namespace Themp
 		~VoxelObject();
 		VoxelObject(LevelData* level);
 		void Update(float dt);
+		void DoVoxelBlockVisibleEdge(int y, int x, int yP, int xP, uint32_t & currentIndex, uint32_t & vIndex);
+		void DoVoxelBlockVisibleAnimated(int y, int x, uint32_t & currentIndex, uint32_t & vIndex);
+		void DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint32_t & currentIndex, uint32_t & vIndex);
+		void DoVoxelBlockInvisible(int z, int y, int x, int yP, int xP, uint32_t & currentIndex, uint32_t & vIndex);
 		void ConstructFromLevel(int camX, int camY);
 		bool CheckWallIsCorner(int x, int y);
 		bool CreateVertexBuffer(VoxelVertex * vertices, size_t numVertices);
