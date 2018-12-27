@@ -20,6 +20,8 @@ namespace Themp
 		bool m_IsEnabled = false;
 		void AddCreature(Creature * c);
 
+		void CreatureDied(Creature * c);
+
 		virtual void Update(float delta) = 0;
 	};
 };

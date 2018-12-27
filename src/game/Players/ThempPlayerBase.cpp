@@ -50,7 +50,18 @@ void PlayerBase::AddCreature(Creature* c)
 	m_Creatures.push_back(c);
 	System::tSys->m_Game->AddCreature(c);
 }
-
+void PlayerBase::CreatureDied(Creature* c)
+{
+	for (int i = 0; i < m_Creatures.size(); i++)
+	{
+		if (m_Creatures[i] == c)
+		{
+			m_CreatureCount[c->m_CreatureID]--;
+			m_Creatures.erase(m_Creatures.begin() + i);
+			break;
+		}
+	}
+}
 PlayerBase::~PlayerBase()
 {
 	for (int i = 0; i < m_Creatures.size(); i++)
