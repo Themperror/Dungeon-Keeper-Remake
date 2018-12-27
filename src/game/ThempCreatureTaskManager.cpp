@@ -341,7 +341,45 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 	}
 	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None,nullptr);
 }
+CreatureTaskManager::Order Themp::CreatureTaskManager::GetRandomMovementOrder(Creature* requestee, int areaCode)
+{
+	struct TileAndPos { Tile* t; XMINT2 p; };
+	//since there's no method for looking through a list of nearby walkable tiles we'll do it naively, this luckily isn't too much and isn't called that often.
+	std::vector<TileAndPos> walkableTiles;
+	walkableTiles.reserve(4 * 4);
 
+	const int range = 4;
+	const XMINT2 tilePos = LevelData::WorldToTile(requestee->m_Renderable->m_Position);
+	const int minY = tilePos.y - range >= range ? tilePos.y - range : range;
+	const int minX = tilePos.x - range >= range ? tilePos.x - range : range;
+	const int maxY = tilePos.y + range < MAP_SIZE_TILES ? tilePos.y + range : MAP_SIZE_TILES - range - 1;
+	const int maxX = tilePos.x + range < MAP_SIZE_TILES ? tilePos.x + range : MAP_SIZE_TILES - range - 1;
+
+	for (int y = minY; y < maxY; y++)
+	{
+		for (int x = minX; x < maxX; x++)
+		{
+			Tile* t = &LevelData::m_Map.m_Tiles[y][x];
+			if (IsWalkable(t->GetType()) && t->areaCode == areaCode)
+			{
+				walkableTiles.push_back({ t,XMINT2(x,y) });
+			}
+		}
+	}
+	int randomTile = rand() % walkableTiles.size();
+	TileAndPos& t = walkableTiles[randomTile];
+	//really subpar subtile selection but fuck it, its 9 subtiles, no tiles with more than 2 unwalkable subtiles, so the chances this will cause lagg is minimal.
+	while (true)
+	{
+		int randX = rand() % 3;
+		int randY = rand() % 3;
+		if (t.t->pathSubTiles[randY][randX].walkable)
+		{
+			return Order(true, LevelData::TileToSubtile(t.p) + XMINT2(randX-1, randY-1), t.p, Order_IdleMovement, t.t);
+		}
+	}
+	return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
+}
 bool Themp::CreatureTaskManager::IsTreasuryAvailable(Creature* requestee, int areaCode)
 {
 	const uint8_t owner = requestee->m_Owner;
@@ -438,6 +476,7 @@ void Themp::CreatureTaskManager::UnlistImpFromTask(Creature * requestee)
 			return;
 		}
 	}
+	requestee->StopOrder();
 }
 
 
@@ -523,7 +562,46 @@ CreatureTaskManager::Activity CreatureTaskManager::GetSleepActivity(Creature* re
 	}
 	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
 }
+CreatureTaskManager::Activity CreatureTaskManager::GetRandomMovementActivity(Creature* requestee, int areaCode)
+{
+	struct TileAndPos { Tile* t; XMINT2 p; };
+	//since there's no method for looking through a list of nearby walkable tiles we'll do it naively, this luckily isn't too much and isn't called that often.
+	std::vector<TileAndPos> walkableTiles;
+	walkableTiles.reserve(4 * 4);
 
+
+	const int range = 4;
+	const XMINT2 tilePos = LevelData::WorldToTile(requestee->m_Renderable->m_Position);
+	const int minY = tilePos.y - range >= range ? tilePos.y - range : range;
+	const int minX = tilePos.x - range >= range ? tilePos.x - range : range;
+	const int maxY = tilePos.y + range < MAP_SIZE_TILES ? tilePos.y + range : MAP_SIZE_TILES - range - 1;
+	const int maxX = tilePos.x + range < MAP_SIZE_TILES ? tilePos.x + range : MAP_SIZE_TILES - range - 1;
+
+	for (int y = minY; y < maxY; y++)
+	{
+		for (int x = minX; x < maxX; x++)
+		{
+			Tile* t = &LevelData::m_Map.m_Tiles[y][x];
+			if (IsWalkable(t->GetType()) && t->areaCode == areaCode)
+			{
+				walkableTiles.push_back({ t,XMINT2(x,y) });
+			}
+		}
+	}
+	int randomTile = rand() % walkableTiles.size();
+	TileAndPos& t = walkableTiles[randomTile];
+	//really subpar subtile selection but fuck it, its 9 subtiles, no tiles with more than 2 unwalkable subtiles, so the chances this will cause lagg is minimal.
+	while (true)
+	{
+		int randX = rand() % 3;
+		int randY = rand() % 3;
+		if (t.t->pathSubTiles[randY][randX].walkable)
+		{
+			return Activity(true, LevelData::TileToSubtile(t.p)+XMINT2(randX-1,randY-1), t.p, Activity_IdleMovement, t.t);
+		}
+	}
+	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
+}
 CreatureTaskManager::Activity CreatureTaskManager::GetActivityByJob(Creature* requestee, int areaCode, CreatureData::Jobs job)
 {
 	switch (job)

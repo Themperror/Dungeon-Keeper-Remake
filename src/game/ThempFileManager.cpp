@@ -615,33 +615,26 @@ void FileManager::LoadCreatures()
 
 	//create sprite table
 	CreatureTab spriteData = {0};
-	size_t i = 0;
-	while (i < creatureTAB.size)
+	while (!creatureTAB.IsEnd())
 	{
 		int32_t t = 0;
 		//read offset
-		t =  (int32_t)creatureTAB.data[i++];
-		t += (int32_t)creatureTAB.data[i++] << 8;
-		t += (int32_t)creatureTAB.data[i++] << 16;
-		t += (int32_t)creatureTAB.data[i++] << 24;
-		spriteData.foffset = t;
+		spriteData.foffset = creatureTAB.ReadUInt32();
 
-		spriteData.width = creatureTAB.data[i++];
-		spriteData.height = creatureTAB.data[i++];
+		spriteData.width = creatureTAB.ReadUInt8();
+		spriteData.height = creatureTAB.ReadUInt8();
 
 		//read anim
-		spriteData.src_dx = creatureTAB.data[i++];
-		spriteData.src_dy = creatureTAB.data[i++];
-		spriteData.rotable = creatureTAB.data[i++];
-		spriteData.frames = creatureTAB.data[i++];
+		spriteData.src_dx = creatureTAB.ReadUInt8();
+		spriteData.src_dy = creatureTAB.ReadUInt8();
+		spriteData.rotable = creatureTAB.ReadUInt8();
+		spriteData.frames = creatureTAB.ReadUInt8();
 
-		spriteData.xOff = creatureTAB.data[i++];
-		spriteData.yOff = creatureTAB.data[i++];
+		spriteData.xOff = creatureTAB.ReadUInt8();
+		spriteData.yOff = creatureTAB.ReadUInt8();
 
-		spriteData.unscaledW =  (int16_t)creatureTAB.data[i++];
-		spriteData.unscaledW += (int16_t)creatureTAB.data[i++] << 8;
-		spriteData.unscaledH =  (int16_t)creatureTAB.data[i++];
-		spriteData.unscaledH += (int16_t)creatureTAB.data[i++] << 8;
+		spriteData.unscaledW =  (int16_t)creatureTAB.ReadSInt16();
+		spriteData.unscaledH =  (int16_t)creatureTAB.ReadSInt16();
 
 		SpriteFileData.push_back(spriteData);
 	}

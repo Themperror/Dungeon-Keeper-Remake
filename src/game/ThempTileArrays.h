@@ -88,6 +88,27 @@ static bool IsWall(uint16_t type)
 {
 	return type >= Type_Wall0 && type <= Type_Wall5;
 }
+static bool IsWalkable(uint16_t type)
+{
+	return (type > Type_Wall5 && type != Type_Gem);
+}
+static bool IsMineable(uint16_t type)
+{
+	return (type >= Type_Gold && type <= Type_Wall5 || type == Type_Gem);
+}
+static bool IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player)
+{
+	if ((type >= Type_Gold && type < Type_Wall0 || type == Type_Gem))
+	{
+		return true;
+	}
+	else if (type >= Type_Wall0 && type <= Type_Wall5)
+	{
+		return tileOwner == player;
+	}
+	return false;
+}
+
 static uint16_t TypeToTexture(uint16_t type)
 {
 	switch (type & 0xFF)
@@ -339,6 +360,9 @@ namespace Themp
 		unsigned char NorthWest : 3;
 	};
 
+
+
+	const XMINT2 AxiiDirections[4] = { XMINT2(0,1), XMINT2(0,-1), XMINT2(-1,0), XMINT2(1,0), };
 	//I have since learned that this following is UB in C++, It works for now, I'll figure out something at some point for this..
 	struct TileNeighbourTiles
 	{

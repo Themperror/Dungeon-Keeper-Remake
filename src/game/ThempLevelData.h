@@ -86,6 +86,7 @@ namespace Themp
 		void DoUVs(uint16_t type, int x, int y);
 		void DoRoomUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
 		void DoWallUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
+		void AddExploredTileNeighboursVisibility(int y, int x, int areaCode);
 		uint16_t Handle3by3Rooms(int yPos, int xPos);
 		uint16_t HandleNon3by3RoomsPillars(int yPos, int xPos);
 		void UpdateWalls(int y, int x);
@@ -125,8 +126,6 @@ namespace Themp
 
 		void LoadLevelFileData();
 		int CreateFromTile(const Tile & tile, RenderTile & out);
-		static bool IsMineable(uint16_t type);
-		static bool IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player);
 		int m_CurrentLevelNr;
 
 		std::stack<Entity*> m_MapEntityPool;

@@ -93,7 +93,7 @@ namespace Themp
 	};
 	struct CreatureTab 
 	{ 
-		unsigned long foffset;
+		uint32_t foffset;
 		unsigned char width; //width
 		unsigned char height; //height
 		unsigned char src_dx ; //src_dx 
@@ -102,8 +102,8 @@ namespace Themp
 		unsigned char frames;
 		unsigned char xOff; //X
 		unsigned char yOff; //Y
-		short unscaledW; //unscaled W
-		short unscaledH; //unscaled H
+		int16_t unscaledW; //unscaled W
+		int16_t unscaledH; //unscaled H
 	};// sizeof = 16
 	struct GUITab
 	{

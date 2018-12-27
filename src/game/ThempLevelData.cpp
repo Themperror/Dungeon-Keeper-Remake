@@ -303,23 +303,6 @@ int LevelData::CreateFromTile(const Tile& tile, RenderTile& out)
 	return numSolidBlocks;
 }
 
-bool LevelData::IsMineable(uint16_t type)
-{
-	return (type >= Type_Gold && type <= Type_Wall5 || type == Type_Gem);
-}
-bool LevelData::IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player)
-{
-	if ((type >= Type_Gold && type < Type_Wall0 || type == Type_Gem))
-	{
-		return true;
-	}
-	else if(type >= Type_Wall0 && type <= Type_Wall5)
-	{
-		return tileOwner == player;
-	}
-	return false;
-}
-
 uint8_t LevelData::GetNeighbourInfo(uint16_t currentType, uint16_t nType)
 {
 	if (currentType == nType || currentType >= Type_Wall0 && currentType <= Type_Wall5 && nType >= Type_Wall0 && nType <= Type_Wall5)
@@ -500,6 +483,30 @@ bool Is3By3Room(uint16_t type)
 {
 	return (type == Type_Temple || type == Type_Dungeon_Heart || type == Type_Portal || type == Type_Library || type == Type_Barracks);
 }
+
+//This is called on a freshly disovered tile, we check if the neighbouring tiles need to be added to the unexplored tiles list
+void LevelData::AddExploredTileNeighboursVisibility(int y, int x, int areaCode)
+{
+	TileNeighbourTiles n = GetNeighbourTiles(y, x);
+	for (int i = 0; i < 4; i++)
+	{
+		if (!n.Axii[i]->visible)
+		{
+			if (IsMineable(n.Axii[i]->GetType()))
+			{
+				if (m_Map.m_Tiles[y][x].areaCode != 0 && areaCode != 0)
+				{
+					m_UnexploredTiles[n.Axii[i]] = XMINT2(x, y) + AxiiDirections[i];
+				}
+			}
+			else
+			{
+				m_UnexploredTiles[n.Axii[i]] = XMINT2(x, y) + AxiiDirections[i];
+			}
+		}		
+	}
+}
+
 
 bool IsNon3By3PillarRoom(uint16_t type)
 {
@@ -803,7 +810,6 @@ void LevelData::UnMarkTile(uint8_t player, int y, int x)
 void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 {
 	RenderTile tileOut = {};
-	const XMINT2 directions[4] = { XMINT2(0,1), XMINT2(0,-1), XMINT2(-1,0), XMINT2(1,0), };
 	for (int y = minY; y <= maxY; y++)
 	{
 		for (int x = minX; x <= maxX; x++)
@@ -904,15 +910,15 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				{
 					for (int i = 0; i < 4; i++)
 					{
-						bool* bnMarkers = m_Map.m_Tiles[y + directions[i].y][x + directions[i].x].marked;
-						Tile* tile = &m_Map.m_Tiles[y + directions[i].y][x + directions[i].x];
+						bool* bnMarkers = m_Map.m_Tiles[y + AxiiDirections[i].y][x + AxiiDirections[i].x].marked;
+						Tile* tile = &m_Map.m_Tiles[y + AxiiDirections[i].y][x + AxiiDirections[i].x];
 
 						uint16_t type = tile->GetType();
 						if (IsMineableForPlayer(type,tile->owner, player))
 						{
 							if (bnMarkers[player])
 							{
-								CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
+								CreatureTaskManager::AddMiningTask(player, XMINT2(x + AxiiDirections[i].x, y + AxiiDirections[i].y), tile);
 							}
 							else
 							{
@@ -938,8 +944,8 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 				}
 				for (int i = 0; i < 4; i++)
 				{
-					bool* markers = m_Map.m_Tiles[y + directions[i].y][x + directions[i].x].marked;
-					Tile* tile = &m_Map.m_Tiles[y + directions[i].y][x + directions[i].x];
+					bool* markers = m_Map.m_Tiles[y + AxiiDirections[i].y][x + AxiiDirections[i].x].marked;
+					Tile* tile = &m_Map.m_Tiles[y + AxiiDirections[i].y][x + AxiiDirections[i].x];
 					uint16_t type = tile->GetType(); 
 					for (int player = 0; player < 4; player++)
 					{
@@ -947,7 +953,7 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 						{
 							if (IsMineableForPlayer(type, tile->owner, player))
 							{
-								CreatureTaskManager::AddMiningTask(player, XMINT2(x + directions[i].x, y + directions[i].y), tile);
+								CreatureTaskManager::AddMiningTask(player, XMINT2(x + AxiiDirections[i].x, y + AxiiDirections[i].y), tile);
 							}
 							else
 							{
@@ -986,7 +992,6 @@ bool LevelData::HasWalkableNeighbour(int y, int x, int areaCode)
 
 XMINT2 LevelData::GetWalkableNeighbour(int y, int x, int areaCode)
 {
-	const XMINT2 directions[4] = { XMINT2(0,1), XMINT2(0,-1), XMINT2(-1,0), XMINT2(1,0), };
 	TileNeighbourTiles n = GetNeighbourTiles(y, x);
 	for (size_t j = 0; j < 4; j++)
 	{
@@ -995,7 +1000,7 @@ XMINT2 LevelData::GetWalkableNeighbour(int y, int x, int areaCode)
 		{
 			if (n.Axii[j]->areaCode == areaCode)
 			{
-				return XMINT2(x+directions[j].x,y+directions[j].y);
+				return XMINT2(x+ AxiiDirections[j].x,y+ AxiiDirections[j].y);
 			}
 		}
 	}
@@ -1041,13 +1046,6 @@ void Themp::LevelData::UpdateSurroundingRoomsAdd(uint16_t cType, int y, int x)
 	uint8_t owner = m_Map.m_Tiles[y][x].owner;
 	m_Map.m_Tiles[y][x].roomID = -1;
 	TileNeighbourTiles n = GetNeighbourTiles(y, x);
-	const XMINT2 Directions[4] =
-	{
-		{0, 1 },
-		{0,-1 },
-		{-1, 0 },
-		{1,0},
-	};
 	//check if the same room exists in each direction, if so.. Get the lowest ID, remove those rooms from the Room Array, floodFill set to that ID, and add this room 
 
 	int lowestID = INT32_MAX;
@@ -1066,7 +1064,7 @@ void Themp::LevelData::UpdateSurroundingRoomsAdd(uint16_t cType, int y, int x)
 			m_Rooms[owner].erase(t->roomID);
 			roomCount++;
 
-			SetRoomFloodID(-1, t->roomID,type, y + Directions[i].y, x + Directions[i].x);
+			SetRoomFloodID(-1, t->roomID,type, y + AxiiDirections[i].y, x + AxiiDirections[i].x);
 		}
 	}
 	m_Map.m_Tiles[y][x].roomID = -1;
@@ -1224,13 +1222,6 @@ void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
 {
 	TileNeighbourTiles n = GetNeighbourTiles(y, x);
 	uint8_t owner = m_Map.m_Tiles[y][x].owner;
-	const XMINT2 Directions[4] =
-	{
-		{0, 1 },
-		{0,-1 },
-		{-1,0 },
-		{1, 0},
-	};
 	//remove current room
 	//check if the same room exists in each direction, if so.. Flood fill each direction to 0 afterwards.
 	//Then flood fill each side to the increasing Room ID one by one, and see if the other neigbours aren't 0 (if that's the case they're connected), if they aren't the same ID it's a seperate room -> Add to list
@@ -1260,7 +1251,7 @@ void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
 		{
 			roomCount++;
 			roomDirs[i] = i;
-			SetRoomFloodID(-1, t->roomID, type, y + Directions[i].y, x + Directions[i].x);
+			SetRoomFloodID(-1, t->roomID, type, y + AxiiDirections[i].y, x + AxiiDirections[i].x);
 		}
 	}
 	
@@ -1274,7 +1265,7 @@ void Themp::LevelData::UpdateSurroundingRoomsRemove(uint16_t type, int y, int x)
 			//this is a tile that just got set to -1 (non room tiles have INT32_MAX)
 			if (t->roomID == -1)
 			{
-				int newRoomID = CreateRoomFromArea(type,-1, y + Directions[i].y, x + Directions[i].x);
+				int newRoomID = CreateRoomFromArea(type,-1, y + AxiiDirections[i].y, x + AxiiDirections[i].x);
 				if (newRoomID != -1)
 				{
 					newRooms[numRooms] = newRoomID;
@@ -1449,6 +1440,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 				{
 					m_Map.m_Tiles[y + 1][x].type = Type_Wall3;
 					m_Map.m_Tiles[y + 1][x].owner = player;
+					m_Map.m_Tiles[y + 1][x].visible = true;
 					m_Map.m_Tiles[y + 1][x].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
@@ -1458,6 +1450,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 				{
 					m_Map.m_Tiles[y - 1][x].type = Type_Wall3;
 					m_Map.m_Tiles[y - 1][x].owner = player;
+					m_Map.m_Tiles[y - 1][x].visible = true;
 					m_Map.m_Tiles[y - 1][x].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
@@ -1467,6 +1460,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 				{
 					m_Map.m_Tiles[y][x + 1].type = Type_Wall3;
 					m_Map.m_Tiles[y][x + 1].owner = player;
+					m_Map.m_Tiles[y][x + 1].visible = true;
 					m_Map.m_Tiles[y][x + 1].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}
@@ -1476,6 +1470,7 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 				{
 					m_Map.m_Tiles[y][x - 1].type = Type_Wall3;
 					m_Map.m_Tiles[y][x - 1].owner = player;
+					m_Map.m_Tiles[y][x - 1].visible = true;
 					m_Map.m_Tiles[y][x - 1].health = LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_PRETTY].Value;
 				}
 			}

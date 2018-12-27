@@ -849,7 +849,7 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 
 void VoxelObject::ConstructFromLevel(int camX,int camY)
 {
-	const int tileRadius = 8;
+	const int tileRadius = 10;
 	const int subTileRadius = tileRadius * 3;
 
 	XMINT2 camTilePos = LevelData::WorldToTile(XMFLOAT3(camX, 2, camY));
@@ -882,13 +882,13 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 	}
 	size_t solidBlocks = 0;
 
-	assert(camTilePos.x + 8 <= 84);
-	assert(camTilePos.y + 8 <= 84);
-	assert(camTilePos.y - 8 >= 0);
-	assert(camTilePos.x - 8 >= 0);
-	for (int y = camTilePos.y -8; y < camTilePos.y +8; y++)
+	assert(camTilePos.x + tileRadius <= 84);
+	assert(camTilePos.y + tileRadius <= 84);
+	assert(camTilePos.y - tileRadius >= 0);
+	assert(camTilePos.x - tileRadius >= 0);
+	for (int y = camTilePos.y - tileRadius; y < camTilePos.y + tileRadius; y++)
 	{
-		for (int x = camTilePos.x -8; x < camTilePos.x+8; x++)
+		for (int x = camTilePos.x - tileRadius; x < camTilePos.x+ tileRadius; x++)
 		{
 			solidBlocks += m_Level->m_Map.m_Tiles[y][x].numBlocks;
 		}

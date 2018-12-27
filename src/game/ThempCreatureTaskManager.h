@@ -15,8 +15,8 @@ namespace Themp
 	public:
 		CreatureTaskManager() = delete;
 		~CreatureTaskManager() = delete;
-		enum OrderType { Order_None, Order_Mine, Order_Claim, Order_Reinforce, Order_DeliverGold };
-		enum ActivityType { Activity_None, Activity_GoToHeart, Activity_Sleep, Activity_GetFood, Activity_GoToBed,Activity_Eat, Activity_Train, Activity_Explore, Activity_Tunnel, Activity_CreateLair};
+		enum OrderType { Order_None, Order_Mine, Order_Claim, Order_Reinforce, Order_DeliverGold , Order_IdleMovement };
+		enum ActivityType { Activity_None, Activity_GoToHeart, Activity_Sleep, Activity_GetFood, Activity_GoToBed,Activity_Eat, Activity_Train, Activity_Explore, Activity_Tunnel, Activity_CreateLair, Activity_IdleMovement};
 
 		struct Task
 		{
@@ -83,6 +83,7 @@ namespace Themp
 		static Activity GetFoodActivity(Creature* requestee, int areaCode);
 		static Activity GetCreateLairActivity(Creature* requestee, int areaCode);
 		static Activity GetSleepActivity(Creature* requestee, int areaCode);
+		static Activity GetRandomMovementActivity(Creature * requestee, int areaCode);
 		static Activity GetActivityByJob(Creature * requestee, int areaCode, CreatureData::Jobs job);
 		static Activity GetExploreActivity(Creature * requestee, int areaCode);
 		static void RemoveMiningTask(uint8_t player, Tile* tile);
@@ -95,6 +96,7 @@ namespace Themp
 		static Order GetSoloMiningTask(Creature * requestee, int areaCode);
 		static Order GetClaimingTask(Creature* requestee, int areaCode);
 		static Order GetReinforcingTask(Creature* requestee, int areaCode);
+		static Order GetRandomMovementOrder(Creature * requestee, int areaCode);
 		static bool IsTreasuryAvailable(Creature * requestee, int areaCode);
 		static Order GetAvailableTreasury(Creature * requestee, int areaCode);
 		static void UnlistImpFromTask(Creature* requestee);
