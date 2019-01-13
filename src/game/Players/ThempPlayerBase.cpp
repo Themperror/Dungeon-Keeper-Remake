@@ -1,7 +1,10 @@
 #include "ThempSystem.h"
 #include "ThempPlayerBase.h"
 #include "ThempGame.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
+#include "Creature/ThempCreatureParty.h"
+#include "ThempLevel.h"
+#include "ThempLevelData.h"
 #include "ThempLevelScript.h"
 
 using namespace Themp;
@@ -41,13 +44,124 @@ std::unordered_map<CreatureData::CreatureType, std::string> CreatureTypeToString
 	{CreatureData::CreatureType::CREATURE_WIZARD,"WIZARD"},
 };
 
+void PlayerBase::AddPartyToLevel(uint8_t owner, CreatureParty party, XMINT2 tilePos)
+{
+	Creature* leader = nullptr;
+	{
+		CreatureParty::Partee& p = party.m_Partees[0];
+		leader = new Creature(p.type);
+		leader->SetPosition(tilePos.x, 2, tilePos.y);
+		leader->m_Hero_TimeTillStrike = p.timetillstrike;
+		leader->m_HeroObjective = p.objective;
+		leader->m_CurrentGoldHold = p.gold_hold;
+		leader->m_Level = p.level;
+		AddCreature(owner,leader);
+	}
 
-void PlayerBase::AddCreature(Creature* c)
+	for (int i = 1; i < party.m_Partees.size(); i++)
+	{
+		CreatureParty::Partee& p = party.m_Partees[i];
+		Creature* c = new Creature(p.type);
+		c->SetPosition(tilePos.x, 2, tilePos.y);
+		c->m_Hero_TimeTillStrike = p.timetillstrike;
+		c->m_HeroObjective = p.objective;
+		c->m_CurrentGoldHold = p.gold_hold;
+		c->m_Level = p.level;
+		c->m_HeroLeader = leader;
+		AddCreature(owner, c);
+	}
+}
+void Themp::PlayerBase::AddTunnellerPartyToLevel(uint8_t owner, int tunnelerLevel, int tunnelerGold, CreatureParty party, XMINT2 spawnPos, std::string headfor, int targetID)
+{
+	Creature* leader = new Creature(CreatureData::CreatureType::CREATURE_TUNNELLER);
+	leader->m_Level = tunnelerLevel;
+	leader->m_CurrentGoldHold = tunnelerGold;
+	leader->SetPosition(spawnPos.x, 2, spawnPos.y);
+
+	XMINT2 subtileTarget;
+	if (headfor == "ACTION_POINT")
+	{
+		subtileTarget.x = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[targetID - 1].tx;
+		subtileTarget.y = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[targetID - 1].ty;
+	}
+	else if (headfor == "DUNGEON")
+	{
+		XMINT2 location = Level::s_CurrentLevel->m_Players[targetID]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+	else if (headfor == "DUNGEON_HEART")
+	{
+		XMINT2 location = Level::s_CurrentLevel->m_Players[targetID]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+	else if (headfor == "APPROPIATE_DUNGEON")
+	{
+		//TODO IMPLEMENT SCORE TO BASE THE TARGET PLAYER ON!
+
+		XMINT2 location = Level::s_CurrentLevel->m_Players[0]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+
+
+	XMINT2 tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
+	leader->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::m_Map.m_Tiles[tileTarget.y][tileTarget.x]);
+	AddCreature(owner, leader);
+
+	for (int i = 0; i < party.m_Partees.size(); i++)
+	{
+		CreatureParty::Partee& p = party.m_Partees[i];
+		Creature* c = new Creature(p.type);
+		c->SetPosition(spawnPos.x, 2, spawnPos.y);
+		c->m_Hero_TimeTillStrike = 0;
+		c->m_HeroObjective = p.objective;
+		c->m_CurrentGoldHold = p.gold_hold;
+		c->m_Level = p.level;
+		c->m_HeroLeader = leader;
+		AddCreature(owner, c);
+	}
+}
+void  Themp::PlayerBase::AddTunnellerToLevel(uint8_t owner, int tunnelerLevel, int tunnelerGold,XMINT2 spawnPos,std::string headfor, int targetID)
+{
+	Creature* creature = new Creature(CreatureData::CreatureType::CREATURE_TUNNELLER);
+	creature->m_Level = tunnelerLevel;
+	creature->m_CurrentGoldHold = tunnelerGold;
+	creature->SetPosition(spawnPos.x, 2, spawnPos.y);
+
+	XMINT2 subtileTarget;
+	if (headfor == "ACTION_POINT")
+	{
+		subtileTarget.x = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[targetID - 1].tx;
+		subtileTarget.y = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[targetID - 1].ty;
+	}
+	else if (headfor == "DUNGEON")
+	{
+		XMINT2 location = Level::s_CurrentLevel->m_Players[targetID]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+	else if (headfor == "DUNGEON_HEART")
+	{
+		XMINT2 location = Level::s_CurrentLevel->m_Players[targetID]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+	else if (headfor == "APPROPIATE_DUNGEON")
+	{
+		//TODO IMPLEMENT SCORE TO BASE THE TARGET PLAYER ON!
+
+		XMINT2 location = Level::s_CurrentLevel->m_Players[0]->m_DungeonHeartLocation;
+		subtileTarget = XMINT2(location.x * 3, location.y * 3);
+	}
+
+	XMINT2 tileTarget = XMINT2(subtileTarget.x/3, subtileTarget.y / 3);
+	creature->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::m_Map.m_Tiles[tileTarget.y][tileTarget.x]);
+	AddCreature(owner, creature);
+}
+void PlayerBase::AddCreature(uint8_t owner, Creature* c)
 {
 	LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]++;
 	LevelScript::GameValues[m_PlayerID][CreatureTypeToString[c->m_CreatureID]]++;
 	m_CreatureCount[c->m_CreatureID]++;
 	m_Creatures.push_back(c);
+	c->m_Owner = owner;
 	System::tSys->m_Game->AddCreature(c);
 }
 void PlayerBase::CreatureDied(Creature* c)
@@ -56,6 +170,8 @@ void PlayerBase::CreatureDied(Creature* c)
 	{
 		if (m_Creatures[i] == c)
 		{
+			LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]--;
+			LevelScript::GameValues[m_PlayerID][CreatureTypeToString[c->m_CreatureID]]--;
 			m_CreatureCount[c->m_CreatureID]--;
 			m_Creatures.erase(m_Creatures.begin() + i);
 			break;

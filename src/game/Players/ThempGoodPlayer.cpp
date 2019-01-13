@@ -1,6 +1,7 @@
 #include "ThempSystem.h"
 #include "ThempGoodPlayer.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
+#include "Creature/ThempCreatureParty.h"
 #include "ThempLevelScript.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
@@ -12,9 +13,15 @@ Themp::GoodPlayer::GoodPlayer(uint8_t playerID)
 	m_PlayerID = playerID;
 }
 
+Themp::GoodPlayer::~GoodPlayer()
+{
+
+}
 void Themp::GoodPlayer::Update(float delta)
 {
+#ifdef _DEBUG
 	ImGui::Begin("Good Player Creature Info");
+#endif
 	for (int i = 0; i < m_Creatures.size(); i++)
 	{
 		m_Creatures[i]->Update(delta);
@@ -25,5 +32,7 @@ void Themp::GoodPlayer::Update(float delta)
 			LevelData::PathsInvalidated = false;
 		}
 	}
+#ifdef _DEBUG
 	ImGui::End();
+#endif
 }

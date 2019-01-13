@@ -1,6 +1,6 @@
 #include "ThempSystem.h"
 #include "ThempNeutralPlayer.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
 #include "ThempLevelScript.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"

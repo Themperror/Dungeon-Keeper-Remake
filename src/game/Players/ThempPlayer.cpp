@@ -1,6 +1,6 @@
 #include "ThempSystem.h"
 #include "ThempPlayer.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
 #include "ThempLevelScript.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
@@ -19,10 +19,12 @@ Themp::Player::~Player()
 
 void Themp::Player::Update(float delta)
 {
-	m_GoldAmount = LevelScript::GameValues[Owner_PlayerRed]["MONEY"];\
+	m_GoldAmount = LevelScript::GameValues[Owner_PlayerRed]["MONEY"];
 
 
+#ifdef _DEBUG
 	ImGui::Begin("Player Creature Info");
+#endif
 	for (int i = 0; i < m_Creatures.size(); i++)
 	{
 		m_Creatures[i]->Update(delta);
@@ -33,5 +35,7 @@ void Themp::Player::Update(float delta)
 			LevelData::PathsInvalidated = false;
 		}
 	}
+#ifdef _DEBUG
 	ImGui::End();
+#endif
 }
