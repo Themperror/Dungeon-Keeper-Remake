@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <DirectXMath.h>
 namespace Themp
 {
 	class Object2D;
@@ -44,10 +45,10 @@ namespace Themp
 		GUIButton(int source, int textureIDNormal, int textureIDHover, int textureIDClick, bool hiRes);
 		GUIButton(int source, int* textureIDNormal, int* textureIDHover, int* textureIDClick, float * xOffsets, float * yOffsets, float * zOffsets, int numIDs, bool hiRes = false, std::string text = "", int textFontNormal = 0,int texttFontHover = 0, int textFontDisabled = 0);
 		
-		void NextGUI();
 		void SetSize(float W, float H, float textW, float textH, int index = 0);
 		bool Update(float delta, float mouseX, float mouseY, int lmbuttonState, GUIButton * InitialClick);
 		void SetVisibility(bool val);
+		void SetPosition(const DirectX::XMFLOAT3 & pos);
 		void SetPosition(float x, float y, float z = 0);
 
 		std::vector<Object2D*> m_Objects;
@@ -57,7 +58,6 @@ namespace Themp
 		float m_CenterPosY = 0;
 
 		int m_Source = 0;
-		int m_GuiIndex = 0;
 
 		bool m_IsHiRes = false;
 		bool m_IsDisabled = false;

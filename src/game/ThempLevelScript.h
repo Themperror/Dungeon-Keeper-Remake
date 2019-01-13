@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <unordered_map>
+#include "Creature/ThempCreatureParty.h"
 #include "ThempLevelConfig.h"
 namespace Themp
 {
@@ -61,9 +62,9 @@ namespace Themp
 			};
 			ScriptFunctions function;
 
-			//max 6 args for the biggest function, they can either be an int or string
-			std::array<std::string, 6> argsStrings;
-			std::array<int, 6> argsInts; 
+			//max 8 args for the biggest function, they can either be an int or string
+			std::array<std::string, 8> argsStrings;
+			std::array<int, 8> argsInts; 
 		};
 		struct IfStatement
 		{
@@ -89,6 +90,7 @@ namespace Themp
 		bool EvaluateIfStatement(IfStatement * ifs);
 		void RunInitCommands();
 		void Update(float dt);
+		std::unordered_map<std::string, CreatureParty> m_CreatureParties;
 		std::vector<Command> m_Commands;
 		std::vector<IfStatement*> m_IfStatements;
 		static std::array<std::unordered_map<std::string, int>,6> GameValues;

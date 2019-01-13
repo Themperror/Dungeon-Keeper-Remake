@@ -108,7 +108,10 @@ static bool IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player
 	}
 	return false;
 }
-
+static bool IsClaimableRoom(uint16_t type)
+{
+	return ((type >= Type_Portal && type <= Type_Barracks || type == Type_Bridge || type == Type_Guardpost) && type != Type_Dungeon_Heart);
+}
 static uint16_t TypeToTexture(uint16_t type)
 {
 	switch (type & 0xFF)
@@ -136,7 +139,8 @@ static uint16_t TypeToTexture(uint16_t type)
 	case Type_Unclaimed_Path:
 		return 4;
 		break;
-	case Type_Claimed_Land: 
+	case Type_Claimed_Land:
+	case Type_Portal:
 		return 5;
 		break;
 	case Type_Treasure_Room:
@@ -338,7 +342,7 @@ namespace Themp
 		exact values for every call to MicroPather::Solve(). It should generally be a simple,
 		fast function with no callbacks into the pather.
 		*/
-		virtual void AdjacentCost(void* state, MP_VECTOR< micropather::StateCost >* adjacent);
+		virtual void AdjacentCost(void* state, MP_VECTOR< micropather::StateCost >* adjacent, bool ignoreWalls);
 
 		/**
 		This function is only used in DEBUG mode - it dumps output to stdout. Since void*
@@ -791,6 +795,30 @@ namespace Themp
 		//side
 		{
 			{
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
+			},
+			{
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
+			},
+			{
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
+			},
+			{
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
+			},
+			{
 				XMFLOAT2(4,15),XMFLOAT2(5,15),XMFLOAT2(6,15),
 				XMFLOAT2(7,15),XMFLOAT2(0,16),XMFLOAT2(1,16),
 				XMFLOAT2(2,16),XMFLOAT2(3,16),XMFLOAT2(4,16),
@@ -954,22 +982,22 @@ namespace Themp
 		//side
 		{
 			{
-				XMFLOAT2(4,15),XMFLOAT2(5,15),XMFLOAT2(6,15),
-				XMFLOAT2(7,15),XMFLOAT2(0,16),XMFLOAT2(1,16),
-				XMFLOAT2(2,16),XMFLOAT2(3,16),XMFLOAT2(4,16),
-				XMFLOAT2(5,16),XMFLOAT2(6,16),XMFLOAT2(7,16),
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
 			},
 			{
-				XMFLOAT2(0,17),XMFLOAT2(1,17),XMFLOAT2(2,17),
-				XMFLOAT2(3,17),XMFLOAT2(4,17),XMFLOAT2(5,17),
-				XMFLOAT2(6,17),XMFLOAT2(7,17),XMFLOAT2(0,18),
-				XMFLOAT2(1,18),XMFLOAT2(2,18),XMFLOAT2(3,18),
+				XMFLOAT2(4,14),XMFLOAT2(5,14),XMFLOAT2(6,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(1,14),XMFLOAT2(2,14),
+				XMFLOAT2(1,15),XMFLOAT2(2,15),XMFLOAT2(3,15),
 			},
 			{
-				XMFLOAT2(4,18),XMFLOAT2(5,18),XMFLOAT2(6,18),
-				XMFLOAT2(7,18),XMFLOAT2(0,19),XMFLOAT2(1,19),
-				XMFLOAT2(2,19),XMFLOAT2(3,19),XMFLOAT2(4,19),
-				XMFLOAT2(5,19),XMFLOAT2(6,19),XMFLOAT2(7,19),
+				XMFLOAT2(2,2),XMFLOAT2(3,2),XMFLOAT2(4,2),
+				XMFLOAT2(0,14),XMFLOAT2(5,2),XMFLOAT2(2,14),
+				XMFLOAT2(0,14),XMFLOAT2(6,2),XMFLOAT2(2,14),
+				XMFLOAT2(7,3),XMFLOAT2(0,3),XMFLOAT2(1,3),
 			},
 		},
 		//edge

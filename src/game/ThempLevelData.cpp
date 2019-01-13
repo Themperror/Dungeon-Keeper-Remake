@@ -6,7 +6,7 @@
 #include "ThempGUIButton.h"
 #include "ThempFont.h"
 #include "ThempResources.h"
-#include "ThempCreatureTaskManager.h"
+#include "Creature/ThempCreatureTaskManager.h"
 #include "ThempAudio.h"
 #include "ThempVoxelObject.h"
 #include "ThempEntity.h"
@@ -18,6 +18,8 @@
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
+#include "ThempLevel.h"
+#include "Players/ThempPlayerBase.h"
 #include "ThempLevelConfig.h"
 #include "ThempLevelScript.h"
 #include <DirectXMath.h>
@@ -223,10 +225,6 @@ END:
 	return hitData;
 }
 
-bool IsClaimableRoom(uint16_t type)
-{
-	return ((type >= Type_Portal && type <= Type_Barracks || type == Type_Bridge || type == Type_Guardpost) && type != Type_Dungeon_Heart);
-}
 
 //Selects a belonging RenderTile for the inputted tile (takes care of selecting the specific pieces of a room)
 int LevelData::CreateFromTile(const Tile& tile, RenderTile& out)
@@ -819,14 +817,6 @@ void LevelData::UpdateArea(int minY, int maxY, int minX, int maxX)
 			{
 				//not a 3b3 room so we do the blockbased method.
 				type = HandleNon3by3RoomsPillars(y, x);
-				//if(type == Type_Hatchery)
-				//{
-				//	//handle hatchery (another special case due to the indented floor)
-				//}
-				//else
-				//{
-				//	//handle the "normal rooms"
-				//}
 
 			}
 			m_Map.m_Tiles[y][x].type = type;
@@ -1528,7 +1518,7 @@ XMINT2 LevelData::WorldToTile(XMFLOAT3 pos)
 }
 XMFLOAT3 LevelData::TileToWorld(XMINT2 tPos)
 {
-	return XMFLOAT3((tPos.x) * 3 + 1, 3, (tPos.y) * 3 +1);
+	return XMFLOAT3((float)((tPos.x) * 3 + 1), (float)3, (float)((tPos.y) * 3 +1));
 }	
 XMFLOAT3 LevelData::WorldToSubtileFloat(XMFLOAT3 pos)
 {
@@ -1536,7 +1526,7 @@ XMFLOAT3 LevelData::WorldToSubtileFloat(XMFLOAT3 pos)
 }
 XMINT3 LevelData::WorldToSubtile(XMFLOAT3 pos)
 {
-	return XMINT3(round(pos.x), round(pos.y), round(pos.z));
+	return XMINT3((int)round(pos.x), (int)round(pos.y), (int)round(pos.z));
 }
 XMFLOAT3 LevelData::SubtileToWorld(XMINT3 pos)
 {
@@ -1584,8 +1574,23 @@ void LevelData::LoadLevelFileData()
 	//	4 bytes : XY Location
 	//	2 bytes : Range
 	//	2 bytes : Action point number(points are usually in order, but they don't have to be.
-	//FileData map_apt = FileManager::GetFileData(LevelPath + L".apt");
-
+	FileData map_apt = FileManager::GetFileData(LevelPath + L".apt");
+	{
+		uint32_t numAPs = map_apt.ReadUInt32();
+		ActionPoint ap;
+		m_ActionPoints.resize(numAPs);
+		for (int i = 0; i < numAPs; i++)
+		{
+			ap.sx = map_apt.ReadUInt8();
+			ap.tx = map_apt.ReadUInt8();
+			ap.sy = map_apt.ReadUInt8();
+			ap.ty = 255 - map_apt.ReadUInt8();
+			ap.sz = map_apt.ReadUInt8();
+			ap.tz = map_apt.ReadUInt8();
+			ap.ID = map_apt.ReadUInt16();
+			m_ActionPoints[ap.ID - 1] = ap;
+		}
+	}
 	//Description:Along with the.dat file, this determines the graphics for the level.Each entry gives the data for a subtile.
 	//Format :
 	//8 bytes : Number of 24 byte entries(always 2048).
@@ -1611,7 +1616,8 @@ void LevelData::LoadLevelFileData()
 	//	 01 for maps 13, 14, 15, 16, 17, 104
 	//	 02 for maps 9, 10
 	//	 03 for maps 19, 20
-	//FileData map_inf = FileManager::GetFileData(LevelPath + L".inf");
+	FileData map_inf = FileManager::GetFileData(LevelPath + L".inf");
+	m_MapBlockTextureID = map_inf.ReadUInt8();
 
 	//Description: Provides extra lighting.
 	//Format :
@@ -1642,7 +1648,44 @@ void LevelData::LoadLevelFileData()
 	//	7 : Thing subtype(eg creature race, trap type)
 	//	8 : Owner
 	//	9 - 20 : Type specific data
-	//FileData map_tng = FileManager::GetFileData(LevelPath + L".tng");
+	FileData map_tng = FileManager::GetFileData(LevelPath + L".tng");
+	{
+		int numHeroGates = 0;
+		uint16_t numThings = map_tng.ReadUInt16();
+		for (size_t i = 0; i < numThings; i++)
+		{
+			Thing t;
+			t.sx = map_tng.ReadUInt8();
+			t.tx = map_tng.ReadUInt8();
+			t.sy = map_tng.ReadUInt8();
+			t.ty = map_tng.ReadUInt8();
+			t.sz = map_tng.ReadUInt8();
+			t.tz = map_tng.ReadUInt8();
+			t.type = map_tng.ReadUInt8();
+			t.subType = map_tng.ReadUInt8();
+			t.owner = map_tng.ReadUInt8();
+			t.field1 = map_tng.ReadUInt8();
+			t.field2 = map_tng.ReadUInt16();
+			t.field3_4 = map_tng.ReadUInt16();
+			t.field5_6 = map_tng.ReadUInt16();
+			t.field7_8 = map_tng.ReadUInt16();
+			t.field9_10 = map_tng.ReadUInt16();
+			t.field11 = map_tng.ReadUInt8();
+			m_LevelThings.push_back(t);
+			if (t.type == 0x1 && t.subType == 49)
+			{
+				numHeroGates++;
+			}
+		}
+		m_HeroGates.resize(numHeroGates);
+		for (size_t i = 0; i < m_LevelThings.size(); i++)
+		{
+			Thing& t = m_LevelThings[i];
+			if (t.type == 0x1 && t.subType == 49) //field5_6 contains hero gate ID
+				m_HeroGates[t.field5_6] = t;
+		}
+
+	}
 
 	//Description: Level script which determines victory conditions, enemy keepers actions, training mode, etc.
 	//Format: Text file.
@@ -1797,6 +1840,7 @@ void LevelData::LoadLevelFileData()
 					wPos.y = 5; //dungeon heart table is always on 5 high
 					e->m_Renderable->SetPosition(wPos);
 					adjustedMap[y][x].placedEntities[1][1] = e;
+					Level::s_CurrentLevel->m_Players[mapTile.owner]->m_DungeonHeartLocation = XMINT2(x, y);
 				}
 				else //even 
 				{
@@ -1806,6 +1850,7 @@ void LevelData::LoadLevelFileData()
 					wPos.y = 5;
 					e->m_Renderable->SetPosition(wPos);
 					adjustedMap[y][x].placedEntities[2][2] = e;
+					Level::s_CurrentLevel->m_Players[mapTile.owner]->m_DungeonHeartLocation = XMINT2(x, y);
 				}
 				e->ResetScale();
 

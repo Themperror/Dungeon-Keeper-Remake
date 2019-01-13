@@ -2,7 +2,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "../Library/micropather.h"
-#include "ThempCreatureData.h"
+#include "Creature/ThempCreatureData.h"
 #include "ThempFileManager.h"
 namespace Themp
 {
@@ -15,6 +15,7 @@ namespace Themp
 	class LevelData;
 	class LevelScript;
 	class PlayerBase;
+	class LevelUI;
 
 	struct AvailableCreatureInPool
 	{
@@ -31,20 +32,30 @@ namespace Themp
 		void AvailableRoomsChanged();
 		void Update(float delta);
 		int PathFind(DirectX::XMINT2 A, DirectX::XMINT2 B, micropather::MPVector<void*>& outPath, float & outCost, bool AllowDoors);
+		int PathFindThroughWalls(DirectX::XMINT2 A, DirectX::XMINT2 B, micropather::MPVector<void*>& outPath, float & outCost, bool AllowDoors);
 		void UpdateMinimap();
 		void SpawnCreature(uint8_t player);
-		Object2D* m_Cursor = nullptr;
-		Object2D* m_MinimapObject = nullptr;
-		int UnownedRoomColorIndex = 0;
+
+
+		bool m_IsCompleted = false;
+
+		float m_CreatureGenerateTurnTimer = 0;
 		float UnOwnedRoomColorTimer = 0;
-		GUITexture m_MinimapData;
+
+		uint16_t m_SelectedBuilding = 0;
+		bool m_BuildMode = false;
+
+		int m_CreatureGenerateTurns = 0;
+		int UnownedRoomColorIndex = 0;
+
 		VoxelObject* m_MapObject = nullptr;
 		LevelData* m_LevelData = nullptr;
 		LevelScript* m_LevelScript = nullptr;
+		LevelUI* m_LevelUI = nullptr;
 		micropather::MicroPather* m_Pather = nullptr;
-
-		float m_CreatureGenerateTurnTimer = 0;
-		int m_CreatureGenerateTurns = 0;
+		micropather::MicroPather* m_PatherThroughWalls = nullptr;
+		Object2D* m_Cursor = nullptr;
+		bool m_ShowUI = true;
 		
 		//Using the player owner ID's this would result in a max of 4 real players (Red,Blue,Yellow and Green) and 2 CPU's (Neutral and Good)
 		//Red is 'always' a real player, the other 3 potentially a CPU player or disabled.

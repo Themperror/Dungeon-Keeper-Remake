@@ -73,7 +73,7 @@ FileManager::~FileManager()
 {
 	for (auto i : FileDataList)
 	{
-		_aligned_free(i.second.data);
+		free(i.second.data);
 	}
 
 	for (auto i : CreatureSprites) { delete i->texture;	delete i;}
@@ -184,8 +184,8 @@ FileManager::FileManager()
 	LoadCreatures();
 	LoadGUITextures(L"DATA\\GUI.DAT", L"DATA\\GUI.TAB", Level_MiscLowGUITextures);
 	LoadGUITextures(L"DATA\\GUIHI.DAT", L"DATA\\GUIHI.TAB" , Level_MiscHiGUITextures);
-	//LoadGUITextures(L"DATA\\GUI2-0-0.DAT", L"DATA\\GUI2-0-0.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
-	//LoadGUITextures(L"DATA\\GUI2-0-1.DAT", L"DATA\\GUI2-0-1.TAB", Pane_HiGUITextureData, Pane_HiGUITextures);
+	LoadGUITextures(L"DATA\\GUI2-0-0.DAT", L"DATA\\GUI2-0-0.TAB", Level_PaneLowGUITextures);
+	LoadGUITextures(L"DATA\\GUI2-0-1.DAT", L"DATA\\GUI2-0-1.TAB", Level_PaneHiGUITextures);
 
 	//Looks like..Water/Lava heightmaps?
 	//LoadGUITextures(L"DATA\\MENUBLK1.DAT", L"DATA\\MENUBLK1.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
@@ -220,7 +220,7 @@ FileManager::FileManager()
 
 
 	//Part of the Info pane when selecting a creature (has a weird full HP/MAGIC bar texture which might be unused as there is no "mana" in this game)
-	//LoadGUITextures(L"DATA\\STAT0-0.DAT", L"DATA\\STAT0-0.TAB", Pane_HiGUITextureData, Pane_HiGUITextures);
+	//LoadGUITextures(L"DATA\\STAT0-0.DAT", L"DATA\\STAT0-0.TAB", Level_PaneHiGUITextures);
 	
 	//Mistress claw attack?
 	//LoadGUITextures(L"DATA\\SWIPE1.DAT", L"DATA\\SWIPE1.TAB", Pane_LowGUITextureData, Pane_LowGUITextures);
@@ -303,10 +303,13 @@ FileManager::FileManager()
 	LoadGUITextures(L"LDATA\\FRONTFT2.DAT", L"LDATA\\FRONTFT2.TAB", Font_Menu1Textures,true);
 	LoadGUITextures(L"LDATA\\FRONTFT3.DAT", L"LDATA\\FRONTFT3.TAB", Font_Menu2Textures,true);
 	LoadGUITextures(L"LDATA\\FRONTFT4.DAT", L"LDATA\\FRONTFT4.TAB", Font_Menu3Textures,true);
+	
 
+	//usedPalFile = GetFileData(L"DATA\\REDPALL.DAT");
+	usedPalFile = GetFileData(L"DATA\\MAIN.PAL");
 	//"bigger" font, low res completely unreadable, uses a different palette because these are dark/grey with MAIN.PAL
-	LoadGUITextures(L"DATA\\LOFONT.DAT", L"DATA\\LOFONT.TAB", Font_IngameLowTextures,true);
-	LoadGUITextures(L"DATA\\HIFONT.DAT", L"DATA\\HIFONT.TAB", Font_IngameHiTextures,true);
+	LoadGUITextures(L"DATA\\FONT2-0.DAT", L"DATA\\FONT2-0.TAB", Font_IngameLowTextures,true);
+	LoadGUITextures(L"DATA\\FONT2-1.DAT", L"DATA\\FONT2-1.TAB", Font_IngameHiTextures,true);
 
 	usedPalFile = GetFileData(L"LDATA\\TORTURE.PAL");
 	//usedPalFile = GetFileData(L"DATA\\MAIN.PAL");
@@ -380,7 +383,7 @@ FileData FileManager::LoadFileData(std::wstring& path)
 		fseek(f, 0, SEEK_END); //go to end of file 
 		rawFileSize = ftell(f); //tell the size
 		fseek(f, 0, SEEK_SET); //set it back to beginning
-		rawData = (BYTE*)_aligned_malloc(rawFileSize,16);
+		rawData = (BYTE*)malloc(rawFileSize);
 		fread(rawData, rawFileSize, 1, f);
 		fclose(f);
 		if (rawData[0] == 'R' && rawData[1] == 'N' && rawData[2] == 'C' && rawData[3] == 0x01) //RNC magic number
@@ -399,12 +402,12 @@ FileData FileManager::LoadFileData(std::wstring& path)
 		{
 			int uncompressed_size = rnc_ulen(rawData);
 			filedata.size = uncompressed_size;
-			filedata.data = (BYTE*)_aligned_malloc(uncompressed_size,16);
+			filedata.data = (BYTE*)malloc(uncompressed_size);
 			if (rnc_unpack(rawData, filedata.data, RNC_IGNORE_NONE) < 0)
 			{
 				System::Print("Failed to unpack %S", path.c_str());
 			}
-			_aligned_free(rawData);
+			free(rawData);
 		}
 		else
 		{
@@ -435,6 +438,15 @@ Sprite* Themp::FileManager::GetCreatureSprite(int index)
 {
 	index = index % CreatureSprites.size();
 	return CreatureSprites[index];
+}
+size_t Themp::FileManager::GetLevelMiscAmount()
+{
+	return Level_MiscHiGUITextures.size();
+}
+
+size_t Themp::FileManager::GetLevelPaneAmount()
+{
+	return Level_PaneHiGUITextures.size();
 }
 GUITexture* Themp::FileManager::GetLevelMiscGUITexture(int index, bool hiRes)
 {
@@ -528,6 +540,7 @@ std::vector<GUITexture>* Themp::FileManager::GetFont(int source)
 		case 3: return &Font_Menu1Textures; break;
 		case 4: return &Font_Menu2Textures; break;
 		case 5: return &Font_Menu3Textures; break;
+		//case 6: return &Font_
 	}
 }
 
@@ -652,7 +665,7 @@ void FileManager::LoadCreatures()
 		int singleWidth = SpriteFileData[i].src_dx;
 		int height = SpriteFileData[i].src_dy;
 
-		BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
+		BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
 		memset(textureData, 0, width * height * 4);
 		
 		for (int j = 0; j < sprite->numAnim; j++)
@@ -671,7 +684,7 @@ void FileManager::LoadCreatures()
 					char val = startOff[srcIndex];
 					if (val < 0)
 					{
-						for (size_t z = 0; z < abs(val)-1; z++)
+						for (size_t z = 0; z < abs(val); z++)
 						{
 							textureData[((x + singleWidth * j) + y * width) * 4] = 0;
 							textureData[((x + singleWidth * j) + y * width) * 4 + 1] = 0;
@@ -765,7 +778,7 @@ void FileManager::LoadCreatures()
 //		fclose(creatureSpriteFile);
 		//////////
 
-		_aligned_free(textureData);
+		free(textureData);
 		CreatureSprites.push_back(sprite);
 	}
 	System::Print("Done Creating Sprites!!");
@@ -778,14 +791,11 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 	{
 		int i = 0;
 		GUITab tab;
-		while (i < guiTab.size)
+		while (!guiTab.IsEnd())
 		{
-			tab.offset = guiTab.data[i++];
-			tab.offset += guiTab.data[i++] << 8;
-			tab.offset += guiTab.data[i++] << 16;
-			tab.offset += guiTab.data[i++] << 24;
-			tab.width = guiTab.data[i++];
-			tab.height = guiTab.data[i++];
+			tab.offset = guiTab.ReadUInt32();
+			tab.width = guiTab.ReadUInt8();
+			tab.height = guiTab.ReadUInt8();
 			tabVector.push_back(tab);
 		}
 	}
@@ -795,7 +805,6 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 	{
 		GUITab& guiTabData = tabVector[i];
 		GUITexture guiTex = { 0 };
-		guiTex.texture = new Texture();
 		guiTex.width = guiTabData.width;
 		guiTex.height = guiTabData.height;
 		int width = guiTex.width;
@@ -804,8 +813,9 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 		{
 			continue;
 		}
+		guiTex.texture = new Texture();
 
-		BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
+		BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
 		memset(textureData, 0, width * height * 4);
 
 		BYTE* startOff = (guiData.data + guiTabData.offset);
@@ -821,7 +831,7 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 				char val = startOff[srcIndex];
 				if (val < 0)
 				{
-					for (size_t z = 0; z < abs(val) - 1; z++)
+					for (size_t z = 0; z < abs(val); z++)
 					{
 						textureData[(x + y * width) * 4] = 0;
 						textureData[(x + y * width) * 4 + 1] = 0;
@@ -856,7 +866,7 @@ void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, st
 		}
 		guiTex.texture->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, keepCPUData, textureData);
 
-		_aligned_free(textureData);
+		free(textureData);
 		guiTexVector.push_back(guiTex);
 	}
 }
@@ -869,7 +879,7 @@ void FileManager::LoadBlockTextures(std::wstring datFile, std::vector<Texture*>&
 	int height = 2176; //resulting in 8*68 textures
 
 	Texture* Tex = new Texture();
-	BYTE* textureData = textureData = (BYTE*)_aligned_malloc(width * height * 4,16);
+	BYTE* textureData = textureData = (BYTE*)malloc(width * height * 4);
 	memset(textureData, 0, width * height * 4);
 	int xRead = 0;
 	int yRead = 0;
@@ -891,7 +901,7 @@ void FileManager::LoadBlockTextures(std::wstring datFile, std::vector<Texture*>&
 	}
 	Tex->Create(width, height, DXGI_FORMAT_R8G8B8A8_UNORM, false, textureData);
 	TexVector.push_back(Tex);
-	_aligned_free(textureData);
+	free(textureData);
 }
 
 void FileManager::LoadSounds(std::wstring file)

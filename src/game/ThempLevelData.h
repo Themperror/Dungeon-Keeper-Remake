@@ -8,6 +8,38 @@ namespace Themp
 	class LevelData
 	{
 	public:
+		struct ActionPoint
+		{
+			uint8_t sx, tx, sy, ty, sz, tz;
+			uint16_t ID;
+		};
+		struct Thing
+		{
+			//0 - 5: Location
+			//6 : Thing type
+			//7 : Thing subtype(eg creature race, trap type)
+			//8 : Owner
+			//9 - 20 : Type specific data
+
+			uint8_t sx, tx, sy, ty, sz, tz;
+			uint8_t type;
+			uint8_t subType;
+			uint8_t owner;
+			union
+			{
+				char typeSpecificData[11];
+				struct
+				{
+					uint8_t field1;
+					uint8_t field2;
+					uint16_t field3_4;
+					uint16_t field5_6;
+					uint16_t field7_8;
+					uint16_t field9_10;
+					uint8_t field11;
+				};
+			};
+		};
 		struct Room
 		{
 			struct RoomTile
@@ -126,7 +158,8 @@ namespace Themp
 
 		void LoadLevelFileData();
 		int CreateFromTile(const Tile & tile, RenderTile & out);
-		int m_CurrentLevelNr;
+		uint8_t m_MapBlockTextureID = 0;
+		int m_CurrentLevelNr = 0;
 
 		std::stack<Entity*> m_MapEntityPool;
 		std::vector<Entity*> m_MapEntityUsed;
@@ -137,7 +170,9 @@ namespace Themp
 		static bool PathsInvalidated;
 		//Map in subtile format, used for pathfinding/picking
 		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
-
+		std::vector<ActionPoint> m_ActionPoints;
+		std::vector<Thing> m_HeroGates;
+		std::vector<Thing> m_LevelThings;
 		std::unordered_map<int32_t,Room> m_Rooms[6];
 
 		std::unordered_map<Tile*,XMINT2> m_UnexploredTiles;

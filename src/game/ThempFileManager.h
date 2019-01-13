@@ -10,7 +10,7 @@ namespace Themp
 	{
 		BYTE* data;
 		size_t size;
-		int currentOffset = 0;
+		size_t currentOffset = 0;
 		int8_t ReadSInt8()
 		{
 			return (int8_t)data[currentOffset++];
@@ -123,6 +123,8 @@ namespace Themp
 		static FileManager* fileManager;
 		static FileData GetFileData(std::wstring path);
 		static Sprite* GetCreatureSprite(int index);
+		static size_t GetLevelMiscAmount();
+		static size_t GetLevelPaneAmount();
 		static GUITexture* GetLevelMiscGUITexture(int index, bool hiRes);
 		static GUITexture* GetLevelPaneGUITexture(int index, bool hiRes);
 		static GUITexture* GetMenuGUITexture(int index);

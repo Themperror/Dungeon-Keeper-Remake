@@ -3,7 +3,7 @@
 #include "ThempFileManager.h"
 #include "ThempMainMenu.h"
 #include "ThempLevel.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
 #include "ThempEntity.h"
 #include "ThempResources.h"
 #include "ThempLevelConfig.h"

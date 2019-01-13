@@ -143,13 +143,6 @@ Themp::GUIButton::GUIButton(int source, int* textureIDNormal, int* textureIDHove
 	}
 }
 
-//this is purely for testing purposes
-void GUIButton::NextGUI()
-{
-	GUITexture* tex = m_Objects[0]->GetTexture((Object2D::Source)m_Source, m_GuiIndex++);
-	m_Objects[0]->SetTexture(tex);
-}
-
 
 //size in multiplier
 void GUIButton::SetSize(float W,float H, float textW, float textH, int index)
@@ -375,6 +368,23 @@ bool GUIButton::Update(float delta, float mouseX, float mouseY, int lmbuttonStat
 		}
 	}
 	return m_IsDisabled ? false : m_IsColliding;
+}
+void Themp::GUIButton::SetPosition(const XMFLOAT3& pos)
+{
+	float x = pos.x;
+	float y = pos.y;
+	float z = pos.z;
+
+	m_CenterPosX = x;
+	m_CenterPosY = y;
+	for (int i = 0; i < m_Objects.size(); i++)
+	{
+		m_Objects[i]->m_Renderable->SetPosition(m_TexIDs[i].xOffset + x, m_TexIDs[i].yOffset + y, m_TexIDs[i].zOffset + z);
+	}
+	for (size_t i = 0; i < m_FontObjects.size(); i++)
+	{
+		m_FontObjects[i]->m_ScreenObj->m_Renderable->SetPosition(x, y, z - 0.05f);
+	}
 }
 void Themp::GUIButton::SetPosition(float x, float y, float z)
 {

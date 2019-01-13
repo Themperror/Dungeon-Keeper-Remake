@@ -12,7 +12,9 @@ namespace Themp
 	public:
 		enum FontTexID{INGAME= 0,MENU_NORMAL0 = 2, MENU_NORMAL1, MENU_NORMAL2, MENU_NORMAL3};
 		~Font();
-		Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position);
+		Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position, int lineheight = 64);
+
+		void ChangeText(std::string text, int lineheight);
 		
 		void SetVisibility(bool val);
 		void SetScale(float x, float y, float z);

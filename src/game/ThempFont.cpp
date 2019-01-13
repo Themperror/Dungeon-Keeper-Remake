@@ -76,13 +76,19 @@ Themp::Font::~Font()
 //		System::tSys->m_Game->AddObject3D(obj->m_Renderable);
 //	}
 //}
-Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position)
+Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position, int lineheight)
 {
 	m_Font = FileManager::GetFont(fontTexture + (fontTexture == FontTexID::INGAME && hiRes ? 1 : 0));
 	m_Text = text;
 	m_ScreenObj = new Object2D();
 	m_ScreenObj->m_Renderable->SetPosition(position);
 	System::tSys->m_Game->AddObject3D(m_ScreenObj->m_Renderable);
+	
+	ChangeText(text, lineheight);
+}
+//Font is not made for changing text.. this is gonna be a pain, make sure to minimize amount of calls to this function
+void Themp::Font::ChangeText(std::string text,int lineheight)
+{
 	int dataWidth = 0;
 	int dataHeight = 0;
 	int numLines = 0;
@@ -107,7 +113,7 @@ Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::
 		GUITexture* tex = &m_Font->at(textID);
 		if (biggestYTex < tex->height)biggestYTex = tex->height;
 		dataWidth += tex->width + spacing;
-		if (dataHeight < biggestYTex + numLines*64) dataHeight = biggestYTex + numLines * 64;
+		if (dataHeight < biggestYTex + numLines * lineheight) dataHeight = biggestYTex + numLines * lineheight;
 	}
 	BYTE* imageData = (BYTE*)malloc(dataWidth * dataHeight * 4);
 	memset(imageData, 0, dataWidth*dataHeight * 4);
@@ -124,7 +130,7 @@ Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::
 		else if (text[i] == '\n')
 		{
 			lastX = 0;
-			lastY += 64;
+			lastY += lineheight;
 			continue;
 		}
 		if (textID < 0)continue;
@@ -137,27 +143,35 @@ Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::
 				int posX = lastX + x;
 				int posY = lastY + y;
 				int writePos = posX + posY * dataWidth;
-				imageData[(writePos * 4)] = texData[(x+y * tex->width)*4];
-				imageData[(writePos * 4 + 1)] = texData[(x+y * tex->width) *4 + 1];
-				imageData[(writePos * 4 + 2)] = texData[(x+y * tex->width) *4 + 2];
-				imageData[(writePos * 4 + 3)] = texData[(x+y * tex->width) *4 + 3];
+				imageData[(writePos * 4)] = texData[(x + y * tex->width) * 4];
+				imageData[(writePos * 4 + 1)] = texData[(x + y * tex->width) * 4 + 1];
+				imageData[(writePos * 4 + 2)] = texData[(x + y * tex->width) * 4 + 2];
+				imageData[(writePos * 4 + 3)] = texData[(x + y * tex->width) * 4 + 3];
 			}
 		}
 
 		lastX += tex->width + spacing;
 	}
-	
+
+	//yeah this sucks..
+	if (m_Texture)
+	{
+		delete m_Texture->texture;
+		delete m_Texture;
+	}
 	m_Texture = new GUITexture();
 	m_Texture->height = dataHeight;
 	m_Texture->width = dataWidth;
 	m_Texture->texture = new Texture();
 	m_Texture->texture->Create(dataWidth, dataHeight, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, false, imageData);
 	free(imageData);
+
 	m_ScreenObj->m_GUITex = m_Texture;
 	m_ScreenObj->m_Tex = m_Texture->texture;
 	m_ScreenObj->m_Material->SetTexture(m_Texture->texture);
 	SetScale(1, 1, 1);
 }
+
 void Themp::Font::SetVisibility(bool val)
 {
 	m_ScreenObj->SetVisibility(val);

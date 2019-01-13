@@ -1,5 +1,5 @@
 #pragma once
-#include "ThempCreatureData.h"
+#include "Creature/ThempCreatureData.h"
 namespace Themp
 {
 	struct RoomData

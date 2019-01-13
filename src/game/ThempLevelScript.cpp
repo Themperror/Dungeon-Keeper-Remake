@@ -1,9 +1,14 @@
 #include "ThempSystem.h"
 #include "ThempLevelScript.h"
 #include "ThempLevel.h"
+#include "ThempLevelData.h"
 #include "Players/ThempCPUPlayer.h"
+#include "Players/ThempGoodPlayer.h"
 #include "Players/ThempPlayer.h"
 #include "ThempTileArrays.h"
+#include "Creature/ThempCreature.h"
+#include "Creature/ThempCreatureParty.h"
+#include "ThempLevelUI.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -487,13 +492,11 @@ void LevelScript::ExecuteCommand(Command* c)
 	{
 	case Command::ScriptFunctions::WIN_GAME:
 		System::Print("Level beaten! You win! Yay!");
-		System::Print("Unimplemented: WIN_GAME");
-		break;
+		Level::s_CurrentLevel->m_IsCompleted = true;
 		break;
 	case Command::ScriptFunctions::LOSE_GAME:
 		System::Print("Level lost! Sad times.. Aww..");
-		System::Print("Unimplemented: LOSE_GAME");
-		break;
+		Level::s_CurrentLevel->m_IsCompleted = true;
 		break;
 	case Command::ScriptFunctions::DISPLAY_INFORMATION:
 		System::Print("%s", FileManager::GetText(c->argsInts[0]).c_str());
@@ -506,23 +509,145 @@ void LevelScript::ExecuteCommand(Command* c)
 	case Command::ScriptFunctions::SET_FLAG:
 		GameValues[PlayerTagToNumber(c->argsStrings[0])][c->argsStrings[1]] = c->argsInts[2];
 		break;
+	//Fix party system, they're now kept in LevelScript and the Objective and timetillstrike is per-creature instead of per-party
 	case Command::ScriptFunctions::CREATE_PARTY:
-		System::Print("Unimplemented: CREATE_PARTY");
+	{
+		std::string partyName = c->argsStrings[0];
+		m_CreatureParties[partyName] = CreatureParty(partyName);
+	}
 		break;
 	case Command::ScriptFunctions::ADD_TO_PARTY:
-		System::Print("Unimplemented: ADD_TO_PARTY");
+	{
+		GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[Owner_PlayerWhite];
+		std::string partyName = c->argsStrings[0];
+		auto& party =  m_CreatureParties.find(partyName);
+		if (party == m_CreatureParties.end())
+		{
+			System::Print("Party %s does not exist!", partyName.c_str());
+			return;
+		}
+		party->second.AddToParty(StringToCreatureType[c->argsStrings[1]], c->argsInts[2], c->argsInts[3], CreatureParty::StringToObjectives.find(c->argsStrings[4])->second, c->argsInts[5]);
+	}
 		break;
 	case Command::ScriptFunctions::ADD_PARTY_TO_LEVEL:
-		System::Print("Unimplemented: ADD_PARTY_TO_LEVEL");
+		XMINT2 subtileTarget;
+		if (c->argsInts[2] < 0)
+		{
+			//Uses a hero gateway
+			LevelData::Thing& thing = Level::s_CurrentLevel->m_LevelData->m_HeroGates[abs(c->argsInts[2]) - 1];
+			subtileTarget = XMINT2(thing.tx, thing.ty);
+		}
+		else if (c->argsInts[2] > 0) //Action points don't start at 0 but 1
+		{
+			LevelData::ActionPoint& ap = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[c->argsInts[2] - 1];
+			subtileTarget = XMINT2(ap.tx, ap.ty);
+		}
+		else //command specifies a player name in which case we spawn it at their dungeon heart
+		{
+			System::Print("Unimplemented: ADD_PARTY_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
+			return;
+		}
+		for(int i = 0; i < c->argsInts[3];i++)
+		{
+			std::string partyName = c->argsStrings[1];
+			auto& party = m_CreatureParties.find(partyName);
+			if (party == m_CreatureParties.end())
+			{
+				System::Print("Party %s does not exist!", partyName.c_str());
+				return;
+			}
+			uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+			Level::s_CurrentLevel->m_Players[owner]->AddPartyToLevel(owner,party->second, subtileTarget);
+		}
 		break;
 	case Command::ScriptFunctions::ADD_TUNNELLER_PARTY_TO_LEVEL:
-		System::Print("Unimplemented: ADD_TUNNELLER_PARTY_TO_LEVEL");
+	{
+		XMINT2 subtileTarget;
+		if (c->argsInts[2] < 0)
+		{
+			//Uses a hero gateway
+			LevelData::Thing& thing = Level::s_CurrentLevel->m_LevelData->m_HeroGates[abs(c->argsInts[2]) - 1];
+			subtileTarget = XMINT2(thing.tx, thing.ty);
+		}
+		else if (c->argsInts[2] > 0) //Action points don't start at 0 but 1
+		{
+			LevelData::ActionPoint ap = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[c->argsInts[2] - 1];
+			subtileTarget = XMINT2(ap.tx, ap.ty);
+		}
+		else //command specifies a player name in which case we spawn it at their dungeon heart
+		{
+			System::Print("Unimplemented: ADD_TUNNELLER_PARTY_TO_LEVEL, Argument 2 == %s", c->argsStrings[2]);
+			return;
+		}
+		std::string partyName = c->argsStrings[1];
+		auto party = m_CreatureParties.find(partyName);
+		if (party == m_CreatureParties.end())
+		{
+			System::Print("Party %s does not exist!", partyName.c_str());
+			return;
+		}
+		uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+		Level::s_CurrentLevel->m_Players[owner]->AddTunnellerPartyToLevel(owner,c->argsInts[5], c->argsInts[6], party->second, subtileTarget,c->argsStrings[3],c->argsInts[4]);
+
+	}
 		break;
 	case Command::ScriptFunctions::ADD_TUNNELLER_TO_LEVEL:
-		System::Print("Unimplemented: ADD_TUNNELLER_TO_LEVEL");
+	{
+		//GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[Owner_PlayerWhite];
+		XMINT2 subtileTarget;
+		if (c->argsInts[1] < 0)
+		{
+			//Uses a hero gateway
+			LevelData::Thing& thing = Level::s_CurrentLevel->m_LevelData->m_HeroGates[abs(c->argsInts[1]) - 1];
+			subtileTarget = XMINT2(thing.tx, thing.ty);
+		}
+		else if( c->argsInts[1] > 0) //Action points don't start at 0 but 1
+		{
+			LevelData::ActionPoint ap = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[c->argsInts[1] - 1];
+			subtileTarget = XMINT2(ap.tx, ap.ty);
+		}
+		else //command specifies a player name in which case we spawn it at their dungeon heart
+		{
+			System::Print("Unimplemented: ADD_TUNNELLER_TO_LEVEL, Argument 1 == %s", c->argsStrings[1]);
+			return;
+			//subtileTarget = XMINT2(128, 128);
+			//tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
+		}
+		uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+		Level::s_CurrentLevel->m_Players[owner]->AddTunnellerToLevel(owner,c->argsInts[4], c->argsInts[5], subtileTarget, c->argsStrings[2],c->argsInts[3]);
+	}
 		break;
 	case Command::ScriptFunctions::ADD_CREATURE_TO_LEVEL:
-		System::Print("Unimplemented: ADD_CREATURE_TO_LEVEL");
+	{
+		XMINT2 subtileTarget;
+		if (c->argsInts[2] < 0)
+		{
+			//Uses a hero gateway
+			LevelData::Thing& thing = Level::s_CurrentLevel->m_LevelData->m_HeroGates[abs(c->argsInts[2]) - 1];
+			subtileTarget = XMINT2(thing.tx, thing.ty);
+		}
+		else if (c->argsInts[2] > 0) //Action points don't start at 0 but 1
+		{
+			LevelData::ActionPoint ap = Level::s_CurrentLevel->m_LevelData->m_ActionPoints[c->argsInts[2] - 1];
+			subtileTarget = XMINT2(ap.tx, ap.ty);
+		}
+		else //command specifies a player name in which case we spawn it at their dungeon heart
+		{
+			System::Print("Unimplemented: ADD_CREATURE_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
+			return;
+			//subtileTarget = XMINT2(128, 128);
+			//tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
+		}
+		for (int i = 0; i < c->argsInts[3]; i++)
+		{
+			Creature* creature = new Creature(StringToCreatureType[c->argsStrings[1]]);
+			creature->m_Level = c->argsInts[4];
+			creature->m_CurrentGoldHold = c->argsInts[5];
+			creature->SetPosition(subtileTarget.x, 2, subtileTarget.y);
+			uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+			Level::s_CurrentLevel->m_Players[owner]->AddCreature(owner,creature);
+		}
+	}
 		break;
 	case Command::ScriptFunctions::MAGIC_AVAILABLE:
 		{
@@ -535,6 +660,7 @@ void LevelScript::ExecuteCommand(Command* c)
 			AvailableObject& ao = AvailableRooms[PlayerTagToNumber(c->argsStrings[0])][StringToRoomType[c->argsStrings[1]]];
 			ao.canBeAvailable = c->argsInts[2] > 0 ? true : false;
 			ao.isAvailable = c->argsInts[3] > 0 ? true : false;
+			Level::s_CurrentLevel->m_LevelUI->RoomAvailable(StringToRoomType[c->argsStrings[1]], c->argsInts[3] > 0 ? true : false);
 			Level::s_CurrentLevel->AvailableRoomsChanged();
 		}
 		break;
@@ -612,6 +738,7 @@ void LevelScript::ExecuteCommand(Command* c)
 		break;
 	case Command::ScriptFunctions::START_MONEY:
 		LevelScript::GameValues[PlayerTagToNumber(c->argsStrings[0])]["START_MONEY"] = c->argsInts[1];
+		LevelScript::GameValues[PlayerTagToNumber(c->argsStrings[0])]["MONEY"] = c->argsInts[1];
 		break;
 	case Command::ScriptFunctions::SET_GENERATE_SPEED:
 		for (int i = 0; i < 6; i++)
