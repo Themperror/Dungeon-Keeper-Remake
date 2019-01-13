@@ -175,7 +175,7 @@ namespace micropather
 			exact values for every call to MicroPather::Solve(). It should generally be a simple,
 			fast function with no callbacks into the pather.
 		*/	
-		virtual void AdjacentCost( void* state, MP_VECTOR< micropather::StateCost > *adjacent ) = 0;
+		virtual void AdjacentCost( void* state, MP_VECTOR< micropather::StateCost > *adjacent, bool ignoreWalls ) = 0;
 
 		/**
 			This function is only used in DEBUG mode - it dumps output to stdout. Since void* 
@@ -481,6 +481,7 @@ namespace micropather
 		// Debugging function to return all states that were used by the last "solve" 
 		void StatesInPool( MP_VECTOR< void* >* stateVec );
 		void GetCacheData( CacheData* data );
+		void SetIgnoreWalls(bool val);
 
 	  private:
 		MicroPather( const MicroPather& );	// undefined and unsupported
@@ -502,6 +503,7 @@ namespace micropather
 		Graph* graph;
 		unsigned frame;						// incremented with every solve, used to determine if cached data needs to be refreshed
 		PathCache* pathCache;
+		bool m_IgnoreWalls = false;
 	};
 };	// namespace grinliz
 
