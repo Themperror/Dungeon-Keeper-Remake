@@ -8,6 +8,11 @@ cbuffer ConstantBuffer : register(b2)
     float _visualType;
     float _time;
 };
+cbuffer ObjectBuffer : register(b0)
+{
+    matrix modelmatrix;
+    int _misc0, _misc1, _misc2, _misc3;
+}
 struct VS_OUTPUT
 {
     float4 position : SV_POSITION;
@@ -18,6 +23,10 @@ struct VS_OUTPUT
 float4 PShader(VS_OUTPUT input) : SV_TARGET
 {
     float4 lineColor = float4(0, 1, 0, 1);
+    if (_misc0 > 0)
+    {
+        lineColor = float4(1, 0, 0, 1);
+    }
     float4 spaceColor = float4(0, 0, 0, 0);
 
     float4 outColor = spaceColor;

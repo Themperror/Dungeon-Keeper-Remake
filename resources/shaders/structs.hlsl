@@ -22,6 +22,7 @@ struct VS_INPUT
 cbuffer ObjectBuffer : register(b0)
 {
 	float4x4 _modelMatrix; //64
+    int _misc0, _misc1, _misc2, _misc3;
 };
 cbuffer CameraBuffer : register(b1)
 {
