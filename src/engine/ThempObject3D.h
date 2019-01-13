@@ -13,6 +13,7 @@ namespace Themp
 		struct Object3DConstantBufferData
 		{
 			XMFLOAT4X4 worldMatrix;
+			uint32_t misc0, misc1, misc2, misc3;
 		};
 		Object3D();
 		~Object3D();

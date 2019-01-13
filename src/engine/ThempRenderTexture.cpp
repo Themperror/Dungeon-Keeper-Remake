@@ -23,7 +23,7 @@ namespace Themp
 			renderTexDesc.CPUAccessFlags = 0;
 			renderTexDesc.SampleDesc.Count = multisample;
 			renderTexDesc.SampleDesc.Quality = 0;
-			renderTexDesc.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+			renderTexDesc.Format = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 			renderTexDesc.Height = height;
 			renderTexDesc.Width = width;
 

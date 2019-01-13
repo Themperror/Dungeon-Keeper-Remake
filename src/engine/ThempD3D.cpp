@@ -2,7 +2,7 @@
 #include "ThempD3D.h"
 #include "ThempObject3D.h"
 #include "ThempGame.h"
-#include "ThempCreature.h"
+#include "Creature/ThempCreature.h"
 #include "ThempEntity.h"
 #include "ThempResources.h"
 #include "ThempMaterial.h"
