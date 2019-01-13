@@ -141,15 +141,6 @@
     <ClCompile Include="src\Game\ThempLevelData.cpp">
       <Filter>Source Files\Game\Level</Filter>
     </ClCompile>
-    <ClCompile Include="src\Game\ThempCreature.cpp">
-      <Filter>Source Files\Game\Creature</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Game\ThempCreatureData.cpp">
-      <Filter>Source Files\Game\Creature</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Game\ThempCreatureTaskManager.cpp">
-      <Filter>Source Files\Game\Creature</Filter>
-    </ClCompile>
     <ClCompile Include="src\Game\ThempTileArrays.cpp">
       <Filter>Source Files\Game</Filter>
     </ClCompile>
@@ -176,6 +167,21 @@
     </ClCompile>
     <ClCompile Include="src\Game\Players\ThempPlayerBase.cpp">
       <Filter>Source Files\Game\Players</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Creature\ThempCreatureParty.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Creature\ThempCreatureTaskManager.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Creature\ThempCreature.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\Creature\ThempCreatureData.cpp">
+      <Filter>Source Files\Game\Creature</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Game\ThempLevelUI.cpp">
+      <Filter>Source Files\Game\Level</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -278,15 +284,6 @@
     <ClInclude Include="src\Game\ThempLevelData.h">
       <Filter>Header Files\Game\Level</Filter>
     </ClInclude>
-    <ClInclude Include="src\Game\ThempCreature.h">
-      <Filter>Header Files\Game\Creature</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Game\ThempCreatureData.h">
-      <Filter>Header Files\Game\Creature</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Game\ThempCreatureTaskManager.h">
-      <Filter>Header Files\Game\Creature</Filter>
-    </ClInclude>
     <ClInclude Include="src\Game\ThempLevelConfig.h">
       <Filter>Header Files\Game\Level</Filter>
     </ClInclude>
@@ -340,6 +337,21 @@
     </ClInclude>
     <ClInclude Include="src\Game\Players\ThempPlayerBase.h">
       <Filter>Header Files\Game\Players</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Creature\ThempCreature.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Creature\ThempCreatureData.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Creature\ThempCreatureParty.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\Creature\ThempCreatureTaskManager.h">
+      <Filter>Header Files\Game\Creature</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Game\ThempLevelUI.h">
+      <Filter>Header Files\Game\Level</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
