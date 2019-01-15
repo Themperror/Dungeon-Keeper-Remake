@@ -328,7 +328,6 @@ std::array<std::array<int, 12>, 5> WAnimData72 =
 		71,//  CreatureData::FP_PISS_Forward,
 	},
 };
-
 std::array<std::array<int, 12>, 5> FPAnimData62 =
 {
 	//Forward
@@ -761,6 +760,11 @@ Themp::Creature::Creature(CreatureData::CreatureType creatureIndex)
 	Material* material = Resources::TRes->GetUniqueMaterial("", "creature");
 	m_Renderable->SetMaterial(material);
 
+	{
+		srand((uint32_t)this);
+		m_DebugColor = XMFLOAT3((rand() % 100) / 100.0f, (rand() % 100) / 100.0f, (rand() % 100) / 100.0f);
+	}
+
 	SetSprite(m_CreatureSpriteIndex);
 	m_Speed = BASESPEED_TO_DELTA(m_CreatureData.BaseSpeed);
 	//const float creatureYSize = (float)m_CreatureData.SizeYZ / 256.0f;
@@ -773,6 +777,9 @@ Themp::Creature::Creature(CreatureData::CreatureType creatureIndex)
 	m_CreatureCBData._isFrozen = false;
 	m_CreatureCBData._isFlipped = false;
 	m_CreatureCBData._isHovered = false;
+	m_CreatureCBData._isFighting = false;
+	m_CurrentHealth = m_CreatureData.Health;
+
 	if (!m_CreatureCB)
 	{
 		// Fill in a buffer description.
@@ -795,16 +802,21 @@ Themp::Creature::Creature(CreatureData::CreatureType creatureIndex)
 	}
 	else
 	{
-		D3D11_MAPPED_SUBRESOURCE ms;
-		Themp::System::tSys->m_D3D->m_DevCon->Map(m_CreatureCB, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-		memcpy(ms.pData, &m_CreatureCBData, sizeof(CreatureConstantBuffer));
-		Themp::System::tSys->m_D3D->m_DevCon->Unmap(m_CreatureCB, NULL);
+		UpdateBuffer();
 	}
 	for (int i = 0; i < 10; i++)
 	{
 		m_PowerCooldownTimer[i] = 0.0f;
 	}
 	m_Renderable->m_Meshes[0]->m_ConstantBuffer = m_CreatureCB;
+}
+
+void Creature::UpdateBuffer()
+{
+	D3D11_MAPPED_SUBRESOURCE ms;
+	Themp::System::tSys->m_D3D->m_DevCon->Map(m_CreatureCB, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+	memcpy(ms.pData, &m_CreatureCBData, sizeof(CreatureConstantBuffer));
+	Themp::System::tSys->m_D3D->m_DevCon->Unmap(m_CreatureCB, NULL);
 }
 void Creature::SetPosition(int subTileX,int height, int subTileY)
 {
@@ -818,6 +830,30 @@ void Creature::SetSprite(int SpriteID)
 
 	//const float creatureYSize = (float)m_CreatureData.SizeYZ / 256.0f;
 	//m_Renderable->m_Scale = XMFLOAT3(creatureYSize, creatureYSize, creatureYSize);
+}
+bool Creature::PickUp()
+{
+	if(!IsAttackable())
+	{
+		return false;
+	}
+	if (m_CreatureID == CreatureData::CREATURE_IMP)
+	{
+		CreatureTaskManager::UnlistImpFromTask(this);
+	}
+	m_InHand = true;
+	m_Renderable->isVisible = false;
+	SetCombatState(nullptr);
+	m_Path.clear();
+	m_CurrentPathIndex = 0;
+	return true;
+}
+void Creature::Drop(XMINT2 tile)
+{
+	XMINT2 subtile = LevelData::TileToSubtile(tile);
+	SetPosition(subtile.x, 5, subtile.y);
+	m_Renderable->isVisible = true;
+	m_InHand = false;
 }
 void Creature::SetToFreshAnimation(CreatureData::AnimationState anim)
 {
@@ -849,18 +885,42 @@ void Creature::Update(float delta)
 		m_AnimationIndex = m_AnimationIndex % (int)m_CreatureCBData._NumAnim;
 		m_CreatureCBData._AnimIndex = (float)m_AnimationIndex;
 	}
-
+	if (m_InHand)
+	{
+		
+		return;
+	}
 	const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
 	const XMINT2 subTilePos = XMINT2((int)round(m_Renderable->m_Position.x), (int)round(m_Renderable->m_Position.z));
 	m_Renderable->m_Position.y = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].pathSubTiles[subTilePos.y % 3][subTilePos.x % 3].height;
+
+	if (!m_InCombat && m_CurrentHealth > 0)
+	{
+		CheckCombat();
+	}
+
 	if (m_CreatureID == CreatureData::CREATURE_IMP)
 	{
-		ImpUpdate(delta);
+		if (m_InCombat)
+		{
+			CombatUpdate(delta);
+		}
+		else
+		{
+			ImpUpdate(delta);
+		}
 		DoAnimationDirectionsImp();
 	}
 	else
 	{
-		CreatureUpdate(delta);
+		if (m_InCombat)
+		{
+			CombatUpdate(delta);
+		}
+		else
+		{
+			CreatureUpdate(delta);
+		}
 		DoAnimationDirections();
 	}
 	m_Renderable->isDirty = true;
@@ -868,12 +928,136 @@ void Creature::Update(float delta)
 	CheckVisibility();
 	//DebugDraw::Line(m_Renderable->m_Position, m_Renderable->m_Position + m_Direction * 3);
 }
+bool Creature::IsAttackable()
+{
+	return (m_CurrentHealth > 0 && m_CurrentState != Creature::CreatureState::DYING && !m_InHand);
+}
+int Creature::GetAreaCode()
+{
+	const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
+	return LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+}
+float Distance(XMFLOAT3 a, XMFLOAT3 b)
+{
+	XMVECTOR p1 = XMLoadFloat3(&a);
+	XMVECTOR p2 = XMLoadFloat3(&b);
+	XMVECTOR res = XMVectorSubtract(p2, p1);
+	res = XMVectorMultiply(res, res);
+	res = XMVectorSqrt(res);
+	res = XMVectorSum(res);
+	return XMVectorGetX(res);
+}
+void Creature::CheckCombat()
+{
+	m_CreatureCBData._isFighting = false;
+	const int areaCode = GetAreaCode();
+	for (int i = 0; i < 5; i++)
+	{
+		PlayerBase* player = Level::s_CurrentLevel->m_Players[i];
+		if (player == nullptr)continue;
+		if (player->m_PlayerID != m_Owner && !player->IsAlliedWith(m_Owner))
+		{
+			for (int j = 0; j < player->m_Creatures.size(); j++)
+			{
+				Creature* c = player->m_Creatures[j];
+				if (c->GetAreaCode() == areaCode && c->IsAttackable())
+				{
+					if (Distance(m_Renderable->m_Position, c->m_Renderable->m_Position) < m_CreatureData.VisualRange)
+					{
+						XMINT3 subTilePos = LevelData::WorldToSubtile(m_Renderable->m_Position);
+						XMINT3 targetSubTilePos = LevelData::WorldToSubtile(c->m_Renderable->m_Position);
+						float PathCost = 0.0f;
+						micropather::MPVector<void*> path;
+						int pathingResult = System::tSys->m_Game->m_CurrentLevel->PathFind(XMINT2(subTilePos.x, subTilePos.z), XMINT2(targetSubTilePos.x, targetSubTilePos.z), path, PathCost, true);
+						if (pathingResult == micropather::MicroPather::SOLVED || pathingResult == micropather::MicroPather::START_END_SAME)
+						{
+							if (PathCost < m_CreatureData.VisualRange)
+							{
+								if (m_CreatureID == CreatureData::CreatureType::CREATURE_IMP)
+								{
+									CreatureTaskManager::UnlistImpFromTask(this);
+									m_Order.valid = false;
+								}
+								else
+								{
+									m_Activity.valid = false;
+								}
 
+								SetCombatState(c);
+								if (!c->m_InCombat)
+								{
+									c->SetCombatState(this);
+								}
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+void Creature::CombatUpdate(float delta)
+{
+	if (m_CombatTarget)
+	{
+#ifdef _DEBUG
+		char* name = m_CreatureID == CreatureData::CreatureType::CREATURE_IMP ? "Imp" : "Creature";
+		ImGui::TreePush(name);
+		ImGui::BulletText(name);
+
+		if (IsDebuggerPresent())
+		{
+			if (ImGui::Button("Break"))
+			{
+				DebugBreak();
+			}
+		}
+		ImGui::Text("Fighting!");
+		ImGui::TreePop();
+#endif
+		if (!m_CombatTarget->IsAttackable())
+		{
+			m_CombatTarget->SetCombatState(nullptr);
+			SetCombatState(nullptr);
+			return;
+		}
+		bool pathResult = false;
+		float distance = Distance(m_Renderable->m_Position, m_CombatTarget->m_Renderable->m_Position);
+		if (distance > 1.5f)
+		{
+			XMINT3 subTilePos = LevelData::WorldToSubtile(m_Renderable->m_Position);
+			XMINT3 targetSubTilePos = LevelData::WorldToSubtile(m_CombatTarget->m_Renderable->m_Position);
+			pathResult = PathTo(delta, XMINT2(targetSubTilePos.x, targetSubTilePos.z),false,true);
+		}
+		if(distance < 1.5f || pathResult)
+		{
+			//select a skill to use (current only use melee)
+			if (m_PowerCooldownTimer[0] <= 0.0f)
+			{
+				if (m_CreatureID == CreatureData::CreatureType::CREATURE_IMP)
+				{
+					m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Attacking;
+				}
+				else
+				{
+					m_AnimState = CreatureData::AnimationState::Attacking;
+				}
+				if (m_CombatTarget->TakeDamage(m_CreatureData.Strength))
+				{
+					SetCombatState(nullptr);
+				}
+
+				const InstanceData& attackInstance = LevelConfig::instanceData[m_CreatureData.Power[0]];
+				m_PowerCooldownTimer[0] = GAME_TURNS_TO_SECOND(attackInstance.Time + attackInstance.ActionTime + attackInstance.ResetTime);
+			}
+		}
+	}
+}
 void Creature::GetTask()
 {
 	if (m_Order.valid) return;
-	XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-	int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+	int areaCode = GetAreaCode();
 
 	//priority - top to bottom:
 	//If full on gold -> bring to treasury
@@ -911,22 +1095,24 @@ void Creature::GetTask()
 	}
 	m_Order = CreatureTaskManager::GetRandomMovementOrder(this, areaCode);
 }
-bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
+bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls, bool dynamicTarget)
 {
 	int pathingResult = micropather::MicroPather::SOLVED;
-	if (LevelData::PathsInvalidated || m_Path.size() == 0 || m_JustSlapped)
+	if (LevelData::PathsInvalidated || m_Path.size() == 0 || m_JustSlapped || !(m_PathingTarget == targetSubTile))
 	{
+		m_PathingTarget = targetSubTile;
 		m_JustSlapped = false;
 		const XMINT3 subTilePos = LevelData::WorldToSubtile(m_Renderable->m_Position);
 		float PathCost = 0;
-		m_CurrentPathIndex = 0;
-		m_PathLerpTime = 0;
+		if (!dynamicTarget)
+		{
+			m_PathLerpTime = 0.0f;
+			m_CurrentPathIndex = 0;
+		}
 
 		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3(targetSubTile.x, 2, targetSubTile.y));
 		const int targetAreaCode = LevelData::m_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
-
-		const XMINT2 currentTilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-		const int areaCode = LevelData::m_Map.m_Tiles[currentTilePos.y][currentTilePos.x].areaCode;
+		const int areaCode = GetAreaCode();
 
 		if (targetAreaCode != areaCode)
 		{
@@ -942,6 +1128,24 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
 		else
 		{
 			pathingResult = System::tSys->m_Game->m_CurrentLevel->PathFind(XMINT2(subTilePos.x, subTilePos.z), targetSubTile, m_Path, PathCost, true);
+		}
+
+		if (dynamicTarget)
+		{
+			if (m_Path.size() > 1)
+			{
+				float OldPathX = m_Renderable->m_Position.x;
+				float OldPathY = m_Renderable->m_Position.z;
+
+				const float PathX = (float)(((uint64_t)m_Path[1]) & 0xFFFFFFFF);
+				const float PathY = (float)((((uint64_t)m_Path[1]) >> 32) & 0xFFFFFFFF);
+
+				const XMFLOAT2 nPos = Lerp(XMFLOAT2(OldPathX, OldPathY), XMFLOAT2(PathX, PathY), m_PathLerpTime);
+				const int8_t height = Level::s_CurrentLevel->m_LevelData->GetSubtileHeight((int)round(nPos.y) / 3, (int)round(nPos.x) / 3, (int)round(nPos.y) % 3, (int)round(nPos.x) % 3);
+				if (height <= 5)
+					m_Renderable->SetPosition(nPos.x, height, nPos.y);
+				m_CurrentPathIndex = 1;
+			}
 		}
 
 		if (pathingResult != micropather::MicroPather::SOLVED && pathingResult != micropather::MicroPather::START_END_SAME)
@@ -960,12 +1164,19 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
 		}
 	}
 
-	m_PathLerpTime += deltaTime * m_Speed;
 	if (pathingResult == micropather::MicroPather::SOLVED || pathingResult == micropather::MicroPather::START_END_SAME)
 	{
+		m_PathLerpTime += deltaTime * m_Speed;
+		for (int i = 0; i < m_Path.size(); i++)
+		{
+			const float PathX = (float)(((uint64_t)m_Path[i]) & 0xFFFFFFFF);
+			const float PathY = (float)((((uint64_t)m_Path[i]) >> 32) & 0xFFFFFFFF);
+			DebugDraw::Line(XMFLOAT3(PathX, 0, PathY), XMFLOAT3(PathX, 12, PathY), 0.0f, m_DebugColor);
+		}
+
 		if (m_PathLerpTime >= 1.0f)
 		{
-			m_PathLerpTime = 0.0f;
+			m_PathLerpTime = mod(m_PathLerpTime,1.0f);
 			m_CurrentPathIndex++;
 		}
 		XMFLOAT3 currentPos = m_Renderable->m_Position;
@@ -985,15 +1196,19 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
 			const float PathX = (float)(((uint64_t)m_Path[m_CurrentPathIndex]) & 0xFFFFFFFF);
 			const float PathY = (float)((((uint64_t)m_Path[m_CurrentPathIndex]) >> 32) & 0xFFFFFFFF);
 
-
 			const XMFLOAT2 nPos = Lerp(XMFLOAT2(OldPathX, OldPathY), XMFLOAT2(PathX, PathY), m_PathLerpTime);
 			XMFLOAT2 dir = XMFLOAT2(OldPathX, OldPathY) - nPos;
-			if (dir.x != 0 || dir.y != 0)
+			if (dir.x == 0.0f)
 			{
-				dir = Normalize(dir);
-				m_Direction.x = dir.x;
-				m_Direction.z = dir.y;
+				dir.x = 0.01f;
 			}
+			if(dir.y == 0.0f)
+			{
+				dir.y = 0.01f;
+			}
+			dir = Normalize(dir);
+			m_Direction.x = dir.x;
+			m_Direction.z = dir.y;
 			const int8_t height = Level::s_CurrentLevel->m_LevelData->GetSubtileHeight((int)round(nPos.y) / 3, (int)round(nPos.x) / 3, (int)round(nPos.y) % 3, (int)round(nPos.x) % 3);
 			if (height <= 5)
 				m_Renderable->SetPosition(nPos.x, height, nPos.y);
@@ -1004,9 +1219,13 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
 		}
 		else
 		{
+			m_Path.clear();
+			m_CurrentPathIndex = 0;
 			return true;
 		}
 	}
+	m_Path.clear();
+	m_CurrentPathIndex = 0;
 	return false;
 }
 bool Creature::TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls)
@@ -1023,8 +1242,7 @@ bool Creature::TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWa
 		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3(targetSubTile.x, 2, targetSubTile.y));
 		const int targetAreaCode = LevelData::m_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
 
-		const XMINT2 currentTilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-		const int areaCode = LevelData::m_Map.m_Tiles[currentTilePos.y][currentTilePos.x].areaCode;
+		const int areaCode = GetAreaCode();
 
 		if (targetAreaCode != areaCode)
 		{
@@ -1151,6 +1369,14 @@ void Creature::ImpUpdate(float delta)
 	}
 #endif
 
+	if (m_CurrentHealth <= 0)
+	{
+#ifdef _DEBUG
+		ImGui::Text("Dead");
+		ImGui::TreePop();
+#endif
+		return;
+	}
 	if (m_ImpSpecialTimer > 0.0f)
 	{
 		m_ImpSpecialTimer -= delta;
@@ -1192,8 +1418,7 @@ void Creature::ImpUpdate(float delta)
 			m_Direction.z = m_Renderable->m_Position.z - worldPosTile.z;
 			m_Direction = Normalize(m_Direction);
 
-			const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-			const int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+			const int areaCode = GetAreaCode();
 			if (m_Order.orderType == CreatureTaskManager::Order_Mine)//Mine
 			{
 				taskString = "Executing task: Mining!";
@@ -1318,6 +1543,30 @@ void Creature::ImpUpdate(float delta)
 
 void Creature::AnimationDoneEvent()
 {
+	if (m_CurrentState == CreatureState::DYING)
+	{
+		System::Print("Dying State reached! removing creature");
+		//replace creature with body entity
+		SetCombatState(nullptr);
+		Level::s_CurrentLevel->m_Players[m_Owner]->CreatureDied(this);
+	}
+	if (m_CurrentState == CreatureState::FIGHTING)
+	{
+		if (m_CreatureID != CreatureData::CreatureType::CREATURE_IMP)
+		{
+			if (m_AnimState == CreatureData::AnimationState::Attacking)
+			{
+				m_AnimState = CreatureData::AnimationState::Dropping;
+			}
+		}
+		else
+		{
+			if (m_ImpAnimState == CreatureData::ImpAnimationState::IMP_Attacking)
+			{
+				m_AnimState = CreatureData::AnimationState::Dropping;
+			}
+		}
+	}
 	if (m_CreatureID == CreatureData::CREATURE_IMP || m_Owner == Owner_PlayerNone || m_Owner == Owner_PlayerWhite)return;
 
 	if (m_CurrentState == CreatureState::HUNGRY)
@@ -1342,10 +1591,35 @@ void Creature::AnimationDoneEvent()
 			GetActivity();
 		}
 	}
-	else if (m_CurrentState == CreatureState::DYING)
+}
+void Creature::SetCombatState(Creature* c)
+{
+	if (c == nullptr)
 	{
-		//replace creature with body entity
-		Level::s_CurrentLevel->m_Players[m_Owner]->CreatureDied(this);
+		m_InCombat = false;
+		m_CreatureCBData._isFighting = false;
+		m_CombatTarget = nullptr;
+		if(m_CurrentState != CreatureState::DYING)
+			m_CurrentState = CreatureState::UNCERTAIN;
+		m_Activity.activityType = CreatureTaskManager::ActivityType::Activity_None;
+		m_Activity.valid = false;
+		if (m_CreatureID == CreatureData::CreatureType::CREATURE_IMP)
+		{
+			m_ImpAnimState = CreatureData::ImpAnimationState::IMP_Dropping;
+		}
+		else
+		{
+			m_AnimState = CreatureData::AnimationState::Dropping;
+		}
+	}
+	else
+	{
+		m_InCombat = true;
+		m_CreatureCBData._isFighting = true;
+		m_CombatTarget = c;
+		m_CurrentState = CreatureState::FIGHTING;
+		m_Activity.activityType = CreatureTaskManager::ActivityType::Activity_Fight;
+		m_Activity.valid = false;
 	}
 }
 
@@ -1361,9 +1635,11 @@ void Creature::GetActivity()
 	//	return;
 	//}
 
-	XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-	int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+	int areaCode = GetAreaCode();
+	if (m_HeroObjective != CreatureParty::HeroObjective::NONE)
+	{
 
+	}
 	//Primary (base) tasks of a creature
 	if (m_CurrentState == CreatureState::JUST_ENTERED)
 	{
@@ -1405,7 +1681,7 @@ void Creature::GetActivity()
 	//Do secondary hobbies
 
 	//Nothing else to do, wander around or go sleep
-	if (rand() % 5 > 2)
+	if (rand() % 5 > 3)
 	{
 		m_Activity = CreatureTaskManager::GetRandomMovementActivity(this, areaCode);
 	}
@@ -1414,7 +1690,146 @@ void Creature::GetActivity()
 		m_Activity = CreatureTaskManager::GetSleepActivity(this, areaCode);
 	}
 }
-
+bool Creature::TakeDamage(int damage)
+{
+	m_CurrentHealth -= damage;
+	if (m_CurrentHealth <= 0)
+	{
+		m_CurrentHealth = 0;
+		Die();
+		return true;
+	}
+	PlayHitSound();
+	return false;
+}
+void Creature::PlayDieSound()
+{
+	std::string soundToPlay = "";
+	switch (m_CreatureID)
+	{
+	case CreatureData::CreatureType::CREATURE_ARCHER:
+	case CreatureData::CreatureType::CREATURE_AVATAR:
+	case CreatureData::CreatureType::CREATURE_BARBARIAN:
+	case CreatureData::CreatureType::CREATURE_KNIGHT:
+	case CreatureData::CreatureType::CREATURE_MONK:
+	case CreatureData::CreatureType::CREATURE_SAMURAI:
+	case CreatureData::CreatureType::CREATURE_THIEF:
+	case CreatureData::CreatureType::CREATURE_WIZARD:
+	{
+		char* sounds[2] =
+		{
+			"MAN1DIE1.WAV",
+			"MAN1DIE2.WAV",
+		};
+		soundToPlay = sounds[rand() % 2];
+	}
+	break;
+	case CreatureData::CreatureType::CREATURE_TUNNELLER:
+	case CreatureData::CreatureType::CREATURE_DWARF:
+	{
+		char* sounds[2] =
+		{
+			"DWRFDIE1.WAV",
+			"DWRFDIE2.WAV",
+		};
+		soundToPlay = sounds[rand() % 2];
+	}
+	break;
+	case CreatureData::CreatureType::CREATURE_IMP:
+	{
+		char* sounds[2] =
+		{
+			"IMPDIE1.WAV",
+			"IMPDIE2.WAV",
+		};
+		soundToPlay = sounds[rand() % 2];
+	}
+	break;
+	}
+	if (soundToPlay.size() > 0)
+	{
+		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound(soundToPlay));
+	}
+}
+void Creature::PlayHitSound()
+{
+	std::string soundToPlay = "";
+	switch (m_CreatureID)
+	{
+	case CreatureData::CreatureType::CREATURE_ARCHER:
+	case CreatureData::CreatureType::CREATURE_AVATAR:
+	case CreatureData::CreatureType::CREATURE_BARBARIAN:
+	case CreatureData::CreatureType::CREATURE_KNIGHT:
+	case CreatureData::CreatureType::CREATURE_MONK:
+	case CreatureData::CreatureType::CREATURE_SAMURAI:
+	case CreatureData::CreatureType::CREATURE_THIEF:
+	case CreatureData::CreatureType::CREATURE_WIZARD:
+		{
+			char* sounds[3] =
+			{
+				"MAN1HIT1.WAV",
+				"MAN1HIT2.WAV",
+				"MAN1HIT3.WAV",
+			};
+			soundToPlay = sounds[rand() % 3];
+		}
+		break;
+	case CreatureData::CreatureType::CREATURE_TUNNELLER:
+	case CreatureData::CreatureType::CREATURE_DWARF:
+		{
+			char* sounds[3] =
+			{
+				"DWRFHIT1.WAV",
+				"DWRFHIT2.WAV",
+				"DWRFHIT3.WAV",
+			};
+			soundToPlay = sounds[rand() % 3];
+		}
+		break;
+	case CreatureData::CreatureType::CREATURE_IMP:
+		{
+			char* sounds[3] =
+			{
+				"IMPHIT1.WAV",
+				"IMPHIT2.WAV",
+				"IMPHIT3.WAV",
+			};
+			soundToPlay = sounds[rand() % 3];
+		}
+		break;
+	}
+	if (soundToPlay.size() > 0)
+	{
+		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound(soundToPlay));
+	}
+}
+void Creature::Die()
+{
+	m_CurrentState = CreatureState::DYING;
+	m_AnimState = CreatureData::AnimationState::Dying;
+	m_AnimationIndex = 0;
+	m_AnimationTime = 0;
+	for (int i = 0; i < 5; i++)
+	{
+		PlayerBase* player = Level::s_CurrentLevel->m_Players[i];
+		if (player)
+		{
+			for (int j = 0; j < player->m_Creatures.size(); j++)
+			{
+				if (player->m_Creatures[j]->m_CombatTarget == this)
+				{
+					player->m_Creatures[j]->SetCombatState(nullptr);
+				}
+			}
+		}
+	}
+	if (m_CreatureID == CreatureData::CreatureType::CREATURE_IMP)
+	{
+		CreatureTaskManager::UnlistImpFromTask(this);
+	}
+	SetCombatState(nullptr);
+	PlayDieSound();
+}
 void Creature::CreatureUpdate(float delta)
 {
 #ifdef _DEBUG
@@ -1423,21 +1838,35 @@ void Creature::CreatureUpdate(float delta)
 #endif
 	if (m_CurrentHealth <= 0.0f)
 	{
-		m_CurrentState = CreatureState::DYING;
-
-		ImGui::Text("Doing Activity: Dying");
+#ifdef _DEBUG
+		ImGui::Text("Dead");
 		ImGui::TreePop();
+#endif
 		return;
 	}
 
-	if (m_CreatureData.HungerRate)
+	if (m_CreatureData.HungerRate && m_Owner != Owner_PlayerWhite && m_Owner != Owner_PlayerNone)
 	{
 		const float hungerPerDelta = (float)m_CreatureData.HungerRate / 100.0f;
 		m_HungerTimer += delta;
 		if (m_HungerTimer > GAME_TURNS_TO_SECOND(hungerPerDelta))
 		{
+			m_HungerTickTimer = 0;
 			m_HungerTimer -= GAME_TURNS_TO_SECOND(hungerPerDelta);
-			m_CurrentHungerLevel--;
+			if(m_CurrentHungerLevel > 0)
+				m_CurrentHungerLevel--;
+		}
+		if (m_CurrentHungerLevel <= 0)
+		{
+			m_HungerTickTimer += delta;
+			if (SECOND_TO_GAME_TURNS(m_HungerTickTimer) > m_TurnsTillHungerTick)
+			{
+				m_HungerTickTimer = 0;
+				if (TakeDamage(10))
+				{
+					return;
+				}
+			}
 		}
 	}
 	m_TaskSearchTimer -= delta;
@@ -1539,10 +1968,9 @@ void Creature::CreatureUpdate(float delta)
 		if (m_HeroLeader != nullptr && m_HeroLeader->m_CurrentHealth > 0) //rudimentary "IsAlive" check
 		{
 			XMINT3 targetSubTile = LevelData::WorldToSubtile(m_HeroLeader->m_Renderable->m_Position);
-			if (PathTo(delta, XMINT2(targetSubTile.x, targetSubTile.z)))
+			if (PathTo(delta, XMINT2(targetSubTile.x, targetSubTile.z),false,true))
 			{
-				XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-				int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+				const int areaCode = GetAreaCode();
 				m_Activity = CreatureTaskManager::GetRandomMovementActivity(this, areaCode);
 			}
 		}
@@ -1651,10 +2079,7 @@ void Creature::Draw(D3D& d3d)
 	if (!m_Renderable->isVisible)return;
 	if (m_Renderable->isDirty)
 	{
-		D3D11_MAPPED_SUBRESOURCE ms;
-		d3d.m_DevCon->Map(m_CreatureCB, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-		memcpy(ms.pData, &m_CreatureCBData, sizeof(CreatureConstantBuffer));
-		d3d.m_DevCon->Unmap(m_CreatureCB, NULL);
+		UpdateBuffer();
 	}
 	m_Renderable->Draw(d3d);
 }

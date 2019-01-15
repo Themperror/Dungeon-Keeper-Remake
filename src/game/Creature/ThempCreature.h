@@ -20,33 +20,45 @@ namespace Themp
 		enum class CreatureState { JUST_ENTERED,CREATE_LAIR,UNCERTAIN, HUNGRY, ANNOYED, FIGHTING, EXPLORING, SLEEPING,RESEARCHING,TRAINING,DYING };
 		struct CreatureConstantBuffer
 		{
-			float _AnimIndex; //4
-			float _NumAnim; //8
-			float _SpriteWidth; //12
-			uint32_t _isFrozen; //16
-			uint32_t _isFlipped; //16
-			uint32_t _isHovered; //16
-			uint32_t _dummy1; //16
-			uint32_t _dummy2; //16
+			float _AnimIndex;
+			float _NumAnim;
+			float _SpriteWidth;
+			float _cdummy0;
+			uint32_t _isFrozen;
+			uint32_t _isFlipped;
+			uint32_t _isHovered;
+			uint32_t _isFighting;
 		};//64
 
 		~Creature();
 
 		//spriteIndex = CreatureData::Creature_X
 		Creature(CreatureData::CreatureType spriteIndex);
+		void UpdateBuffer();
 		void SetPosition(int subTileX, int height, int subTileY);
 		void SetSprite(int SpriteID);
+		bool PickUp();
+		void Drop(XMINT2 tile);
 		void SetToFreshAnimation(CreatureData::AnimationState anim);
 		void Update(float delta);
+		bool IsAttackable();
+		int GetAreaCode();
+		void CheckCombat();
+		void CombatUpdate(float delta);
 		void AnimationDoneEvent();
+		void SetCombatState(Creature * c);
 		void ImpUpdate(float delta);
 		void CreatureUpdate(float delta);
 
 		//Creatures do activities
 		void GetActivity();
+		bool TakeDamage(int damage);
+		void PlayDieSound();
+		void PlayHitSound();
+		void Die();
 		//imps do tasks
 		void GetTask();
-		bool PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls = false);
+		bool PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls = false, bool dynamicTarget = false);
 		bool TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls);
 		void StopOrder();
 		void StopActivity();
@@ -66,16 +78,19 @@ namespace Themp
 		CreatureData m_CreatureData;
 		//creature current data
 		bool m_AreaNeedsDiscovering = true;
+		bool m_InCombat = false;
+		bool m_InHand = false;
 		int m_CurrentGoldHold = 0;
 		int m_CurrentHungerLevel = 100;
 		int m_CurrentHappiness = 100;
 		int m_Level = 1;
-		float m_CurrentHealth = 10;
+		float m_CurrentHealth = 100;
+		Creature* m_CombatTarget = nullptr;
 		DirectX::XMINT2 m_LairLocation = XMINT2(-1,-1);
-		
+		DirectX::XMINT2 m_PathingTarget = XMINT2(0, 0);
 		CreatureState m_CurrentState = CreatureState::JUST_ENTERED;
 		/////////
-
+		XMFLOAT3 m_DebugColor = XMFLOAT3(1, 1, 1);
 
 		CreatureData::CreatureType m_CreatureID = CreatureData::CREATURE_IMP;
 		CreatureData::CreatureSpriteIndex m_CreatureSpriteIndex = CreatureData::CreatureSprite_Imp;
@@ -88,6 +103,9 @@ namespace Themp
 		float m_AnimationTime = 0;
 		float m_PathLerpTime = 0;
 		float m_HungerTimer = 0;
+		int m_TurnsTillHungerTick = 100;
+		float m_HungerTickTimer = 0;
+
 		int m_AnimationIndex = 0;
 		unsigned int m_CurrentPathIndex = 0;
 

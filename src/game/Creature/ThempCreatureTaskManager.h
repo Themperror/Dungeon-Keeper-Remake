@@ -16,7 +16,7 @@ namespace Themp
 		CreatureTaskManager() = delete;
 		~CreatureTaskManager() = delete;
 		enum OrderType { Order_None, Order_Mine, Order_Claim, Order_Reinforce, Order_DeliverGold , Order_IdleMovement };
-		enum ActivityType { Activity_None, Activity_GoToHeart, Activity_Sleep, Activity_GetFood, Activity_GoToBed,Activity_Eat, Activity_Train, Activity_Explore, Activity_Tunnel, Activity_CreateLair, Activity_IdleMovement};
+		enum ActivityType { Activity_None, Activity_GoToHeart, Activity_Sleep, Activity_GetFood, Activity_GoToBed,Activity_Eat, Activity_Train, Activity_Explore, Activity_Tunnel, Activity_CreateLair, Activity_IdleMovement,Activity_Fight};
 
 		struct Task
 		{
