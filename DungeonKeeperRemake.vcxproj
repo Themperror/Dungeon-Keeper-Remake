@@ -48,8 +48,10 @@
     <TargetName>$(ProjectName)d</TargetName>
     <IncludePath>$(SolutionDir)include;$(SolutionDir)\src\Game;$(SolutionDir)\src\Game\VoxelModels;$(SolutionDir)\src\Engine;$(SolutionDir)\src;$(SolutionDir)\src\Library;$(IncludePath)</IncludePath>
     <LibraryPath>$(LibraryPath);$(SolutionDir)lib;$(SolutionDir)lib\Debug;</LibraryPath>
-    <CustomBuildAfterTargets>FxCompile</CustomBuildAfterTargets>
-    <CustomBuildBeforeTargets>BuildCompile</CustomBuildBeforeTargets>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
     <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -101,11 +103,16 @@
       </Message>
     </PreBuildEvent>
     <CustomBuildStep>
-      <Command>$(SolutionDir)ConvertShadersToHeaders.bat</Command>
+      <Command>
+      </Command>
       <TreatOutputAsContent>
       </TreatOutputAsContent>
-      <Message>RUNNING SHADER CONVERSION!!</Message>
-      <Outputs>src\shaders\debugline_ps_d.h</Outputs>
+      <Message>
+      </Message>
+      <Outputs>
+      </Outputs>
+      <Inputs>
+      </Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
