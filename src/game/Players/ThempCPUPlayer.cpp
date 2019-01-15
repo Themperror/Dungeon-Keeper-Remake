@@ -29,4 +29,9 @@ void Themp::CPUPlayer::Update(float delta)
 			LevelData::PathsInvalidated = false;
 		}
 	}
+	for (int i = 0; i < m_DeadCreatures.size(); i++)
+	{
+		delete m_DeadCreatures[i];
+	}
+	m_DeadCreatures.clear();
 }

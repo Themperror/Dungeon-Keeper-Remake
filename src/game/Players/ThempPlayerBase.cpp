@@ -3,10 +3,11 @@
 #include "ThempGame.h"
 #include "Creature/ThempCreature.h"
 #include "Creature/ThempCreatureParty.h"
+#include "ThempEntity.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
 #include "ThempLevelScript.h"
-
+#include "ThempObject3D.h"
 using namespace Themp;
 
 std::unordered_map<CreatureData::CreatureType, std::string> CreatureTypeToString =
@@ -157,7 +158,9 @@ void  Themp::PlayerBase::AddTunnellerToLevel(uint8_t owner, int tunnelerLevel, i
 }
 void PlayerBase::AddCreature(uint8_t owner, Creature* c)
 {
-	LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]++;
+	if(c->m_CreatureID != CreatureData::CreatureType::CREATURE_IMP)
+		LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]++; //Imps don't count toward total creature count
+
 	LevelScript::GameValues[m_PlayerID][CreatureTypeToString[c->m_CreatureID]]++;
 	m_CreatureCount[c->m_CreatureID]++;
 	m_Creatures.push_back(c);
@@ -170,13 +173,45 @@ void PlayerBase::CreatureDied(Creature* c)
 	{
 		if (m_Creatures[i] == c)
 		{
-			LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]--;
-			LevelScript::GameValues[m_PlayerID][CreatureTypeToString[c->m_CreatureID]]--;
+			std::string& creatureTypeString = CreatureTypeToString[c->m_CreatureID];
+			if (c->m_CreatureID != CreatureData::CreatureType::CREATURE_IMP)
+				LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]--;
+			LevelScript::GameValues[m_PlayerID][creatureTypeString]--;
 			m_CreatureCount[c->m_CreatureID]--;
 			m_Creatures.erase(m_Creatures.begin() + i);
+			Entity* e = Level::s_CurrentLevel->m_LevelData->GetMapEntity();
+			e->SetSprite(c->m_CreatureID == CreatureData::CreatureType::CREATURE_IMP ? c->m_CreatureSpriteIndex + 82 : c->m_CreatureSpriteIndex + 42);
+			e->m_Renderable->SetPosition(c->m_Renderable->m_Position);
+			e->ResetScale();
+			System::tSys->m_Game->RemoveCreature(c);
+			m_DeadCreatures.push_back(c);
+
+			for (int j = 0; j < 5; j++)
+			{
+				PlayerBase* p = Level::s_CurrentLevel->m_Players[j];
+				if (p == nullptr) continue;
+				for (int k = 0; k < p->m_Creatures.size(); k++)
+				{
+					Creature* enemy = p->m_Creatures[k];
+					if (enemy->m_CombatTarget == c)
+					{
+						enemy->m_CombatTarget = nullptr;
+						enemy->m_InCombat = false;
+						enemy->m_CreatureCBData._isFighting = false;
+					}
+				}
+			}
 			break;
 		}
 	}
+}
+bool PlayerBase::IsAlliedWith(uint8_t player)
+{
+	return m_Allies[player][m_PlayerID];
+}
+void PlayerBase::AllyWith(uint8_t player)
+{
+	m_Allies[m_PlayerID][player] = true;
 }
 PlayerBase::~PlayerBase()
 {
