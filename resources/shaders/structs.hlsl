@@ -44,12 +44,12 @@ cbuffer CreatureDataBuffer : register(b3)
 {
 	float _AnimIndex;
 	float _NumAnim;
-	float _SpriteWidth;
+    float _SpriteWidth;
+    float _cdummy0;
 	bool _isFrozen; 
     bool _isFlipped;
-    float _cdummy0; 
-    float _cdummy1; 
-    float _cdummy2;   
+    bool _isHovered; 
+    bool _isFighting; 
 };
 cbuffer LightConstantBuffer : register(b4)
 {

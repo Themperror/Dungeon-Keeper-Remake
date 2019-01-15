@@ -18,5 +18,13 @@ float4 PShader(VS_OUTPUT input) : SV_TARGET
     {
         col += float4(0.447, 0.761, 1, 0.0);
     }
+    if (_isFighting && fmod(_time, 0.15) > 0.075) //add flashing lightred color
+    {
+        col += float4(0.8, 0.1, 0.15, 0.0);
+    }
+    if (_isHovered && fmod(_time, 0.15) > 0.075) //add flashing white color
+    {
+        col += float4(0.4, 0.4, 0.4, 0.0);
+    }
     return col;
 }
