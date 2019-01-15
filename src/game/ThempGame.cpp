@@ -67,13 +67,31 @@ void Themp::Game::Update(double dt)
 	m_CursorDeltaX = oldMouseX - m_CursorWindowedX;
 	m_CursorDeltaY = oldMouseY - m_CursorWindowedY;
 
-	if (!m_MainMenu->m_IsDone)
+	if (m_MainMenu && !m_MainMenu->m_IsDone)
 	{
 		m_MainMenu->Update(dt);
 	}
 	else
 	{
+		if (m_MainMenu)
+		{
+			delete m_MainMenu;
+			m_MainMenu = nullptr;
+		}
 		m_CurrentLevel->Update((float)dt);
+		if (m_CurrentLevel->m_Ended)
+		{
+			delete m_CurrentLevel;
+			m_CurrentLevel = nullptr;
+
+			m_Creatures.clear();
+			m_Entities.clear();
+			m_Objects3D.clear();
+
+			m_MainMenu = new MainMenu();
+			m_MainMenu->Start();
+			m_MainMenu->GoToMenu();
+		}
 	}
 
 	//left mouse button
@@ -128,8 +146,11 @@ void Themp::Game::LoadLevel(int levelIndex)
 }
 void Themp::Game::Stop()
 {
-	m_MainMenu->Stop();
-	delete m_MainMenu;
+	if (m_MainMenu)
+	{
+		m_MainMenu->Stop();
+		delete m_MainMenu;
+	}
 	delete m_Camera;
 	delete m_FileManager;
 	if (m_CurrentLevel)
@@ -151,6 +172,17 @@ void Themp::Game::AddObject3D(Object3D * obj)
 void Themp::Game::AddCreature(Creature* creature)
 {
 	m_Creatures.push_back(creature);
+}
+void Themp::Game::RemoveCreature(Creature* creature)
+{
+	for (int i = 0; i < m_Creatures.size(); i++)
+	{
+		if (m_Creatures[i] == creature)
+		{
+			m_Creatures.erase(m_Creatures.begin() + i);
+			break;
+		}
+	}
 }
 void Themp::Game::AddEntity(Entity* entity)
 {

@@ -29,17 +29,49 @@ namespace Themp
 			Entity_LairFly_W,
 			Entity_LairBeetle_FP,
 			Entity_LairBeetle_W,
+			Entity_Corpse_NULL,
+			Entity_Corpse_WIZARD,
+			Entity_Corpse_BARBARIAN,
+			Entity_Corpse_ARCHER,
+			Entity_Corpse_MONK,
+			Entity_Corpse_DWARF,
+			Entity_Corpse_KNIGHT,
+			Entity_Corpse_AVATAR,
+			Entity_Corpse_TUNNELLER,
+			Entity_Corpse_WITCH,
+			Entity_Corpse_GIANT,
+			Entity_Corpse_FAIRY,
+			Entity_Corpse_THIEF,
+			Entity_Corpse_SAMURAI,
+			Entity_Corpse_HORNY,
+			Entity_Corpse_SKELETON,
+			Entity_Corpse_TROLL,
+			Entity_Corpse_DRAGON,
+			Entity_Corpse_DEMONSPAWN,
+			Entity_Corpse_FLY,
+			Entity_Corpse_DARK_MISTRESS,
+			Entity_Corpse_SORCEROR,
+			Entity_Corpse_BILE_DEMON,
+			Entity_Corpse_IMP,
+			Entity_Corpse_BEETLE,
+			Entity_Corpse_VAMPIRE,
+			Entity_Corpse_SPIDER,
+			Entity_Corpse_HELLHOUND,
+			Entity_Corpse_GHOST,
+			Entity_Corpse_TENTACLE,
+			Entity_Corpse_ORC,
+			Entity_Corpse_FLOATING_SPIRIT,
 		};
 		struct CreatureConstantBuffer
 		{
-			float _AnimIndex; //4
-			float _NumAnim; //8
-			float _SpriteWidth; //12
-			uint32_t _isFrozen; //16
-			uint32_t _isFlipped; //16
-			uint32_t _dummy0; //16
-			uint32_t _dummy1; //16
-			uint32_t _dummy2; //16
+			float _AnimIndex;
+			float _NumAnim;
+			float _SpriteWidth;
+			float _cdummy0;
+			uint32_t _isFrozen;
+			uint32_t _isFlipped;
+			uint32_t _isHovered;
+			uint32_t _isFighting;
 		};//64
 
 		~Entity();
@@ -52,9 +84,7 @@ namespace Themp
 		void Update(float delta);
 		void Draw(D3D& d3d);
 		void SetVisibility(bool val);
-
-
-
+		
 		Object3D* m_Renderable = nullptr;
 		Sprite* m_Sprite = nullptr;
 

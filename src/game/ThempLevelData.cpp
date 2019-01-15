@@ -90,10 +90,7 @@ void LevelData::Init()
 	
 }
 
-float mod(float val, float mod)
-{
-	return fmod(fmod(val, mod) + mod, mod);
-}
+
 float intbound(float s, float ds)
 {
 	// Find the smallest positive t such that s+t*ds is an integer.
@@ -113,7 +110,7 @@ int signum(float x)
 	return x >= 0.0 ? 1 : x < 0.0 ? -1 : 0;
 }
 
-LevelData::HitData LevelData::Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float range)
+LevelData::HitData LevelData::Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float range, bool tileMode)
 {
 	int xPos = (int)floor(origin.x);
 	int yPos = (int)floor(origin.y);
@@ -132,14 +129,14 @@ LevelData::HitData LevelData::Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float
 	hitData.posZ = 0;
 
 	while (!(xPos < MAP_SIZE_SUBTILES_RENDER && xPos >= 0 &&
-		yPos < MAP_SIZE_HEIGHT && yPos >= 0 &&
+		yPos < 6 && yPos >= 0 &&
 		zPos < MAP_SIZE_SUBTILES_RENDER && zPos >= 0))
 	{
 		if (stepX < 0 && xPos < 0) goto END;
 		if (stepY < 0 && yPos < 0) goto END;
 		if (stepZ < 0 && zPos < 0) goto END;
 		if (xPos >= MAP_SIZE_SUBTILES_RENDER && stepX > 0) goto END;
-		if (yPos >= MAP_SIZE_HEIGHT && stepY > 0) goto END;
+		if (yPos >= 6 && stepY > 0) goto END;
 		if (zPos >= MAP_SIZE_SUBTILES_RENDER && stepZ > 0) goto END;
 		if (tMax.x < tMax.y)
 		{
@@ -168,11 +165,23 @@ LevelData::HitData LevelData::Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float
 			}
 		}
 	}
+	//if(m_Map.m_Tiles[zPos / 3][xPos / 3].visible)
+	if(tileMode)
+	{
+		//HitData hitData;
+		hitData.hit = true;
+		float dist = sqrt(tDelta.x + tDelta.y + tDelta.z);
 
+		hitData.distance = (int)round(dist);
+		hitData.posX = xPos;
+		hitData.posY = yPos;
+		hitData.posZ = zPos;
+		return hitData;
+	}
 	while (true)
 	{
 		if ((xPos < MAP_SIZE_SUBTILES_RENDER && xPos >= 0 &&
-			yPos < MAP_SIZE_HEIGHT && yPos >= 0 &&
+			yPos < 6 && yPos >= 0 &&
 			zPos < MAP_SIZE_SUBTILES_RENDER && zPos >= 0))
 		{
 			if (m_BlockMap[yPos][zPos][xPos].active || !m_Map.m_Tiles[zPos/3][xPos/3].visible)
@@ -742,6 +751,10 @@ void LevelData::DestroyTile(int y, int x)
 				{
 					lowestAreaCode = neighbours.Axii[i]->areaCode;
 				}
+			}
+			if (neighbours.Axii[i]->owner < Owner_PlayerWhite && neighbours.Axii[i]->GetType() == Type_Claimed_Land)
+			{
+				CreatureTaskManager::AddClaimingTask(neighbours.Axii[i]->owner, XMINT2(x, y), &m_Map.m_Tiles[y][x]);
 			}
 		}
 		if (lowestAreaCode == NextAreaCode)
@@ -1479,10 +1492,18 @@ void LevelData::ClaimTile(uint8_t player, int y, int x)
 }
 bool LevelData::BuildRoom(uint16_t type, uint8_t owner, int y, int x)
 {
+	int currentMoney = LevelScript::GameValues[owner]["MONEY"];
+	int roomCost = LevelConfig::roomData[LevelConfig::TypeToRoom(type)].Cost;
+	if (currentMoney < roomCost)
+	{
+		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("CANT.WAV"));
+		return false;
+	}
 	if (m_Map.m_Tiles[y][x].GetType() == Type_Claimed_Land && m_Map.m_Tiles[y][x].owner == owner)
 	{
 		UpdateSurroundingRoomsAdd(type, y, x);
 		UpdateArea(y - 1, y + 1, x - 1, x + 1);
+		LevelScript::GameValues[owner]["MONEY"] -= roomCost;
 		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("SLAB3.WAV"));
 		LevelScript::AddRoom(owner, type, 1);
 		return true;
@@ -1502,6 +1523,7 @@ bool LevelData::DeleteRoom(uint8_t owner, int y, int x)
 		UpdateSurroundingRoomsRemove(type, y, x);
 		UpdateArea(y - 1, y + 1, x - 1, x + 1);
 		System::tSys->m_Audio->PlayOneShot(FileManager::GetSound("SUCK.WAV"));
+		LevelScript::GameValues[owner]["MONEY"] += LevelConfig::roomData[LevelConfig::TypeToRoom(type)].Cost / 2;
 		LevelScript::AddRoom(owner, type, -1);
 	}
 	else
@@ -1840,7 +1862,6 @@ void LevelData::LoadLevelFileData()
 					wPos.y = 5; //dungeon heart table is always on 5 high
 					e->m_Renderable->SetPosition(wPos);
 					adjustedMap[y][x].placedEntities[1][1] = e;
-					Level::s_CurrentLevel->m_Players[mapTile.owner]->m_DungeonHeartLocation = XMINT2(x, y);
 				}
 				else //even 
 				{
@@ -1850,8 +1871,8 @@ void LevelData::LoadLevelFileData()
 					wPos.y = 5;
 					e->m_Renderable->SetPosition(wPos);
 					adjustedMap[y][x].placedEntities[2][2] = e;
-					Level::s_CurrentLevel->m_Players[mapTile.owner]->m_DungeonHeartLocation = XMINT2(x, y);
 				}
+				Level::s_CurrentLevel->m_Players[mapTile.owner]->m_DungeonHeartLocation = WorldToTile(wPos);
 				e->ResetScale();
 
 				PlayerHeartsPlaced[mapTile.owner] = true;

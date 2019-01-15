@@ -116,38 +116,40 @@ bool LevelUI::Update(float delta)
 	tex = FileManager::GetFont(1)->at(texIDText).texture;
 	ImGui::Image(tex->m_View, ImVec2(tex->m_Width * 2, tex->m_Height * 2));
 	ImGui::End();
-
-	Player* player = ((Player*)Level::s_CurrentLevel->m_Players[Owner_PlayerRed]);
-	if (player->m_GoldAmount != m_GoldAmount) //changing gold text is expensive, only change when we need to..
+	if (m_ShowUI)
 	{
-		m_GoldAmount = player->m_GoldAmount;
-		m_GoldText = std::to_string(m_GoldAmount);
-		while(m_GoldText.size() > m_GoldNumbers.size())
+		Player* player = ((Player*)Level::s_CurrentLevel->m_Players[Owner_PlayerRed]);
+		if (player->m_GoldAmount != m_GoldAmount) //changing gold text is expensive, only change when we need to..
 		{
-			Object2D* obj = new Object2D(Object2D::Source::sLEVEL_MISC, 70, true);
-			Themp::System::tSys->m_Game->AddObject3D(obj->m_Renderable);
-			obj->SetVisibility(false);
-			m_GoldNumbers.push_back(obj);
-		}
-		for (int i = 0; i < m_GoldNumbers.size(); i++)
-		{
-			m_GoldNumbers[i]->SetVisibility(false);
-		}
-		const float letterspacing = 0.09f;
-		float totalspace = (((float)(m_GoldText.size()-1) * (letterspacing / 2.0f)));
-		for (int i = 0; i < m_GoldText.size(); i++)
-		{
-			//ascii numbers start at 48 ('0') to 57 ('9') so char - 48 == number
-			int number = m_GoldText[i] - 48;
+			m_GoldAmount = player->m_GoldAmount;
+			m_GoldText = std::to_string(m_GoldAmount);
+			while(m_GoldText.size() > m_GoldNumbers.size())
+			{
+				Object2D* obj = new Object2D(Object2D::Source::sLEVEL_MISC, 70, true);
+				Themp::System::tSys->m_Game->AddObject3D(obj->m_Renderable);
+				obj->SetVisibility(false);
+				m_GoldNumbers.push_back(obj);
+			}
+			for (int i = 0; i < m_GoldNumbers.size(); i++)
+			{
+				m_GoldNumbers[i]->SetVisibility(false);
+			}
+			const float letterspacing = 0.09f;
+			float totalspace = (((float)(m_GoldText.size()-1) * (letterspacing / 2.0f)));
+			for (int i = 0; i < m_GoldText.size(); i++)
+			{
+				//ascii numbers start at 48 ('0') to 57 ('9') so char - 48 == number
+				int number = m_GoldText[i] - 48;
 
-			//The textures for each number start at 70 so 70 == '0'
-			m_GoldNumbers[i]->SetTexture(FileManager::GetLevelMiscGUITexture(number + 70, true));
+				//The textures for each number start at 70 so 70 == '0'
+				m_GoldNumbers[i]->SetTexture(FileManager::GetLevelMiscGUITexture(number + 70, true));
 			
-			m_GoldNumbers[i]->m_Renderable->SetPosition(-1.6f + ((float)i * letterspacing) - totalspace, 0.42f, 0.85f);
-			m_GoldNumbers[i]->SetVisibility(true);
+				m_GoldNumbers[i]->m_Renderable->SetPosition(-1.6f + ((float)i * letterspacing) - totalspace, 0.42f, 0.85f);
+				m_GoldNumbers[i]->SetVisibility(true);
+			}
 		}
+		UpdateRoomIcons();
 	}
-	UpdateRoomIcons();
 
 	bool clickedbutton = false;
 	{
@@ -233,9 +235,18 @@ void LevelUI::ToggleVisibility()
 			}
 			if (bp.RoomButtons[i])
 			{
-				bp.RoomButtons[i]->SetVisibility(m_ShowUI);
+				AvailableObject& ao = Level::s_CurrentLevel->m_LevelScript->AvailableRooms[Owner_PlayerRed][buttonRooms[i]];
+				if (ao.isAvailable)
+				{
+					bp.RoomButtons[i]->SetVisibility(m_ShowUI);
+				}
+				else
+				{
+					bp.RoomButtons[i]->SetVisibility(false);
+				}
 			}
 		}
+		bp.RoomButtons[15]->SetVisibility(m_ShowUI);
 	}
 }
 
@@ -351,16 +362,23 @@ void LevelUI::UpdateRoomIcons()
 		{
 			if (selectedBuilding == buttonRooms[i])
 			{
-				bp.BuildingIcon->SetTexture(FileManager::GetLevelPaneGUITexture(bigButtonIcons[i], true));
+				if (m_GoldAmount < LevelConfig::roomData[LevelConfig::TypeToRoom(selectedBuilding)].Cost)
+				{
+					bp.BuildingIcon->SetTexture(FileManager::GetLevelPaneGUITexture(bigButtonIcons[i]+1, true));
+				}
+				else
+				{
+					bp.BuildingIcon->SetTexture(FileManager::GetLevelPaneGUITexture(bigButtonIcons[i], true));
+				}
 				break;
 			}
 		}
 	}
 	else
 	{
-		bp.BuildingAmount->SetVisibility(false);
-		bp.BuildingCost->SetVisibility(false);
-		bp.BuildingIcon->SetVisibility(false);
+		//bp.BuildingAmount->SetVisibility(false);
+		//bp.BuildingCost->SetVisibility(false);
+		//bp.BuildingIcon->SetVisibility(false);
 	}
 	for (size_t i = 0; i < 14; i++)
 	{
@@ -409,6 +427,7 @@ void LevelUI::RoomAvailable(uint16_t roomtype,bool availability)
 {
 	BuildingPanel& bp = m_BuildingPanel;
 	//naive but well.. its only 14 and happens REALLY rarely..
+	if (!m_ShowUI)return;
 	for (int i = 0; i < 14; i++)
 	{
 		if (roomtype == buttonRooms[i])
@@ -417,7 +436,6 @@ void LevelUI::RoomAvailable(uint16_t roomtype,bool availability)
 			break;
 		}
 	}
-	//enable room button
 }
 void LevelUI::CreateBuildingPanel()
 {
@@ -434,6 +452,7 @@ void LevelUI::CreateBuildingPanel()
 				obj->m_Renderable->SetPosition(-1.9 + ((float)x*0.2), -0.8 - ((float)y*0.35), 0.85f);
 				Themp::System::tSys->m_Game->AddObject3D(obj->m_Renderable);
 
+				bp.ButtonSquares[x + y * 4] = obj;
 				if (iconIndex != 0) //we'll have to create the sell room button seperately
 				{
 					GUIButton* button = new GUIButton(Object2D::Source::sLEVEL_PANE, iconIndex, iconIndex, iconIndex, true);
@@ -441,7 +460,6 @@ void LevelUI::CreateBuildingPanel()
 					button->SetPosition(obj->m_Renderable->m_Position);
 					button->SetSize(1.0, 1.15,1,1);
 					bp.RoomButtons[x + y * 4] = button;
-					bp.ButtonSquares[x + y * 4] = obj;
 				}
 			}
 		}
@@ -452,8 +470,8 @@ void LevelUI::CreateBuildingPanel()
 	button->SetSize(1.0, 1.15, 1, 1);
 	bp.RoomButtons[15] = button;
 
-	bp.BuildingAmount = new Font("@1", Font::FontTexID::INGAME, true, XMFLOAT3(-1.65, -0.15, 0.85), 20);
-	bp.BuildingCost = new Font("750", Font::FontTexID::INGAME, true, XMFLOAT3(-1.6, -0.4, 0.85), 20);
+	bp.BuildingAmount = new Font("@0", Font::FontTexID::INGAME, true, XMFLOAT3(-1.65, -0.15, 0.85), 20);
+	bp.BuildingCost = new Font("50", Font::FontTexID::INGAME, true, XMFLOAT3(-1.6, -0.4, 0.85), 20);
 	bp.BuildingAmount->SetScale(1.0, 1.333, 1);
 	bp.BuildingCost->SetScale(1.0, 1.333, 1);
 	bp.BuildingIcon = new Object2D(Object2D::Source::sLEVEL_PANE, 28, true);

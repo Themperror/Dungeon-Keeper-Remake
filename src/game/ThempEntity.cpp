@@ -36,6 +36,38 @@ const std::vector<int> EntityIDs
 	/*Entity_LairFly_W,*/ 2225,
 	/*Entity_LairBeetle_FP*/ 2225,
 	/*Entity_LairBeetle_W,*/ 2225,
+	/*Entity_Corpse_NULL,			*/
+	/*Entity_Corpse_WIZARD,			*/
+	/*Entity_Corpse_BARBARIAN,		*/
+	/*Entity_Corpse_ARCHER,			*/
+	/*Entity_Corpse_MONK,			*/
+	/*Entity_Corpse_DWARF,			*/
+	/*Entity_Corpse_KNIGHT,			*/
+	/*Entity_Corpse_AVATAR,			*/
+	/*Entity_Corpse_TUNNELLER,		*/
+	/*Entity_Corpse_WITCH,			*/
+	/*Entity_Corpse_GIANT,			*/
+	/*Entity_Corpse_FAIRY,			*/
+	/*Entity_Corpse_THIEF,			*/
+	/*Entity_Corpse_SAMURAI,		*/
+	/*Entity_Corpse_HORNY,			*/
+	/*Entity_Corpse_SKELETON,		*/
+	/*Entity_Corpse_TROLL,			*/
+	/*Entity_Corpse_DRAGON,			*/
+	/*Entity_Corpse_DEMONSPAWN,		*/
+	/*Entity_Corpse_FLY,			*/
+	/*Entity_Corpse_DARK_MISTRESS,	*/
+	/*Entity_Corpse_SORCEROR,		*/
+	/*Entity_Corpse_BILE_DEMON,		*/
+	/*Entity_Corpse_IMP,			*/
+	/*Entity_Corpse_BEETLE,			*/
+	/*Entity_Corpse_VAMPIRE,		*/
+	/*Entity_Corpse_SPIDER,			*/
+	/*Entity_Corpse_HELLHOUND,		*/
+	/*Entity_Corpse_GHOST,			*/
+	/*Entity_Corpse_TENTACLE,		*/
+	/*Entity_Corpse_ORC,			*/
+	/*Entity_Corpse_FLOATING_SPIRIT,*/
 };
 const std::vector<std::string> EntityIDToName =
 {
@@ -137,7 +169,7 @@ void Entity::ResetScale()
 	{
 		SetSprite(EntityIDs[m_EntityID + (camType != Camera::Orthographic)]);
 	}
-	m_Renderable->SetScale(m_Sprite->unscaledW / 32, m_Sprite->unscaledH / 32, 1);
+	m_Renderable->SetScale((float)m_Sprite->unscaledW / 32.0f, (float)m_Sprite->unscaledH / 32.0f, 1);
 }
 void Entity::Update(float delta)
 {

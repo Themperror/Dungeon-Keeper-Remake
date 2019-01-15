@@ -134,7 +134,6 @@ void Level::AvailableRoomsChanged()
 	}
 }
 
-
 void Level::Update(float delta)
 {
 	Game* g = Themp::System::tSys->m_Game;
@@ -142,6 +141,14 @@ void Level::Update(float delta)
 
 	int camTilePosX = ((int)camPos.x) / 3;
 	int camTilePosY = ((int)camPos.z) / 3;
+
+	if (m_IsCompleted)
+	{
+		if (g->m_Keys[VK_SPACE] == 2)
+		{
+			m_Ended = true;
+		}
+	}
 
 	m_MapObject->Update(delta);
 
@@ -156,6 +163,12 @@ void Level::Update(float delta)
 		m_LevelUI->ToggleVisibility();
 	}
 	
+	while (LevelScript::GameValues[Owner_PlayerRed]["IMP"] < 3)
+	{
+		Creature* creature = new Themp::Creature(CreatureData::CREATURE_IMP);
+		m_Players[Owner_PlayerRed]->AddCreature(Owner_PlayerRed, creature);
+		creature->m_Renderable->SetPosition(m_Players[Owner_PlayerRed]->m_DungeonHeartLocation.x * 3, 5,m_Players[Owner_PlayerRed]->m_DungeonHeartLocation.y*3);
+	}
 
 
 	//Some level stuff
@@ -182,13 +195,35 @@ void Level::Update(float delta)
 
 	ImGui::Text("Controls: WASD for forward/back/left/right, Q and E for up and down.");
 
+	ImGui::Begin("Messages");
+	for (int i = m_Messages.size()-1; i >= 0; i--)
+	{
+		bool removeMessage = false;
+		if (ImGui::Button("Remove Message"))
+		{
+			removeMessage = true;
+		}
+		ImGui::TextWrapped(m_Messages[i].c_str());
+		if (removeMessage)
+		{
+			m_Messages.erase(m_Messages.begin() + i);
+		}
+	}
+	if (ImGui::TreeNode("Objective"))
+	{
+		ImGui::TextWrapped(m_Objective.c_str());
+
+		ImGui::TreePop();
+	}
+	ImGui::End();
+
 	if (g->m_Keys[257] == 2)
 	{
 		m_BuildMode = false;
 	}
 	XMFLOAT3 mouseDir = g->m_Camera->ScreenToWorld(g->m_CursorWindowedX, g->m_CursorWindowedY);
 	XMFLOAT3 dir = Normalize(mouseDir - camPos);
-	LevelData::HitData hit = m_LevelData->Raycast(LevelData::WorldToSubtileFloat(camPos), dir, 50);
+	LevelData::HitData hit = m_LevelData->Raycast(LevelData::WorldToSubtileFloat(camPos), dir, 80,true);
 
 	//tileIndicator->SetPosition((camTilePosX-42)*3, 6, (camTilePosY-42)*3);
 	if (hit.hit && !clickedbutton)
@@ -197,6 +232,25 @@ void Level::Update(float delta)
 		//DebugDraw::Line(camPos-XMFLOAT3(0,1,0), SubtileToWorld(XMFLOAT3(hit.posX, hit.posY, hit.posZ)), 2.0f);
 		XMFLOAT3 hitPos = LevelData::SubtileToWorld(XMINT3(hit.posX, hit.posY, hit.posZ));
 		XMINT2 tilePos = LevelData::WorldToTile(hitPos);
+		if (!(m_HoveringTile == tilePos))
+		{
+			if (m_HoveringCreature)
+			{
+				m_HoveringCreature->m_CreatureCBData._isHovered = false;
+				m_HoveringCreature = nullptr;
+			}
+			m_HoveringTile = tilePos;
+		}
+		if (m_HoveringCreature)
+		{
+			XMINT2 creatureTilePos = LevelData::WorldToTile(m_HoveringCreature->m_Renderable->m_Position);
+			if (!(creatureTilePos == m_HoveringTile))
+			{
+				m_HoveringCreature->m_CreatureCBData._isHovered = false;
+				m_HoveringCreature = nullptr;
+			}
+		}
+
 
 		if (tilePos.x > 0 && tilePos.x < MAP_SIZE_TILES - 1 && tilePos.y > 0 && tilePos.y < MAP_SIZE_TILES - 1)
 		{
@@ -229,7 +283,6 @@ void Level::Update(float delta)
 						tileIndicator->m_ConstantBufferData.misc0 = 1;
 					}
 				}
-				
 			}
 			else if(!IsWalkable(t->GetType()))
 			{
@@ -238,7 +291,48 @@ void Level::Update(float delta)
 			}
 			else
 			{
+				//Hovering over a ground tile
+				
+				for (int i = 0; i < m_Players[Owner_PlayerRed]->m_Creatures.size(); i++)
+				{
+					Creature* c = m_Players[Owner_PlayerRed]->m_Creatures[i];
+					XMINT2 creatureTilePos = LevelData::WorldToTile(c->m_Renderable->m_Position);
+					if (creatureTilePos == tilePos)
+					{
+						if (!c->IsAttackable())continue;
+						if (m_HoveringCreature)
+						{
+							m_HoveringCreature->m_CreatureCBData._isHovered = false;
+						}
+						c->m_CreatureCBData._isHovered = true;
+						m_HoveringCreature = c;
+						break;
+					}
+				}
 				tileIndicator->isVisible = false;
+				if (g->m_Keys[256] == 2)
+				{
+					m_ClickedCreature = m_HoveringCreature;
+				}
+				if (g->m_Keys[256] == -1)
+				{
+					if (m_ClickedCreature && m_HoveringCreature == m_ClickedCreature)
+					{
+						if(m_ClickedCreature->PickUp())
+							m_HeldCreatures.push(m_ClickedCreature);
+					}
+				}
+				if (g->m_Keys[257] == 2)
+				{
+					if (t->owner == Owner_PlayerRed)
+					{
+						if (m_HeldCreatures.size() > 0)
+						{
+							m_HeldCreatures.top()->Drop(tilePos);
+							m_HeldCreatures.pop();
+						}
+					}
+				}
 			}
 
 			if (g->m_Keys[256] == 2)
@@ -342,7 +436,7 @@ void Level::Update(float delta)
 	}
 
 	for (int i = 0; i < m_LevelData->m_MapEntityUsed.size(); i++)
-	{
+	{ 
 		m_LevelData->m_MapEntityUsed[i]->Update(delta);
 	}
 

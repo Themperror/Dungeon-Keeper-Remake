@@ -21,6 +21,7 @@ namespace Themp
 		void Stop();
 		void AddObject3D(Object3D* obj);
 		void AddCreature(Creature* obj);
+		void RemoveCreature(Creature * creature);
 		void AddEntity(Entity * entity);
 		static void TranslateMousePos(int inX, int inY, float & outX, float & outY);
 		std::vector<Themp::Object3D*> m_Objects3D;

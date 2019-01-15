@@ -499,12 +499,10 @@ void LevelScript::ExecuteCommand(Command* c)
 		Level::s_CurrentLevel->m_IsCompleted = true;
 		break;
 	case Command::ScriptFunctions::DISPLAY_INFORMATION:
-		System::Print("%s", FileManager::GetText(c->argsInts[0]).c_str());
-		System::Print("Unimplemented: DISPLAY_INFORMATION");
+		Level::s_CurrentLevel->m_Messages.push_back( FileManager::GetText(c->argsInts[0]));
 		break;
 	case Command::ScriptFunctions::DISPLAY_OBJECTIVE:
-		System::Print("%s", FileManager::GetText(c->argsInts[0]).c_str());
-		System::Print("Unimplemented: DISPLAY_OBJECTIVE");
+		Level::s_CurrentLevel->m_Objective = FileManager::GetText(c->argsInts[0]);
 		break;
 	case Command::ScriptFunctions::SET_FLAG:
 		GameValues[PlayerTagToNumber(c->argsStrings[0])][c->argsStrings[1]] = c->argsInts[2];
@@ -734,7 +732,12 @@ void LevelScript::ExecuteCommand(Command* c)
 		System::Print("Unimplemented: SET_COMPUTER_GLOBALS");
 		break;
 	case Command::ScriptFunctions::ALLY_PLAYERS:
-		System::Print("Unimplemented: ALLY_PLAYERS");
+	{
+		uint8_t p1 = PlayerTagToNumber(c->argsStrings[0]);
+		uint8_t p2 = PlayerTagToNumber(c->argsStrings[1]);
+		Themp::Level::s_CurrentLevel->m_Players[p1]->AllyWith(p2);
+		Themp::Level::s_CurrentLevel->m_Players[p2]->AllyWith(p1);
+	}
 		break;
 	case Command::ScriptFunctions::START_MONEY:
 		LevelScript::GameValues[PlayerTagToNumber(c->argsStrings[0])]["START_MONEY"] = c->argsInts[1];

@@ -109,7 +109,7 @@ namespace Themp
 		~LevelData();
 		LevelData(int levelIndex);
 		void Init();
-		HitData Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float range);
+		LevelData::HitData Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float range, bool tileMode = false);
 		uint8_t GetNeighbourInfo(uint16_t currentType, uint16_t nType);
 		TileNeighbours CheckNeighbours(uint16_t type, int y, int x);
 		TileNeighbourTiles GetNeighbourTiles(int y, int x);

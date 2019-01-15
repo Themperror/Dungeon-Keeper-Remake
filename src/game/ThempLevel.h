@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <stack>
 #include <DirectXMath.h>
 #include "../Library/micropather.h"
 #include "Creature/ThempCreatureData.h"
@@ -38,12 +39,20 @@ namespace Themp
 
 
 		bool m_IsCompleted = false;
+		bool m_Ended = false;
 
 		float m_CreatureGenerateTurnTimer = 0;
 		float UnOwnedRoomColorTimer = 0;
 
 		uint16_t m_SelectedBuilding = 0;
 		bool m_BuildMode = false;
+
+		Creature* m_HoveringCreature = nullptr;
+		Creature* m_ClickedCreature = nullptr;
+		DirectX::XMINT2 m_HoveringTile = DirectX::XMINT2(-1, -1);
+		std::stack<Creature*> m_HeldCreatures;
+		std::vector<std::string> m_Messages;
+		std::string m_Objective = "";
 
 		int m_CreatureGenerateTurns = 0;
 		int UnownedRoomColorIndex = 0;

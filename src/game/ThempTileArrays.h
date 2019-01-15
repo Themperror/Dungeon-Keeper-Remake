@@ -840,9 +840,9 @@ namespace Themp
 		//edge
 		{
 			{
-				XMFLOAT2(4,23), //black
-				XMFLOAT2(5,23), //black
-				XMFLOAT2(6,23), //black
+				XMFLOAT2(4,23),
+				XMFLOAT2(5,23),
+				XMFLOAT2(6,23),
 			},
 		},
 	};
@@ -866,22 +866,13 @@ namespace Themp
 		{
 			//
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(4,23),
 			},
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(5,23),
 			},
 			{
-				XMFLOAT2(0,6), //black
-				XMFLOAT2(1,6), //black
-				XMFLOAT2(2,6), //black
-				XMFLOAT2(3,6), //black
+				XMFLOAT2(6,23),
 			},
 		},
 	};
@@ -997,7 +988,7 @@ namespace Themp
 				XMFLOAT2(2,2),XMFLOAT2(3,2),XMFLOAT2(4,2),
 				XMFLOAT2(0,14),XMFLOAT2(5,2),XMFLOAT2(2,14),
 				XMFLOAT2(0,14),XMFLOAT2(6,2),XMFLOAT2(2,14),
-				XMFLOAT2(7,3),XMFLOAT2(0,3),XMFLOAT2(1,3),
+				XMFLOAT2(7,2),XMFLOAT2(0,3),XMFLOAT2(1,3),
 			},
 		},
 		//edge
