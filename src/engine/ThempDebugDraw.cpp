@@ -28,6 +28,10 @@ namespace Themp
 	void DebugDraw::Line(XMFLOAT3 p1, XMFLOAT3 p2, float time, XMFLOAT3 color)
 	{
 #ifdef _DEBUG
+		if (lines.capacity() < lines.size() + 10)
+		{
+			lines.reserve(lines.capacity() * 2);
+		}
 		lines.push_back({ { p1.x,p1.y,p1.z },{ p2.x,p2.y,p2.z },{ color.x,color.y,color.z },time });
 #endif
 	}

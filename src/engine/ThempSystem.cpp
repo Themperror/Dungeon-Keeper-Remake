@@ -28,7 +28,10 @@ namespace Themp
 	{
 		return x * (1.0f - t) + y * t;
 	}
-
+	float mod(float val, float mod)
+	{
+		return fmod(fmod(val, mod) + mod, mod);
+	}
 
 	System* System::tSys = nullptr;
 	FILE* System::logFile = nullptr;

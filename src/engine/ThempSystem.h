@@ -27,9 +27,11 @@ constexpr auto PI = 3.14159265359f;
 //The original game has a fluctuating turns per second depending on FPS, but the target is 20 turns, as we have the ability to use delta times we can work with this.
 #define GAME_TURNS_PER_SECOND (20.0f)
 #define GAME_TURNS_TO_SECOND(x) (((float)x) / GAME_TURNS_PER_SECOND)
+#define SECOND_TO_GAME_TURNS(x) ((x) * GAME_TURNS_PER_SECOND)
 
 namespace Themp
 {
+	
 	struct Timer
 	{
 	public:
@@ -96,6 +98,7 @@ namespace Themp
 		std::chrono::time_point<std::chrono::steady_clock> oldT,newT;
 	};
 	float lerp(float x, float y, float t);
+	float mod(float val, float mod);
 	class Game;
 	class D3D;
 	class Resources;
