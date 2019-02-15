@@ -1,6 +1,11 @@
 # Dungeon Keeper Remake
 A modern remake of Dungeon Keeper
 
+----------------
+
+I am looking for more developers to help complete this project!
+
+----------------
 Let me start of by saying that I know of the existance of KeeperFX, however the source code is so unmanageable and unreadable to the point where I believe there's literally files that were copy pasted from the dissassembly code (There's a file with over 10K lines of ASM in it) with as extra that it's nearly all C.
 
 So this will be a remake made in C++, using DirectX 11 and XAudio2. The goal will be to have a single executable file that you paste into the game folder which you can run. Therefore I will not distribute the games assets in any way (adjusted or not) keeping this project in the legal area.
