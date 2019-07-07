@@ -55,7 +55,7 @@ namespace Themp
 		Resources::TRes = this;
 
 		Buffer b;
-		b.buffer = nullptr;
+		b.buf = nullptr;
 		b.numElements = 0;
 		m_VertexBuffers.push_back(b);
 		m_IndexBuffers.push_back(b);
@@ -99,17 +99,17 @@ namespace Themp
 
 		for (auto i : m_VertexBuffers)
 		{
-			if (i.buffer == 0)continue;
-			i.buffer->Release();
-			i.buffer = nullptr;
+			if (i.buf == 0)continue;
+			i.buf->Release();
+			i.buf = nullptr;
 		}
 		m_VertexBuffers.clear();
 
 		for (auto i : m_IndexBuffers)
 		{
-			if (i.buffer == 0)continue;
-			i.buffer->Release();
-			i.buffer = nullptr;
+			if (i.buf == 0)continue;
+			i.buf->Release();
+			i.buf = nullptr;
 		}
 		m_IndexBuffers.clear();
 
@@ -337,7 +337,7 @@ namespace Themp
 		HRESULT res = d->m_Device->CreateBuffer(&bd, NULL, &vertexBuffer);
 		if (res == S_OK)
 		{
-			buf.buffer = vertexBuffer;
+			buf.buf = vertexBuffer;
 			buf.numElements = numVertices;
 			d->m_DevCon->Map(vertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
 			memcpy(ms.pData, vertices, sizeof(Vertex)*numVertices);
@@ -356,10 +356,10 @@ namespace Themp
 		ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
 		if (buf.numElements >= numVertices) //re-use our buffer
 		{
-			if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+			if (d->m_DevCon->Map(buf.buf, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
 			{
 				memcpy(ms.pData, vertices, sizeof(Vertex)*numVertices);
-				d->m_DevCon->Unmap(buf.buffer, NULL);
+				d->m_DevCon->Unmap(buf.buf, NULL);
 				return true;
 			}
 		}
@@ -382,8 +382,8 @@ namespace Themp
 				{
 					memcpy(ms.pData, vertices, sizeof(Vertex)*numVertices);
 					d->m_DevCon->Unmap(vBuffer, NULL);
-					buf.buffer->Release(); //release old buffer
-					buf.buffer = vBuffer;
+					buf.buf->Release(); //release old buffer
+					buf.buf = vBuffer;
 					buf.numElements = numVertices;
 					return true;
 				}
@@ -410,7 +410,7 @@ namespace Themp
 		res = d->m_Device->CreateBuffer(&bd, NULL, &indexBuffer);
 		if (res == S_OK)
 		{
-			buf.buffer = indexBuffer;
+			buf.buf = indexBuffer;
 			buf.numElements = numIndices;
 			d->m_DevCon->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
 			memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
@@ -429,10 +429,10 @@ namespace Themp
 		ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
 		if (buf.numElements >= numIndices) //re-use our buffer
 		{
-			if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+			if (d->m_DevCon->Map(buf.buf, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
 			{
 				memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
-				d->m_DevCon->Unmap(buf.buffer, NULL);
+				d->m_DevCon->Unmap(buf.buf, NULL);
 				return true;
 			}
 		}
@@ -455,8 +455,8 @@ namespace Themp
 				{
 					memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
 					d->m_DevCon->Unmap(iBuffer, NULL);
-					buf.buffer->Release(); //release old buffer
-					buf.buffer = iBuffer;
+					buf.buf->Release(); //release old buffer
+					buf.buf = iBuffer;
 					buf.numElements = numIndices;
 					return true;
 				}

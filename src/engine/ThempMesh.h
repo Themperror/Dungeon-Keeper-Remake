@@ -14,8 +14,9 @@ namespace Themp
 	{
 		float x, y, z;
 		float nx, ny, nz;
-		float u, v, visible;
-		uint32_t doAnimate;
+		float u, v, visible = 1.0f;
+		uint32_t doAnimate = 0;
+		uint32_t lightIndices[4] = { UINT32_MAX,UINT32_MAX,UINT32_MAX,UINT32_MAX };
 	};
 	class Material;
 	class Mesh

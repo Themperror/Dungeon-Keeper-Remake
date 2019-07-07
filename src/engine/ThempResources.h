@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <d3d11.h>
+#include "ThempD3D.h"
 
 #define BASE_TEXTURE_PATH "../data/textures/"
 #define BASE_SHADER_PATH "../data/shaders/"
@@ -20,8 +21,72 @@ namespace Themp
 	public:
 		struct Buffer
 		{
-			ID3D11Buffer* buffer;
-			size_t numElements;
+			void InitBuf(int data_size, int structSize, UINT bindFlags, D3D11_CPU_ACCESS_FLAG cpuType = (D3D11_CPU_ACCESS_FLAG)0, void* initData = nullptr)
+			{
+				D3D11_BUFFER_DESC desc{ 0 };
+				desc.ByteWidth = data_size;
+				desc.StructureByteStride = structSize;
+				desc.BindFlags = bindFlags;
+				desc.Usage = D3D11_USAGE_DEFAULT;
+				desc.MiscFlags = (bindFlags & D3D11_BIND_UNORDERED_ACCESS || bindFlags & D3D11_BIND_SHADER_RESOURCE) ? D3D11_RESOURCE_MISC_BUFFER_STRUCTURED : 0;
+				desc.CPUAccessFlags = cpuType;
+				if (initData != nullptr)
+				{
+					D3D11_SUBRESOURCE_DATA data;
+					data.pSysMem = initData;
+					Themp::D3D::s_D3D->m_Device->CreateBuffer(&desc, &data, &buf);
+				}
+				else
+				{
+					Themp::D3D::s_D3D->m_Device->CreateBuffer(&desc, nullptr, &buf);
+				}
+
+			}
+			void InitUAV()
+			{
+				if (!buf)
+				{
+					Themp::System::Print("Can't Init UAV, Buf wasn't initialized yet!");
+					return;
+				}
+
+				D3D11_BUFFER_DESC bufDesc{ 0 };
+				buf->GetDesc(&bufDesc);
+
+				D3D11_UNORDERED_ACCESS_VIEW_DESC UAVdesc;
+				ZeroMemory(&UAVdesc, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
+				UAVdesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+				UAVdesc.Buffer.FirstElement = 0;
+				UAVdesc.Format = DXGI_FORMAT_UNKNOWN;
+				UAVdesc.Buffer.NumElements = bufDesc.ByteWidth / bufDesc.StructureByteStride;
+				Themp::D3D::s_D3D->m_Device->CreateUnorderedAccessView(buf, &UAVdesc, &uav);
+			}
+			void InitSRV()
+			{
+				if (!buf)
+				{
+					Themp::System::Print("Can't Init SRV, Buf wasn't initialized yet!");
+					return;
+				}
+
+				D3D11_BUFFER_DESC bufDesc{ 0 };
+				buf->GetDesc(&bufDesc);
+
+				D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
+				ZeroMemory(&SRVdesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+
+				SRVdesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+				SRVdesc.Format = DXGI_FORMAT_UNKNOWN;
+				SRVdesc.BufferEx.FirstElement = 0;
+				SRVdesc.BufferEx.NumElements = bufDesc.ByteWidth / bufDesc.StructureByteStride;
+
+				Themp::D3D::s_D3D->m_Device->CreateShaderResourceView(buf, &SRVdesc, &srv);
+			}
+
+			ID3D11Buffer* buf = nullptr;
+			ID3D11ShaderResourceView* srv = nullptr;
+			ID3D11UnorderedAccessView* uav = nullptr;
+			size_t numElements = 0;
 		};
 		Resources();
 		~Resources();

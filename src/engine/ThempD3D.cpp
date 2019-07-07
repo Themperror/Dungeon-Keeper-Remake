@@ -317,7 +317,7 @@ namespace Themp
 			m_DevCon->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			m_DevCon->IASetInputLayout(D3D::DefaultMaterial->m_InputLayout); //skybox layout doesn't differ so this is fine
 
-																			 //Models
+			//Models
 			m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);
 			m_DevCon->PSSetShaderResources(0, 4, D3D::DefaultMaterial->m_Views);
 

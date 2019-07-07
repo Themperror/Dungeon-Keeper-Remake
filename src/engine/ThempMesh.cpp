@@ -36,8 +36,8 @@ namespace Themp
 	{
 		i_VertexBuffer = Themp::Resources::TRes->CreateVertexBuffer(m_Vertices, m_NumVertices);
 		i_IndexBuffer = Themp::Resources::TRes->CreateIndexBuffer(m_Indices, m_NumIndices);
-		m_VertexBuffer = Themp::Resources::TRes->m_VertexBuffers[i_VertexBuffer].buffer;
-		m_IndexBuffer = Themp::Resources::TRes->m_IndexBuffers[i_VertexBuffer].buffer;
+		m_VertexBuffer = Themp::Resources::TRes->m_VertexBuffers[i_VertexBuffer].buf;
+		m_IndexBuffer = Themp::Resources::TRes->m_IndexBuffers[i_VertexBuffer].buf;
 
 		//m_BoundsMin = XMFLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
 		//m_BoundsMax = XMFLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);

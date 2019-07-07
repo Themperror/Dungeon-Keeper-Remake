@@ -38,12 +38,12 @@ namespace Themp
 	void DebugDraw::Update(float dt)
 	{
 #ifdef _DEBUG
-		for (int i = lines.size()-1; i >= 0; i--)
+		for (int i = (int)lines.size()-1; i >= 0; i--)
 		{
 			if (lines[i].time > 0.0f)
 			{
 				lines[i].time -= dt;
-				if (lines[i].time < 0.0)
+				if (lines[i].time < 0.0f)
 				{
 					lines.erase(lines.begin() + i);
 				}
@@ -63,7 +63,7 @@ namespace Themp
 			CLEAN(vertexBuffer);
 
 			//create a buffer twice as big as what we're drawing;
-			LineBufferSize = lines.size() * 2 * sizeof(DebugLineVertex) * 2;
+			LineBufferSize = (int)lines.size() * 2 * sizeof(DebugLineVertex) * 2;
 
 			//create the line vertex buffer
 			D3D11_BUFFER_DESC bd;
@@ -71,7 +71,7 @@ namespace Themp
 
 			//set up for vertices
 			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = sizeof(DebugLineVertex) * lines.size() * 2 * 2;
+			bd.ByteWidth = sizeof(DebugLineVertex) * (uint32_t)lines.size() * 2 * 2;
 			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
@@ -84,11 +84,11 @@ namespace Themp
 		//copy all the data
 		lineVertices.clear();
 		lineVertices.reserve(lines.size() * 2);
-		for (int i = lines.size() - 1; i >= 0; i--)
+		for (int i = (int)lines.size() - 1; i >= 0; i--)
 		{
 			lineVertices.push_back({ lines[i].x1,lines[i].color });
 			lineVertices.push_back({ lines[i].x2,lines[i].color });
-			if (lines[i].time == 0.0f)
+			if (lines[i].time <= 0.0f)
 			{
 				lines.erase(lines.begin() + i);
 			}
@@ -113,7 +113,7 @@ namespace Themp
 		const uint32_t stride[] = { sizeof(DebugLineVertex) };
 		const uint32_t offset[] = { 0 };
 		devcon->IASetVertexBuffers(0, 1, &vertexBuffer, stride, offset);
-		devcon->Draw(lineVertices.size(), 0);
+		devcon->Draw((uint32_t)lineVertices.size(), 0);
 
 #endif
 	}

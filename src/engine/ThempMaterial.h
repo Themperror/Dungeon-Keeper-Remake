@@ -36,8 +36,8 @@ namespace Themp
 			if (m_Data)delete m_Data, m_Data = nullptr;
 		}
 		
-		void Create(int width, int height, DXGI_FORMAT format, bool keepCPUTexture = true, void* data = nullptr);
-		void Load(void* data, int size);
+		void Create(const int width, const int height, const DXGI_FORMAT format, const bool keepCPUTexture = false, const void* data = nullptr);
+		void Load(const void* data, const int size);
 	};
 	class Material
 	{

@@ -138,7 +138,7 @@ namespace Themp
 	//		Themp::System::tSys->m_D3D->m_DevCon->Unmap(m_MaterialConstantBuffer, NULL);
 	//	}
 	//}
-	void Texture::Create(int width, int height, DXGI_FORMAT format, bool keepCPUTexture, void* data)
+	void Texture::Create(const int width, const int height, const DXGI_FORMAT format, const bool keepCPUTexture, const void* data)
 	{
 		m_Width = width;
 		m_Height = height;
@@ -191,7 +191,7 @@ namespace Themp
 			System::Print("Could not load texture");
 		}
 	}
-	void Texture::Load(void* data, int size)
+	void Texture::Load(const void* data, const int size)
 	{
 		assert(m_Data && size <= m_Width * m_Height * 4);
 		if (m_Data && size <= m_Width*m_Height*4)
