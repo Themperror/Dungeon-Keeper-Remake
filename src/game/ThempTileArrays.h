@@ -10,6 +10,11 @@ using namespace DirectX;
 #define MAP_SIZE_TILES (85)
 #define MAP_SIZE_SUBTILES_RENDER (85 * 3)
 
+#define SUBTILESX 3
+#define SUBTILESY 3
+#define SUBTILESZ 8
+#define MAX_LIGHTS_PER_TILE 4
+
 #define L8(x) ((x)&0xFF)
 
 static constexpr int Type_Rock = 0;
@@ -235,23 +240,34 @@ namespace Themp
 		{	
 			subTile = tiles;
 			pathSubTiles = pathTiles;
-			for (size_t i = 0; i < 3; i++)
+			for (size_t i = 0; i < SUBTILESY; i++)
 			{
-				for (size_t j = 0; j < 3; j++)
+				for (size_t j = 0; j < SUBTILESX; j++)
 				{
-					for (size_t k = 0; k < 8; k++)
+					for (size_t k = 0; k < SUBTILESZ; k++)
 					{
 						activeBlocks += subTile[i][j][k].active;
 					}
 				}
 			}
 		}
-		std::array<std::array<std::array<Block,8>,3>,3> subTile;
+		std::array<std::array<std::array<Block, SUBTILESZ>, SUBTILESY>, SUBTILESX> subTile;
 		//Block subTile[3][3][8];
-		std::array<std::array<PathFindTile, 3>, 3> pathSubTiles;
+		std::array<std::array<PathFindTile, SUBTILESY>, SUBTILESX> pathSubTiles;
 		//PathFindTile pathSubTiles[3][3];
 		uint16_t activeBlocks = 0;
 	}; 
+
+	struct Light
+	{
+		uint8_t range = 0;
+		uint8_t lightIntensity = 0;
+		uint8_t x = 0;
+		uint8_t y = 0;
+		uint8_t z = 0;
+		uint16_t lightIndex = 0;
+	};
+
 	struct Tile
 	{
 		Tile()
@@ -259,37 +275,43 @@ namespace Themp
 			visible = false;
 			owner = Owner_PlayerNone;
 			type = Type_Rock;
-			numBlocks = 6 * 3 * 3;
+			numBlocks = 6 * SUBTILESY * SUBTILESX;
 			marked[0] = false;
 			marked[1] = false;
 			marked[2] = false;
 			marked[3] = false;
 			health = 1024;
 			areaCode = 0;
+			lightArrayIndex = 0;
 			roomID = INT32_MAX;
-			for (int i = 0; i < 3; i++)
+
+			for (size_t i = 0; i < SUBTILESY; i++)
 			{
-				for (int j = 0; j < 3; j++)
+				for (size_t j = 0; j < SUBTILESX; j++)
 				{
 					pathSubTiles[i][j] = PathFindTile();
 					placedEntities[i][j] = nullptr;
 				}
 			}
 		}
-		uint16_t GetType()
+
+		uint16_t GetType() const
 		{
 			return (type & 0xFF);
 		}
+
 		bool visible;
 		uint8_t owner;
 		uint16_t type;
-		uint16_t numBlocks;
-		bool marked[4];
-		int32_t health;
-		int32_t roomID;
 		uint32_t areaCode;
-		std::array<std::array<Entity*, 3>, 3> placedEntities;
-		std::array<std::array<PathFindTile, 3>, 3> pathSubTiles;
+		int32_t roomID;
+		uint16_t lightArrayIndex;
+		std::array<std::array<PathFindTile, SUBTILESY>, SUBTILESX> pathSubTiles;
+		std::array<std::array<Entity*, SUBTILESY>, SUBTILESX> placedEntities;
+
+		uint16_t numBlocks;
+		int32_t health;
+		bool marked[4];
 	};
 	struct NeighbourSubTiles
 	{

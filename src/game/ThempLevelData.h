@@ -28,6 +28,7 @@ namespace Themp
 			union
 			{
 				char typeSpecificData[11];
+#pragma pack(push,1)
 				struct
 				{
 					uint8_t field1;
@@ -38,6 +39,7 @@ namespace Themp
 					uint16_t field9_10;
 					uint8_t field11;
 				};
+#pragma pack(pop)
 			};
 		};
 		struct Room
@@ -116,6 +118,8 @@ namespace Themp
 		NeighbourSubTiles GetNeighbourSubTiles(int y, int x);
 		uint8_t GetSubtileHeight(int tileY, int tileX, int subTileY, int subTileX);
 		void DoUVs(uint16_t type, int x, int y);
+		uint32_t GetFreeLightIndex(uint16_t base);
+		void AddLightToTiles(const Light & light);
 		void DoRoomUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
 		void DoWallUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
 		void AddExploredTileNeighboursVisibility(int y, int x, int areaCode);
@@ -165,9 +169,12 @@ namespace Themp
 		std::vector<Entity*> m_MapEntityUsed;
 		//Map that keeps the initial state of the map (for water/lava blocks)
 		TileMap m_OriginalMap;
+
 		//Map which the current changes to it (mined/dug out blocks, rooms etc..)
-		static TileMap m_Map;
+		static TileMap s_Map;
 		static bool PathsInvalidated;
+		static std::unordered_map<uint32_t, Light> s_Lights;
+		static std::array<uint32_t, MAP_SIZE_TILES*MAP_SIZE_TILES * MAX_LIGHTS_PER_TILE> s_PerTileLights;
 		//Map in subtile format, used for pathfinding/picking
 		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
 		std::vector<ActionPoint> m_ActionPoints;

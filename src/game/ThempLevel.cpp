@@ -100,8 +100,8 @@ Level::Level(int levelIndex)
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	m_LevelData->Init();
-	m_Pather = new micropather::MicroPather(&m_LevelData->m_Map, 260, 8, false);
-	m_PatherThroughWalls = new micropather::MicroPather(&m_LevelData->m_Map, 260, 8, false);
+	m_Pather = new micropather::MicroPather(&m_LevelData->s_Map, 260, 8, false);
+	m_PatherThroughWalls = new micropather::MicroPather(&m_LevelData->s_Map, 260, 8, false);
 	m_PatherThroughWalls->SetIgnoreWalls(true);
 
 	System::tSys->m_Game->m_Camera->SetPosition(42 * 3, 12, 38 * 3);
@@ -179,7 +179,7 @@ void Level::Update(float delta)
 		{
 			for (int j = 0; j < 85; j++)
 			{
-				m_LevelData->m_Map.m_Tiles[i][j].visible = true;
+				m_LevelData->s_Map.m_Tiles[i][j].visible = true;
 			}
 		}
 	}
@@ -256,7 +256,7 @@ void Level::Update(float delta)
 		{
 			XMFLOAT3 worldTilePos = LevelData::TileToWorld(tilePos);
 			tileIndicator->SetPosition(worldTilePos + XMFLOAT3(0, 0.01f, 0));
-			Tile* t = &m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x];
+			Tile* t = &m_LevelData->s_Map.m_Tiles[tilePos.y][tilePos.x];
 			if (m_BuildMode)
 			{
 				tileIndicator->isVisible = true;
@@ -339,7 +339,7 @@ void Level::Update(float delta)
 			{
 				if (!m_BuildMode)
 				{
-					if (m_LevelData->m_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
+					if (m_LevelData->s_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
 					{
 						IsMarking = false;
 						m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
@@ -510,7 +510,7 @@ void Level::UpdateMinimap()
 		for (int x = 0; x < MAP_SIZE_SUBTILES_RENDER; x++)
 		{
 			const int xTile = x / 3;
-			const Tile& tile = m_LevelData->m_Map.m_Tiles[yTile][xTile];
+			const Tile& tile = m_LevelData->s_Map.m_Tiles[yTile][xTile];
 			const unsigned int texPos = (x + y * MAP_SIZE_SUBTILES) * 4;
 			uint16_t tileType = tile.type & 0xFF;
 			if (tile.visible)

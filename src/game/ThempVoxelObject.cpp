@@ -17,23 +17,24 @@ D3D11_INPUT_ELEMENT_DESC VoxelInputLayoutDesc[] =
 	{ "UV", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	{ "VISIBLE", 0 ,DXGI_FORMAT_R32_FLOAT,0,32,D3D11_INPUT_PER_VERTEX_DATA,0},
 	{ "ANIMATE", 0 ,DXGI_FORMAT_R32_UINT,0,36,D3D11_INPUT_PER_VERTEX_DATA,0},
+	{ "LIGHTINDICES", 0 ,DXGI_FORMAT_R32G32B32A32_UINT,0,40,D3D11_INPUT_PER_VERTEX_DATA,0},
 };
 
 using namespace Themp;
 VoxelObject::~VoxelObject()
 {
 	if(m_Vertices)
-	delete[] m_Vertices;
-	if(m_Indices)
-	delete[] m_Indices;
-	if (m_IndexBuffer.buffer)
-	{
-		m_IndexBuffer.buffer->Release();
-	}
-	if (m_VertexBuffer.buffer)
-	{
-		m_VertexBuffer.buffer->Release();
-	}
+		delete[] m_Vertices;
+	if (m_Indices)
+		delete[] m_Indices;
+	if (m_Lights)
+		delete[] m_Lights;
+
+	CLEAN(m_IndexBuffer.buf);
+	CLEAN(m_VertexBuffer.buf);
+	CLEAN(m_LightBuffer.buf);
+	CLEAN(m_LightBuffer.srv);
+	
 }
 
 VoxelObject::VoxelObject(LevelData* leveldata)
@@ -54,18 +55,22 @@ VoxelObject::VoxelObject(LevelData* leveldata)
 
 	m_Vertices = new VoxelVertex[4]; 
 	m_Indices = new uint32_t[6];
-
+	m_Lights = new Light[UINT16_MAX];
 	m->m_Vertices = nullptr;
 	m->m_Indices = nullptr;
 
 	CreateVertexBuffer(m_Vertices, 4);
 	CreateIndexBuffer(m_Indices, 6);
+	CreateLightBuffer(LevelData::s_Lights);
 
-	m->m_VertexBuffer = m_VertexBuffer.buffer;
-	m->m_IndexBuffer = m_IndexBuffer.buffer;
+	m->m_VertexBuffer = m_VertexBuffer.buf;
+	m->m_IndexBuffer = m_IndexBuffer.buf;
 	m->m_VertexSize = sizeof(VoxelVertex);
 
-	m->m_Material = Resources::TRes->GetUniqueMaterial("", "voxel", VoxelInputLayoutDesc,5);
+	m->m_Material = Resources::TRes->GetUniqueMaterial("", "voxel", VoxelInputLayoutDesc,6);
+
+	D3D::s_D3D->m_DevCon->VSSetShaderResources(8, 1, &m_LightBuffer.srv);
+	D3D::s_D3D->m_DevCon->PSSetShaderResources(8, 1, &m_LightBuffer.srv);
 
 	for (size_t z = 0; z < MAP_SIZE_HEIGHT; z++)
 	for (size_t y = 0; y < MAP_SIZE_SUBTILES_RENDER; y++)
@@ -79,10 +84,10 @@ VoxelObject::VoxelObject(LevelData* leveldata)
 void VoxelObject::Update(float dt)
 {
 	m_AnimationTime += dt;
-	if (m_AnimationTime >= 1.0 / 5.0)
+	if (m_AnimationTime >= 1.0f / 5.0f)
 	{
-		if (m_AnimationTime > (1.0 / 2.5)) m_AnimationTime = 1.0 / 2.5;
-		m_AnimationTime -= 1.0 / 5.0;
+		if (m_AnimationTime > (1.0f / 2.5f)) m_AnimationTime = 1.0f / 2.5f;
+		m_AnimationTime -= 1.0f / 5.0f;
 		m_AnimationIndex++;
 	}
 }
@@ -93,7 +98,10 @@ const float pixelSizeY = (1.0f / 2176.0f) * 31.5f;
 //Z = 1
 void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t& currentIndex, uint32_t& vIndex)
 {
-	const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
+	const Tile& tile = m_Level->s_Map.m_Tiles[yP][xP];
+	const int tileType = tile.GetType();
+	const uint32_t lights[4] = { m_Level->s_PerTileLights[tile.lightArrayIndex] , m_Level->s_PerTileLights[tile.lightArrayIndex + 1], m_Level->s_PerTileLights[tile.lightArrayIndex + 2], m_Level->s_PerTileLights[tile.lightArrayIndex + 3] };
+
 	if (tileType == Type_Earth || IsWall(tileType))
 	{
 		TileNeighbours neighbour = m_Level->CheckNeighbours(tileType, yP, xP);
@@ -134,8 +142,8 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 		}
 
 		XMFLOAT2 uv = m_Level->m_BlockMap[1][y][x].uv[0];
-		uv.x = uv.x / 8.0;
-		uv.y = uv.y / 68.0;
+		uv.x = uv.x / 8.0f;
+		uv.y = uv.y / 68.0f;
 		if (!m_Level->m_BlockMap[1][y][x + 1].active) // right
 		{
 			m_Indices[currentIndex + 0] = vIndex + 2;
@@ -146,10 +154,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 			m_Indices[currentIndex + 5] = vIndex + 0;
 			currentIndex += 6;
 
-			m_Vertices[vIndex++] = { x + 0.5f, 1.0f + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y,  1,0 };
-			m_Vertices[vIndex++] = { x + 0.5f, 1.0f - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x + 0.5f, 1.0f - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-			m_Vertices[vIndex++] = { x + 0.5f, 1.0f + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y,  1,0 };
+			m_Vertices[vIndex++] = { x + 0.5f, 1.0f + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, 1.0f - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, 1.0f - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, 1.0f + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
 
 		}
 		if (!m_Level->m_BlockMap[1][y][x - 1].active) // left
@@ -162,14 +170,14 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 			m_Indices[currentIndex + 5] = vIndex + 0;
 			currentIndex += 6;
 
-			m_Vertices[vIndex++] = { x - 0.5f, 1.0f + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, 1.0f + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y,  1,0 };
-			m_Vertices[vIndex++] = { x - 0.5f, 1.0f - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, 1.0f - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 1, 0 };
+			m_Vertices[vIndex++] = { x - 0.5f, 1.0f + 0.5f, y - 0.5f  , 1,0,0, uv.x					,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, 1.0f + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, 1.0f - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, 1.0f - 0.5f, y - 0.5f  , 1,0,0, uv.x					,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 		uv = m_Level->m_BlockMap[1][y][x].uv[1];
-		uv.x = uv.x / 8.0;
-		uv.y = uv.y / 68.0;
+		uv.x = uv.x / 8.0f;
+		uv.y = uv.y / 68.0f;
 		if (!m_Level->m_BlockMap[1][y - 1][x].active) // back
 		{
 			m_Indices[currentIndex + 0] = vIndex + 2;
@@ -180,10 +188,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 			m_Indices[currentIndex + 5] = vIndex + 0;
 			currentIndex += 6;
 
-			m_Vertices[vIndex++] = { x + 0.5f ,  1.0f - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x + 0.5f ,  1.0f + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y,  1,0 };
-			m_Vertices[vIndex++] = { x - 0.5f ,  1.0f + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y,  1,0 };
-			m_Vertices[vIndex++] = { x - 0.5f ,  1.0f - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY,  1,0 };
+			m_Vertices[vIndex++] = { x + 0.5f ,  1.0f - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f ,  1.0f + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f ,  1.0f + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f ,  1.0f - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 		if (!m_Level->m_BlockMap[1][y + 1][x].active) // front
 		{
@@ -195,10 +203,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 			m_Indices[currentIndex + 5] = vIndex + 3;
 			currentIndex += 6;
 
-			m_Vertices[vIndex++] = { x + 0.5f  , 1.0f - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x + 0.5f  , 1.0f + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f  , 1.0f + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f  , 1.0f - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+			m_Vertices[vIndex++] = { x + 0.5f  , 1.0f - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f  , 1.0f + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f  , 1.0f + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f  , 1.0f - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 	}
 	else
@@ -222,10 +230,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x + 0.5f, 1 - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 1, 0 };
-				m_Vertices[vIndex++] = { x + 0.5f, 1 - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 
 			}
 			if (x - 1 <= 0 || !m_Level->m_BlockMap[1][y][x - 1].active) // left
@@ -238,14 +246,14 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f, 1 - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f, 1 - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY,  1,0 };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			uv = m_Level->m_BlockMap[1][y][x].uv[1];
-			uv.x = uv.x / 8.0;
-			uv.y = uv.y / 68.0;
+			uv.x = uv.x / 8.0f;
+			uv.y = uv.y / 68.0f;
 			if (y - 1 <= 0 || !m_Level->m_BlockMap[1][y - 1][x].active) // back
 			{
 				m_Indices[currentIndex + 0] = vIndex + 2;
@@ -256,10 +264,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x + 0.5f ,  1 - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-				m_Vertices[vIndex++] = { x + 0.5f ,  1 + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y,  1,0 };
-				m_Vertices[vIndex++] = { x - 0.5f ,  1 + 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f ,  1 - 0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+				m_Vertices[vIndex++] = { x + 0.5f ,  1 - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f ,  1 + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				, 1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f ,  1 + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y				, 1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f ,  1 - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY	, 1,0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[1][y + 1][x].active) // front
 			{
@@ -271,14 +279,14 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 3;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x + 0.5f  , 1 - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-				m_Vertices[vIndex++] = { x + 0.5f  , 1 + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f  , 1 + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f  , 1 - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+				m_Vertices[vIndex++] = { x + 0.5f  , 1 - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f  , 1 + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f  , 1 + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f  , 1 - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			uv = m_Level->m_BlockMap[1][y][x].uv[2];
-			uv.x = uv.x / 8.0;
-			uv.y = uv.y / 68.0;
+			uv.x = uv.x / 8.0f;
+			uv.y = uv.y / 68.0f;
 			if (!m_Level->m_BlockMap[0][y][x].active) // bottom
 			{
 				m_Indices[currentIndex + 0] = vIndex + 2;
@@ -289,10 +297,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x - 0.5f , 1 - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY,  1,0 };
-				m_Vertices[vIndex++] = { x + 0.5f , 1 - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-				m_Vertices[vIndex++] = { x + 0.5f , 1 - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
-				m_Vertices[vIndex++] = { x - 0.5f , 1 - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y, 1, 0 };
+				m_Vertices[vIndex++] = { x - 0.5f , 1 - 0.5f ,  y + 0.5f  , 0,1,0, uv.x					,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f , 1 - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f , 1 - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f , 1 - 0.5f ,  y - 0.5f  , 0,1,0, uv.x					,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			if (!m_Level->m_BlockMap[2][y][x].active) // top
 			{
@@ -304,10 +312,10 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,  1,0 };
-				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY,  1,0 };
-				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 1, 0 };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,	uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 1 + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX		,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 1 + 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 		}
 	}
@@ -315,6 +323,12 @@ void VoxelObject::DoVoxelBlockVisibleEdge(int y, int x,int yP, int xP, uint32_t&
 //Z = 0
 void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentIndex, uint32_t& vIndex)
 {
+	const int yP = (int)floor((float)y / 3.0f);
+	const int xP = (int)floor((float)x / 3.0f);
+	const Tile& tile = m_Level->s_Map.m_Tiles[yP][xP];
+	const int tileType = tile.GetType();
+	const uint32_t lights[4] = { m_Level->s_PerTileLights[tile.lightArrayIndex] , m_Level->s_PerTileLights[tile.lightArrayIndex + 1], m_Level->s_PerTileLights[tile.lightArrayIndex + 2], m_Level->s_PerTileLights[tile.lightArrayIndex + 3] };
+
 	XMFLOAT2 uv = m_Level->m_BlockMap[0][y][x].uv[0];
 	uv.x = uv.x / 8.0;
 	uv.y = uv.y / 68.0;
@@ -328,10 +342,10 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 1,0 };
-		m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f,-0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f,+0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 
 	}
 	if (x - 1 <= 0 || !m_Level->m_BlockMap[0][y][x - 1].active) // left
@@ -344,10 +358,10 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y,  1,0 };
-		m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY , 1, 0 };
+		m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f,+0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f,-0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 	uv = m_Level->m_BlockMap[0][y][x].uv[1];
 	uv.x = uv.x / 8.0;
@@ -362,10 +376,10 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY ,  1,0 };
-		m_Vertices[vIndex++] = { x + 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,+0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y				, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,-0.5f  , y - 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	, 1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 	if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[0][y + 1][x].active) // front
 	{
@@ -377,10 +391,10 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 		m_Indices[currentIndex + 5] = vIndex + 3;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-		m_Vertices[vIndex++] = { x + 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y,  1,0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,+0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y				,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,-0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	,  1,0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 	uv = m_Level->m_BlockMap[0][y][x].uv[2];
 	uv.x = uv.x / 8.0;
@@ -395,9 +409,8 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		const int yP = floor((float)y / 3.0f);
-		const int xP = floor((float)x / 3.0f);
-		const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
+
+
 		if (tileType == Type_Water || tileType == Type_Lava)
 		{
 			uint16_t texIndex = TypeToTexture(tileType);
@@ -470,33 +483,34 @@ void VoxelObject::DoVoxelBlockVisibleAnimated(int y, int x,uint32_t& currentInde
 
 			if (cornerQuad)
 			{
-				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,  1,(useAnimEast || useAnimSouth) };
-				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1,(useAnimEast || useAnimNorth) };
-				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 1,(useAnimWest || useAnimNorth) };
-				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y,  1,(useAnimWest || useAnimSouth) };
+				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y				,  1,(useAnimEast || useAnimSouth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1,(useAnimEast || useAnimNorth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY	,  1,(useAnimWest || useAnimNorth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y				,  1,(useAnimWest || useAnimSouth) ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			else
 			{
-				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 1, (useAnimEast && useAnimSouth) };
-				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1,(useAnimEast && useAnimNorth) };
-				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY, 1,(useAnimWest && useAnimNorth) };
-				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 1, (useAnimWest && useAnimSouth) };
+				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y				, 1, (useAnimEast && useAnimSouth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1, (useAnimEast && useAnimNorth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY	, 1, (useAnimWest && useAnimNorth) ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y				, 1, (useAnimWest && useAnimSouth) ,lights[0],lights[1],lights[2],lights[3] };
 			}
 		}
 		else
 		{
-			m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
-			m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1,0 };
-			m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY,  1,0 };
-			m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y, 1, 0 };
+			m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX		,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX		,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y + 0.5f , 0,1,0, uv.x					,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, 0.5f ,  y - 0.5f , 0,1,0, uv.x					,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 	}
 }
 //Z = 2 to 8
 void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint32_t& currentIndex, uint32_t& vIndex)
 {
-
-	const int tileType = m_Level->m_Map.m_Tiles[yP][xP].type;
+	const Tile& tile = m_Level->s_Map.m_Tiles[yP][xP];
+	const int tileType = tile.GetType();
+	const uint32_t lights[4] = { m_Level->s_PerTileLights[tile.lightArrayIndex] , m_Level->s_PerTileLights[tile.lightArrayIndex + 1], m_Level->s_PerTileLights[tile.lightArrayIndex + 2], m_Level->s_PerTileLights[tile.lightArrayIndex + 3] };
 
 	if (tileType == Type_Gold || tileType == Type_Gem)
 	{
@@ -508,7 +522,7 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 
 		if (z == 5)
 		{
-			if (m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+			if (tile.marked[Owner_PlayerRed])
 			{
 				const std::vector<XMFLOAT2>& tex0 = BlockTextures[7].top[1];
 				m_Level->m_BlockMap[5][y][x].uv[2] = tex0[m_AnimationIndex % tex0.size()];
@@ -534,10 +548,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y, 1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y,					1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY,		1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,		1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y,					1, 0,lights[0],lights[1],lights[2],lights[3] };
 
 	}
 	if (x - 1 <= 0 || !m_Level->m_BlockMap[z][y][x - 1].active) // left
@@ -550,10 +564,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY,  1, 0 };
+		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y				,  1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y				,  1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, uv.x				,uv.y + pixelSizeY	,  1, 0,lights[0],lights[1],lights[2],lights[3] };
 	}
 	uv = m_Level->m_BlockMap[z][y][x].uv[1];
 	uv.x = uv.x / 8.0;
@@ -568,10 +582,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y, 1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY,  1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, uv.x					,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 	if (y + 1 >= MAP_SIZE_SUBTILES_RENDER || !m_Level->m_BlockMap[z][y + 1][x].active) // front
 	{
@@ -583,14 +597,14 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 		m_Indices[currentIndex + 5] = vIndex + 3;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY,  1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY, 1, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x + pixelSizeX	,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1, uv.x				,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 
 	uv = m_Level->m_BlockMap[z][y][x].uv[2];
-	if (tileType != Type_Gold && tileType != Type_Gem && m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+	if (tileType != Type_Gold && tileType != Type_Gem && tile.marked[Owner_PlayerRed])
 	{
 		const std::vector<XMFLOAT2>& tex0 = BlockTextures[7].top[0];
 		uv = tex0[m_AnimationIndex % tex0.size()];
@@ -607,10 +621,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY,  1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX,uv.y + pixelSizeY, 1, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX,uv.y,  1, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y,  1, 0 };
+		m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x				,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y + 0.5f  , 0,1,0, uv.x + pixelSizeX,uv.y + pixelSizeY	,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x + pixelSizeX,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f , z - 0.5f ,  y - 0.5f  , 0,1,0, uv.x				,uv.y				,  1, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 	if (z + 1 >= MAP_SIZE_HEIGHT || !m_Level->m_BlockMap[z + 1][y][x].active) //top
 	{
@@ -623,28 +637,28 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 			bool edge[4] = {};
 			if ((x + 1) / 3 == xP + 1) //neighbours the east tile;
 			{
-				visible[0] = m_Level->m_Map.m_Tiles[yP][xP + 1].visible;
+				visible[0] = m_Level->s_Map.m_Tiles[yP][xP + 1].visible;
 				edge[0] = true;
 			}
 			else if ((x - 1) / 3 == xP - 1) //neighbours the west tile;
 			{
-				visible[1] = m_Level->m_Map.m_Tiles[yP][xP - 1].visible;
+				visible[1] = m_Level->s_Map.m_Tiles[yP][xP - 1].visible;
 				edge[1] = true;
 			}
 			if ((y + 1) / 3 == yP + 1) //neighbours the north tile;
 			{
-				visible[2] = m_Level->m_Map.m_Tiles[yP + 1][xP].visible;
+				visible[2] = m_Level->s_Map.m_Tiles[yP + 1][xP].visible;
 				edge[2] = true;
 			}
 			else if ((y - 1) / 3 == yP - 1) //neighbours the south tile;
 			{
-				visible[3] = m_Level->m_Map.m_Tiles[yP - 1][xP].visible;
+				visible[3] = m_Level->s_Map.m_Tiles[yP - 1][xP].visible;
 				edge[3] = true;
 			}
 			//fix diagonal cases
 			if (edge[1] && edge[2] && (visible[1] && visible[2]))
 			{
-				if (!m_Level->m_Map.m_Tiles[yP + 1][xP - 1].visible)
+				if (!m_Level->s_Map.m_Tiles[yP + 1][xP - 1].visible)
 				{
 					visible[0] = false;
 				}
@@ -653,7 +667,7 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 			}
 			else if (edge[2] && edge[0] && (visible[2] && visible[0]))
 			{
-				if (!m_Level->m_Map.m_Tiles[yP + 1][xP + 1].visible)
+				if (!m_Level->s_Map.m_Tiles[yP + 1][xP + 1].visible)
 				{
 					visible[1] = false;
 				}
@@ -661,7 +675,7 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 			}
 			else if (edge[1] && edge[3] && (visible[1] && visible[3]))
 			{
-				if (!m_Level->m_Map.m_Tiles[yP - 1][xP - 1].visible)
+				if (!m_Level->s_Map.m_Tiles[yP - 1][xP - 1].visible)
 				{
 					visible[2] = false;
 				}
@@ -669,13 +683,13 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 			}
 			else if (edge[0] && edge[3] && (visible[0] && visible[3]))
 			{
-				if (!m_Level->m_Map.m_Tiles[yP - 1][xP + 1].visible)
+				if (!m_Level->s_Map.m_Tiles[yP - 1][xP + 1].visible)
 				{
 					visible[3] = false;
 				}
 				isCorner = true;
 			}
-			if (m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+			if (tile.marked[Owner_PlayerRed])
 			{
 				visible[0] = true;
 				visible[1] = true;
@@ -692,10 +706,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 				m_Indices[currentIndex + 5] = vIndex + 0;
 				currentIndex += 6;
 
-				m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[3]) , 0 };
-				m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[1]) , 0 };
-				m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[0]) , 0 };
-				m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[2]) , 0 };
+				m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[3]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[1]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[0]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+				m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[2]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
 			}
 			else
 			{
@@ -709,10 +723,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 					m_Indices[currentIndex + 4] = vIndex + 3;
 					m_Indices[currentIndex + 5] = vIndex + 2;
 					currentIndex += 6;
-					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[1] && visible[3]) , 0 };
-					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[0] && visible[3]) , 0 };
-					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[0] && visible[2]) , 0 };
-					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[1] && visible[2]) , 0 };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[1] && visible[3]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[0] && visible[3]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[0] && visible[2]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[1] && visible[2]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
 				}
 				else
 				{
@@ -723,10 +737,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 					m_Indices[currentIndex + 4] = vIndex + 2;
 					m_Indices[currentIndex + 5] = vIndex + 0;
 					currentIndex += 6;
-					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[0] && visible[3]) , 0 };
-					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[0] && visible[2]) , 0 };
-					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[1] && visible[2]) , 0 };
-					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[1] && visible[3]) , 0 };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y,				(float)(visible[0] && visible[3]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, (float)(visible[0] && visible[2]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, (float)(visible[1] && visible[2]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
+					m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y,				(float)(visible[1] && visible[3]) , 0 ,lights[0],lights[1],lights[2],lights[3] };
 				}
 			}
 		}
@@ -740,10 +754,10 @@ void VoxelObject::DoVoxelBlockVisible(int z, int y, int x, int yP, int xP, uint3
 			m_Indices[currentIndex + 5] = vIndex + 0;
 			currentIndex += 6;
 
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 1 , 0 };
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, 1 , 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y, 1 , 0 };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y				, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY	, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y				, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 	}
 	
@@ -753,8 +767,11 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 {
 	if (z + 1 > 6) return;
 
+	const Tile& tile = m_Level->s_Map.m_Tiles[yP][xP];
+	const uint32_t lights[4] = { m_Level->s_PerTileLights[tile.lightArrayIndex] , m_Level->s_PerTileLights[tile.lightArrayIndex + 1], m_Level->s_PerTileLights[tile.lightArrayIndex + 2], m_Level->s_PerTileLights[tile.lightArrayIndex + 3] };
+
 	const XMFLOAT2 uv = XMFLOAT2(0, 0);
-	if (((x+1) / 3) == (xP+1) && m_Level->m_Map.m_Tiles[yP][xP+1].visible) // right
+	if (((x+1) / 3) == (xP+1) && m_Level->s_Map.m_Tiles[yP][xP+1].visible) // right
 	{
 		m_Indices[currentIndex + 0] = vIndex + 2;
 		m_Indices[currentIndex + 1] = vIndex + 1;
@@ -764,13 +781,13 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, 0,0,0, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y - 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y - 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z - 0.5f  , y + 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f  , y + 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
 
 	}
-	if (((x - 1) / 3) == (xP - 1) && m_Level->m_Map.m_Tiles[yP][xP - 1].visible) // left
+	if (((x - 1) / 3) == (xP - 1) && m_Level->s_Map.m_Tiles[yP][xP - 1].visible) // left
 	{
 		m_Indices[currentIndex + 0] = vIndex + 2;
 		m_Indices[currentIndex + 1] = vIndex + 1;
@@ -780,12 +797,12 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, 0,0,0, 0 };
+		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y - 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f, y + 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y + 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f, z - 0.5f, y - 0.5f  , 1,0,0, 0,0,0, 0,lights[0],lights[1],lights[2],lights[3] };
 	}
-	if (((y - 1) / 3) == (yP - 1) && m_Level->m_Map.m_Tiles[yP - 1][xP].visible) // back
+	if (((y - 1) / 3) == (yP - 1) && m_Level->s_Map.m_Tiles[yP - 1][xP].visible) // back
 	{
 		m_Indices[currentIndex + 0] = vIndex + 2;
 		m_Indices[currentIndex + 1] = vIndex + 1;
@@ -795,12 +812,12 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,  z + 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f ,  z - 0.5f  , y - 0.5f , 0,0,1, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
-	if (((y + 1) / 3) == (yP + 1) && m_Level->m_Map.m_Tiles[yP + 1][xP].visible) // front
+	if (((y + 1) / 3) == (yP + 1) && m_Level->s_Map.m_Tiles[yP + 1][xP].visible) // front
 	{
 		m_Indices[currentIndex + 0] = vIndex + 0;
 		m_Indices[currentIndex + 1] = vIndex + 1;
@@ -810,10 +827,10 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 		m_Indices[currentIndex + 5] = vIndex + 3;
 		currentIndex += 6;
 
-		m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 };
-		m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 };
-		m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 };
+		m_Vertices[vIndex++] = { x + 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x + 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,   z + 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+		m_Vertices[vIndex++] = { x - 0.5f  ,   z - 0.5f,  y + 0.5f , 0,0,1,  0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
 	}
 
 	if (z + 1 == 6) // top
@@ -826,23 +843,23 @@ void VoxelObject::DoVoxelBlockInvisible(int z, int y, int x, int yP,int xP, uint
 		m_Indices[currentIndex + 5] = vIndex + 0;
 		currentIndex += 6;
 
-		if (m_Level->m_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
+		if (m_Level->s_Map.m_Tiles[yP][xP].marked[Owner_PlayerRed])
 		{
 			const std::vector<XMFLOAT2>& tex0 = BlockTextures[7].top[0];
 			XMFLOAT2 uv = tex0[m_AnimationIndex % tex0.size()];
 			uv.x = uv.x / 8.0;
 			uv.y = uv.y / 68.0;
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y, 1 , 0 };
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY, 1, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY, 1 , 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y, 1 , 0 };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y				, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x + pixelSizeX	,uv.y + pixelSizeY	, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, uv.x				,uv.y + pixelSizeY	, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, uv.x				,uv.y				, 1 , 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 		else
 		{
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, 0,0,0, 0 };
-			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, 0,0,0, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, 0,0,0, 0 };
-			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, 0,0,0, 0 };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x + 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y + 0.5f , 0,1,0, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
+			m_Vertices[vIndex++] = { x - 0.5f, z + 0.5f ,  y - 0.5f , 0,1,0, 0,0,0, 0 ,lights[0],lights[1],lights[2],lights[3] };
 		}
 	}
 }
@@ -890,7 +907,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 	{
 		for (int x = camTilePos.x - tileRadius; x < camTilePos.x+ tileRadius; x++)
 		{
-			solidBlocks += m_Level->m_Map.m_Tiles[y][x].numBlocks;
+			solidBlocks += m_Level->s_Map.m_Tiles[y][x].numBlocks;
 		}
 	}
 	//We'll check if we have to resize our buffers..
@@ -918,7 +935,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 			assert(y <= 254);
 			assert(x >= 0);
 			assert(y >= 0);
-			if (m_Level->m_Map.m_Tiles[yTile][xTile].visible)
+			if (m_Level->s_Map.m_Tiles[yTile][xTile].visible)
 			{
 				if (!m_Level->m_BlockMap[0][y][x].active) continue;
 				DoVoxelBlockVisibleAnimated(y, x,currentIndex, vIndex);
@@ -936,7 +953,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 		for (int x = camSubTilePosX - subTileRadius; x < camSubTilePosX + subTileRadius; x++)
 		{
 			const int xP = x / 3;
-			if (m_Level->m_Map.m_Tiles[yP][xP].visible)
+			if (m_Level->s_Map.m_Tiles[yP][xP].visible)
 			{
 				if (!m_Level->m_BlockMap[1][y][x].active) continue;
 				DoVoxelBlockVisibleEdge(y, x,yP,xP, currentIndex, vIndex);
@@ -960,7 +977,7 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 				assert(y >= 0);
 
 				const int xP = x / 3;
-				if (m_Level->m_Map.m_Tiles[yP][xP].visible)
+				if (m_Level->s_Map.m_Tiles[yP][xP].visible)
 				{
 					if (!m_Level->m_BlockMap[z][y][x].active) continue;
 					DoVoxelBlockVisible(z, y, x, yP, xP, currentIndex, vIndex);
@@ -979,8 +996,8 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 	assert(EditIndexBuffer(m_Indices, currentIndex));
 	m->m_NumIndices = currentIndex;
 	m->m_NumVertices = vIndex;
-	m->m_VertexBuffer = m_VertexBuffer.buffer;
-	m->m_IndexBuffer = m_IndexBuffer.buffer;
+	m->m_VertexBuffer = m_VertexBuffer.buf;
+	m->m_IndexBuffer = m_IndexBuffer.buf;
 
 	if ((solidBlocks * 6 * 4) * sizeof(Themp::VoxelVertex) < vIndex * sizeof(Themp::VoxelVertex))
 	{
@@ -997,10 +1014,10 @@ void VoxelObject::ConstructFromLevel(int camX,int camY)
 
 bool VoxelObject::CheckWallIsCorner(int x, int y)
 {
-	bool north = m_Level->m_Map.m_Tiles[y + 1][x].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y + 1][x].type != Type_Wall3;
-	bool south = m_Level->m_Map.m_Tiles[y - 1][x].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y - 1][x].type != Type_Wall3;
-	bool east =  m_Level->m_Map.m_Tiles[y][x + 1].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y][x + 1].type != Type_Wall3;
-	bool west =  m_Level->m_Map.m_Tiles[y][x - 1].type != Type_Wall0 && m_Level->m_Map.m_Tiles[y][x - 1].type != Type_Wall3;
+	bool north = m_Level->s_Map.m_Tiles[y + 1][x].type != Type_Wall0 && m_Level->s_Map.m_Tiles[y + 1][x].type != Type_Wall3;
+	bool south = m_Level->s_Map.m_Tiles[y - 1][x].type != Type_Wall0 && m_Level->s_Map.m_Tiles[y - 1][x].type != Type_Wall3;
+	bool east =  m_Level->s_Map.m_Tiles[y][x + 1].type != Type_Wall0 && m_Level->s_Map.m_Tiles[y][x + 1].type != Type_Wall3;
+	bool west =  m_Level->s_Map.m_Tiles[y][x - 1].type != Type_Wall0 && m_Level->s_Map.m_Tiles[y][x - 1].type != Type_Wall3;
 	int numSides = (uint8_t)north + (uint8_t)south + (uint8_t)east + (uint8_t)west;
 
 	if (north && west || north && east || south && west || south && east)
@@ -1030,7 +1047,7 @@ bool VoxelObject::CreateVertexBuffer(VoxelVertex* vertices, size_t numVertices)
 	HRESULT res = d->m_Device->CreateBuffer(&bd, NULL, &vertexBuffer);
 	if (res == S_OK)
 	{
-		buf.buffer = vertexBuffer;
+		buf.buf = vertexBuffer;
 		buf.numElements = numVertices;
 		d->m_DevCon->Map(vertexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
 		memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
@@ -1049,10 +1066,10 @@ bool VoxelObject::EditVertexBuffer(VoxelVertex* vertices, size_t numVertices)
 	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	if (buf.numElements >= numVertices) //re-use our buffer
 	{
-		if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+		if (d->m_DevCon->Map(buf.buf, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
 		{
 			memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
-			d->m_DevCon->Unmap(buf.buffer, NULL);
+			d->m_DevCon->Unmap(buf.buf, NULL);
 			return true;
 		}
 	}
@@ -1075,8 +1092,8 @@ bool VoxelObject::EditVertexBuffer(VoxelVertex* vertices, size_t numVertices)
 			{
 				memcpy(ms.pData, vertices, sizeof(VoxelVertex)*numVertices);
 				d->m_DevCon->Unmap(vBuffer, NULL);
-				buf.buffer->Release(); //release old buffer
-				buf.buffer = vBuffer;
+				buf.buf->Release(); //release old buffer
+				buf.buf = vBuffer;
 				buf.numElements = numVertices;
 				return true;
 			}
@@ -1103,7 +1120,7 @@ bool VoxelObject::CreateIndexBuffer(uint32_t* indices, size_t numIndices)
 	res = d->m_Device->CreateBuffer(&bd, NULL, &indexBuffer);
 	if (res == S_OK)
 	{
-		buf.buffer = indexBuffer;
+		buf.buf = indexBuffer;
 		buf.numElements = numIndices;
 		d->m_DevCon->Map(indexBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
 		memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
@@ -1122,10 +1139,10 @@ bool VoxelObject::EditIndexBuffer(uint32_t* indices, size_t numIndices)
 	Resources::Buffer& buf = m_IndexBuffer;
 	if (buf.numElements >= numIndices) //re-use our buffer
 	{
-		if (d->m_DevCon->Map(buf.buffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+		if (d->m_DevCon->Map(buf.buf, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
 		{
 			memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
-			d->m_DevCon->Unmap(buf.buffer, NULL);
+			d->m_DevCon->Unmap(buf.buf, NULL);
 			return true;
 		}
 	}
@@ -1148,8 +1165,8 @@ bool VoxelObject::EditIndexBuffer(uint32_t* indices, size_t numIndices)
 			{
 				memcpy(ms.pData, indices, sizeof(uint32_t)*numIndices);
 				d->m_DevCon->Unmap(iBuffer, NULL);
-				buf.buffer->Release(); //release old buffer
-				buf.buffer = iBuffer;
+				buf.buf->Release(); //release old buffer
+				buf.buf = iBuffer;
 				buf.numElements = numIndices;
 				return true;
 			}
@@ -1157,3 +1174,100 @@ bool VoxelObject::EditIndexBuffer(uint32_t* indices, size_t numIndices)
 	}
 	return false;
 }
+
+struct GPULight
+{
+	uint32_t range = 0;
+	uint32_t lightIntensity = 0;
+	uint32_t x = 0;
+	uint32_t y = 0;
+	uint32_t z = 0;
+	uint32_t lightIndex = 0;
+};
+
+bool VoxelObject::CreateLightBuffer(const std::unordered_map<uint32_t, Light>& lights)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	HRESULT res;
+
+
+	D3D11_BUFFER_DESC bd;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&bd, sizeof(D3D11_BUFFER_DESC));
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	//set up for indices
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(GPULight) * UINT16_MAX;
+	bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bd.StructureByteStride = sizeof(GPULight);
+	bd.MiscFlags = D3D11_RESOURCE_MISC_FLAG::D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	ID3D11Buffer* lightBuffer;
+	Resources::Buffer buf;
+	res = d->m_Device->CreateBuffer(&bd, NULL, &lightBuffer);
+	if (res == S_OK)
+	{
+		buf.buf = lightBuffer;
+		buf.numElements = UINT16_MAX;
+		d->m_DevCon->Map(lightBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
+		int index = 0;
+		GPULight* data = static_cast<GPULight*>(ms.pData);
+		for (auto i = lights.begin(); i != lights.end(); i++)
+		{
+			GPULight& dest = data[index];
+			const Light& src = i->second;
+			dest.lightIndex =  src.lightIndex;
+			dest.lightIntensity = src.lightIntensity;
+			dest.range = src.range;
+			dest.x = src.x;
+			dest.y = src.y;
+			dest.z = src.z;
+
+			index++;
+		}
+		d->m_DevCon->Unmap(lightBuffer, NULL);
+		m_LightBuffer = buf;
+
+		m_LightBuffer.InitSRV();
+		return true;
+	}
+	System::Print("Could not create light buffer!");
+	return false;
+}
+bool VoxelObject::EditLightBuffer(const std::unordered_map<uint32_t, Light>& lights)
+{
+	Themp::D3D* d = Themp::System::tSys->m_D3D;
+	D3D11_MAPPED_SUBRESOURCE ms;
+	ZeroMemory(&ms, sizeof(D3D11_MAPPED_SUBRESOURCE));
+	Resources::Buffer& buf = m_LightBuffer;
+	if (buf.buf) //re-use our buffer
+	{
+		if (d->m_DevCon->Map(buf.buf, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms) == S_OK)
+		{
+			int index = 0;
+			GPULight* data = static_cast<GPULight*>(ms.pData);
+			for (auto i = lights.begin(); i != lights.end(); i++)
+			{
+				GPULight& dest = data[index];
+				const Light& src = i->second;
+				dest.lightIndex = src.lightIndex;
+				dest.lightIntensity = src.lightIntensity;
+				dest.range = src.range;
+				dest.x = src.x;
+				dest.y = src.y;
+				dest.z = src.z;
+
+				index++;
+			}
+			d->m_DevCon->Unmap(buf.buf, NULL);
+			return true;
+		}
+	}
+	else
+	{
+		return CreateLightBuffer(lights);
+	}
+	
+	return false;
+}
+

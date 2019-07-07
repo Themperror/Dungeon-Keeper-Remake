@@ -257,62 +257,62 @@ void LevelUI::CreateBasePanel()
 	//Minimap background
 	p.BackPlateMinimap = new Object2D(Object2D::sLEVEL_PANE, 235, true);
 	p.BackPlateMinimap->SetVisibility(true);
-	p.BackPlateMinimap->SetScale(1, 1.3333);
-	p.BackPlateMinimap->m_Renderable->SetPosition(-1.62, 1.3, 0.9);
+	p.BackPlateMinimap->SetScale(1, 1.3333f);
+	p.BackPlateMinimap->m_Renderable->SetPosition(-1.62f, 1.3f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateMinimap->m_Renderable);
 
 	//minimap side
 	p.BackPlateMinimapSide = new Object2D(Object2D::sLEVEL_PANE, 1, true);
 	p.BackPlateMinimapSide->SetVisibility(true);
-	p.BackPlateMinimapSide->SetScale(1, 1.3333);
-	p.BackPlateMinimapSide->m_Renderable->SetPosition(-1.188, 1.3, 0.9);
+	p.BackPlateMinimapSide->SetScale(1, 1.3333f);
+	p.BackPlateMinimapSide->m_Renderable->SetPosition(-1.188f, 1.3f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateMinimapSide->m_Renderable);
 
 	//minimap background plus button
 	p.BackPlateMinimapPlus = new Object2D(Object2D::sLEVEL_PANE, 237, true);
 	p.BackPlateMinimapPlus->SetVisibility(true);
-	p.BackPlateMinimapPlus->SetScale(1, 1.3333);
-	p.BackPlateMinimapPlus->m_Renderable->SetPosition(-1.23, 1.6, 0.87);
+	p.BackPlateMinimapPlus->SetScale(1, 1.3333f);
+	p.BackPlateMinimapPlus->m_Renderable->SetPosition(-1.23f, 1.6f, 0.87f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateMinimapPlus->m_Renderable);
 	//minimap background minus button
 	p.BackPlateMinimapMinus = new Object2D(Object2D::sLEVEL_PANE, 239, true);
 	p.BackPlateMinimapMinus->SetVisibility(true);
-	p.BackPlateMinimapMinus->SetScale(1, 1.3333);
-	p.BackPlateMinimapMinus->m_Renderable->SetPosition(-1.23, 0.875, 0.87);
+	p.BackPlateMinimapMinus->SetScale(1, 1.3333f);
+	p.BackPlateMinimapMinus->m_Renderable->SetPosition(-1.23f, 0.875f, 0.87f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateMinimapMinus->m_Renderable);
 
 	//minimap background CPU assist button
 	p.BackPlateMinimapCPU = new Object2D(Object2D::sLEVEL_PANE, 492, true);
 	p.BackPlateMinimapCPU->SetVisibility(true);
-	p.BackPlateMinimapCPU->SetScale(1, 1.3333);
-	p.BackPlateMinimapCPU->m_Renderable->SetPosition(-1.95, 0.875, 0.87);
+	p.BackPlateMinimapCPU->SetScale(1, 1.3333f);
+	p.BackPlateMinimapCPU->m_Renderable->SetPosition(-1.95f, 0.875f, 0.87f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateMinimapCPU->m_Renderable);
 
 
 	p.BackPlatePanelsLeft = new Object2D(Object2D::sLEVEL_PANE, 2, true);
 	p.BackPlatePanelsLeft->SetVisibility(true);
-	p.BackPlatePanelsLeft->SetScale(1, 1.3333);
-	p.BackPlatePanelsLeft->m_Renderable->SetPosition(-1.62, -0.1232, 0.9);
+	p.BackPlatePanelsLeft->SetScale(1, 1.3333f);
+	p.BackPlatePanelsLeft->m_Renderable->SetPosition(-1.62f, -0.1232f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlatePanelsLeft->m_Renderable);
 
 	//panel side
 	p.BackPlatePanelsRight = new Object2D(Object2D::sLEVEL_PANE, 3, true);
 	p.BackPlatePanelsRight->SetVisibility(true);
-	p.BackPlatePanelsRight->SetScale(1, 1.3333);
-	p.BackPlatePanelsRight->m_Renderable->SetPosition(-1.188, -0.1232, 0.9);
+	p.BackPlatePanelsRight->SetScale(1, 1.3333f);
+	p.BackPlatePanelsRight->m_Renderable->SetPosition(-1.188f, -0.1232f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlatePanelsRight->m_Renderable);
 
 	p.BackPlateBaseLeft = new Object2D(Object2D::sLEVEL_PANE, 4, true);
 	p.BackPlateBaseLeft->SetVisibility(true);
-	p.BackPlateBaseLeft->SetScale(1, 1.3333);
-	p.BackPlateBaseLeft->m_Renderable->SetPosition(-1.62, -1.5448, 0.9);
+	p.BackPlateBaseLeft->SetScale(1, 1.3333f);
+	p.BackPlateBaseLeft->m_Renderable->SetPosition(-1.62f, -1.5448f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateBaseLeft->m_Renderable);
 
 	//base side
 	p.BackPlateBaseRight = new Object2D(Object2D::sLEVEL_PANE, 5, true);
 	p.BackPlateBaseRight->SetVisibility(true);
-	p.BackPlateBaseRight->SetScale(1, 1.3333);
-	p.BackPlateBaseRight->m_Renderable->SetPosition(-1.188, -1.5448, 0.9);
+	p.BackPlateBaseRight->SetScale(1, 1.3333f);
+	p.BackPlateBaseRight->m_Renderable->SetPosition(-1.188f, -1.5448f, 0.9f);
 	Themp::System::tSys->m_Game->AddObject3D(p.BackPlateBaseRight->m_Renderable);
 }
 void LevelUI::CreateMinimap()

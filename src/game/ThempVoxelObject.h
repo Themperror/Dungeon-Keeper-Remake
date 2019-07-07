@@ -25,15 +25,19 @@ namespace Themp
 		bool EditVertexBuffer(VoxelVertex * vertices, size_t numVertices);
 		bool CreateIndexBuffer(uint32_t * indices, size_t numIndices);
 		bool EditIndexBuffer(uint32_t * indices, size_t numIndices);
+		bool CreateLightBuffer(const std::unordered_map<uint32_t, Light>& lights);
+		bool EditLightBuffer(const std::unordered_map<uint32_t, Light>& lights);
 		Object3D* m_Obj3D = nullptr;
 		float m_AnimationTime = 0;
 		uint8_t m_AnimationIndex = 0;
 
 		size_t m_NumBlocks = 0;
 		VoxelVertex* m_Vertices = nullptr;
+		Light* m_Lights = nullptr;
 		uint32_t* m_Indices = nullptr;
 		Resources::Buffer m_VertexBuffer;
 		Resources::Buffer m_IndexBuffer;
+		Resources::Buffer m_LightBuffer;
 
 		//Level to construct this VoxelObject from.
 		LevelData* m_Level = nullptr;
