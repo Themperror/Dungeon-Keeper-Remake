@@ -14,6 +14,7 @@ struct VOXEL_OUTPUT
     float3 normal : NORMAL;
     float2 uv : UV;
     float visible : VISIBLE;
+    float lightIntensity : LIGHTINTENSITY;
 };
 
 float4 PShader(VOXEL_OUTPUT input) : SV_TARGET
@@ -39,6 +40,7 @@ float4 PShader(VOXEL_OUTPUT input) : SV_TARGET
    // }
 
     float4 face = float4(TextureAtlas.Sample(diffSampler, float2(input.uv.x, input.uv.y)).xyz, 1.0);
-    return float4(face.xyz * input.visible, 1.0);
+   // return float4(face.xyz * input.visible * input.lightIntensity, 1.0);
+    return float4(face.xyz * input.lightIntensity * input.visible, 1.0);
    // return float4(input.uv.x*3.0, input.uv.y*3.0, 0.5, 1);
 }
