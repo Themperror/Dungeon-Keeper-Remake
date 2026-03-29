@@ -8,7 +8,7 @@
 #include <imgui.h>
 using namespace Themp;
 
-Themp::GoodPlayer::GoodPlayer(uint8_t playerID)
+Themp::GoodPlayer::GoodPlayer(PlayerID playerID)
 {
 	m_PlayerID = playerID;
 }

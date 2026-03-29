@@ -1,11 +1,16 @@
 #include "ThempSystem.h"
 
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 #include "ThempD3D.h"
 #include "ThempGame.h"
 #include "ThempAudio.h"
 
 #include "ThempResources.h"
 #include "ThempGUI.h"
+#include "utility/print.h"
 
 #include <imgui.h>
 #include <iostream>
@@ -13,8 +18,14 @@
 #include <sstream>
 #include <chrono>
 #include <cstdarg>
-#include <sys/timeb.h>
 #include <shellapi.h>
+
+
+HWND g_Window = nullptr;
+HINSTANCE g_HInstance = 0;
+
+
+
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 IMGUI_API LRESULT ImGui_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -24,6 +35,73 @@ DEVMODE dm = { 0 };
 
 namespace Themp
 {
+
+	struct Timer
+	{
+	public:
+		Timer()
+		{
+			StartTime();
+		}
+		void StartTime()
+		{
+			oldT = std::chrono::high_resolution_clock::now();
+			newT = std::chrono::high_resolution_clock::now();
+		}
+		//microseconds: Retrieves the delta time since StartTime or Init was called.
+		long long GetDeltaTimeMicro()
+		{
+			auto t = std::chrono::high_resolution_clock::now() - oldT;
+			return std::chrono::duration_cast<std::chrono::microseconds>(t).count();
+		}
+		//milliseconds: Retrieves the delta time since StartTime or Init was called.
+		long long GetDeltaTimeMS()
+		{
+			auto t = std::chrono::high_resolution_clock::now() - oldT;
+			return std::chrono::duration_cast<std::chrono::milliseconds>(t).count();
+		}
+		//microseconds: Resets the timer to the current time, Repeatedly calling this the same frame will yield low to 0 values
+		long long GetDeltaTimeMicroReset()
+		{
+			newT = std::chrono::high_resolution_clock::now();
+			auto t = newT - oldT;
+			oldT = newT;
+			long long delta = std::chrono::duration_cast<std::chrono::microseconds>(t).count();
+			return delta;
+		}
+		//microseconds: Resets the timer to the current time, Repeatedly calling this the same frame will yield low to 0 values
+		long long GetDeltaTimeNanoReset()
+		{
+			newT = std::chrono::high_resolution_clock::now();
+			auto t = newT - oldT;
+			oldT = newT;
+			long long delta = std::chrono::duration_cast<std::chrono::nanoseconds>(t).count();
+			return delta;
+		}
+		//milliseconds: Resets the timer to the current time, Repeatedly calling this the same frame will yield low to 0 values
+		long long GetDeltaTimeMSReset()
+		{
+			newT = std::chrono::high_resolution_clock::now();
+			auto t = newT - oldT;
+			oldT = newT;
+			long long delta = std::chrono::duration_cast<std::chrono::milliseconds>(t).count();
+			return delta;
+		}
+		//Seconds (nanosecond precision): Resets the timer to the current time, Repeatedly calling this the same frame will yield low to 0 values
+		double GetDeltaTimeReset()
+		{
+			return static_cast<double>(GetDeltaTimeNanoReset()) / 1000000000.0;
+		}
+		//Seconds (Microsecond precision): Retrieves the delta time since StartTime or Init was called.
+		double GetDeltaTime()
+		{
+			return static_cast<double>(GetDeltaTimeMicro()) / 1000000.0;
+		}
+	private:
+
+		std::chrono::time_point<std::chrono::steady_clock> oldT, newT;
+	};
+	
 	float lerp(float x, float y, float t)
 	{
 		return x * (1.0f - t) + y * t;
@@ -34,9 +112,9 @@ namespace Themp
 	}
 
 	System* System::tSys = nullptr;
-	FILE* System::logFile = nullptr;
 	void System::Start()
 	{
+		Utility::SetLogFile("log.txt");
 
 		srand((uint32_t)time(nullptr));
 		Print("Creating Managers!");
@@ -51,10 +129,10 @@ namespace Themp
 		if (tSys->m_Quitting)
 		{
 			Print("Failed to set up D3D11!"); 
-			MessageBox(m_Window, L"Failed to initialise all required D3D11 resources, Is your hardware supported?", L"ThempSystem - Critical Error", MB_OK); 
+			MessageBox(g_Window, L"Failed to initialise all required D3D11 resources, Is your hardware supported?", L"ThempSystem - Critical Error", MB_OK); 
 		}
 		
-		m_GUI = new Themp::GUI(m_Window);
+		m_GUI = new Themp::GUI();
 
 		Print("Setting up Game!");
 		m_Game->Start();
@@ -70,8 +148,8 @@ namespace Themp
 		double frameTimeAdd = 0, tickTimeAdd=0;
 
 		RECT windowRect,clientRect;
-		GetWindowRect(m_Window, &windowRect);
-		GetClientRect(m_Window, &clientRect);
+		GetWindowRect(g_Window, &windowRect);
+		GetClientRect(g_Window, &clientRect);
 
 
 		m_D3D->ResizeWindow(clientRect.right, clientRect.bottom);
@@ -92,7 +170,7 @@ namespace Themp
 		{
 			io = ImGui::GetIO();
 			double delta = mainTimer.GetDeltaTimeReset();
-			//System::Print("Total Delta was: %lf", delta);
+			//Print("Total Delta was: %lf", delta);
 			totalDelta += delta;
 			time += delta;
 			trackerTime += delta;
@@ -161,14 +239,14 @@ namespace Themp
 				}
 				
 			}
-			const float targetFPS = (float)dm.dmDisplayFrequency;
+			const float targetFPS = 9999.0f;// (float)dm.dmDisplayFrequency;
 			if (totalDelta > 1.0 / targetFPS)
 			{
-				GetWindowRect(m_Window, &windowRect);
+				GetWindowRect(g_Window, &windowRect);
 				
 				//sadly we need all these calls
-				GetClientRect(m_Window, &clientRect);
-				GetCursorPos(&m_Game->m_CursorPos);
+				GetClientRect(g_Window, &clientRect);
+				GetCursorPos((LPPOINT)&m_Game->m_CursorPos);
 				int windowDiffX = (windowRect.right - windowRect.left - clientRect.right) / 2;
 				int windowDiffY = (int)((windowRect.bottom - windowRect.top - clientRect.bottom) * 0.75);
 				int WindowedMouseX = m_Game->m_CursorPos.x - windowRect.left - windowDiffX;
@@ -236,7 +314,7 @@ namespace Themp
 					m_Audio->Update();
 					
 					//display FPS and other info
-					System::Print("Avg FPS: %5i  Avg Frametime: %.5f   Avg Tick Time: %.5f", numSamples, frameTimeAdd / (float)numSamples, tickTimeAdd/(float)numSamples);
+					Print("Avg FPS: %5i  Avg Frametime: %.5f   Avg Tick Time: %.5f", numSamples, frameTimeAdd / (float)numSamples, tickTimeAdd/(float)numSamples);
 					trackerTime = trackerTime - 1.0;
 					frameTimeAdd = 0;
 					tickTimeAdd = 0;
@@ -250,7 +328,7 @@ namespace Themp
 			}
 		}
 
-		GetWindowRect(m_Window, &windowRect);
+		GetWindowRect(g_Window, &windowRect);
 		m_SVars[SVAR_WINDOWWIDTH] = (float)(windowRect.right - windowRect.left);
 		m_SVars[SVAR_WINDOWHEIGHT] = (float)(windowRect.bottom - windowRect.top);
 
@@ -309,7 +387,6 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	GetModuleFileNameA(NULL, szFileName, MAX_PATH + 1);
 	tSys->m_BaseDir = GetPathName(std::string(szFileName));
 
-	Themp::System::logFile = fopen("log.txt", "w+");
 	std::ifstream configFile("config.ini");
 	std::string line;
 	if (configFile.is_open())
@@ -326,7 +403,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	}
 	else
 	{
-		Themp::System::Print("Could not find config.ini, creating");
+		Print("Could not find config.ini, creating");
 		std::ofstream nConfig("config.ini");
 		if (nConfig.is_open())
 		{
@@ -366,7 +443,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	if (iconFile)
 	{
 		fclose(iconFile);
-		hicon = ExtractAssociatedIcon(hInstance, L"KEEPER95.exe", &icon);
+		wchar_t name[] = L"KEEPER95.exe";
+		hicon = ExtractAssociatedIcon(hInstance, name, &icon);
 		if (hicon)
 		{
 			wc.hIcon = hicon;
@@ -378,7 +456,8 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		if (iconFile)
 		{
 			fclose(iconFile);
-			hicon = ExtractAssociatedIcon(hInstance, L"KEEPER.exe", &icon);
+			wchar_t name[] = L"KEEPER.exe";
+			hicon = ExtractAssociatedIcon(hInstance, name, &icon);
 			if (hicon)
 			{
 				wc.hIcon = hicon;
@@ -386,7 +465,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 		}
 		else
 		{
-			Themp::System::Print("No Icon found for Keeper95.exe or Keeper.exe!");
+			Print("No Icon found for Keeper95.exe or Keeper.exe!");
 		}
 	}
 	wc.lpfnWndProc = WindowProc;
@@ -406,7 +485,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 
 		tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second = static_cast<float>(bSize.right);
 		tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second = static_cast<float>(bSize.bottom);
-		tSys->m_Window = CreateWindowEx(NULL,
+		g_Window = CreateWindowEx(NULL,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
 			WS_EX_TOPMOST,
@@ -418,7 +497,7 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	}
 	else
 	{
-		tSys->m_Window = CreateWindowEx(NULL,
+		g_Window = CreateWindowEx(NULL,
 			L"Dungeon Keeper",
 			L"Dungeon Keeper",
 			WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME,
@@ -428,17 +507,17 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 			static_cast<int>(tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second),
 			NULL, NULL, hInstance, NULL);
 	}
-	ShowWindow(tSys->m_Window, nCmdShow);
+	ShowWindow(g_Window, nCmdShow);
 
 	newWindowSizeX = (int)tSys->m_SVars.find(SVAR_WINDOWWIDTH)->second;
 	newWindowSizeY = (int)tSys->m_SVars.find(SVAR_WINDOWHEIGHT)->second;
 
-	RECT winRect;
+	RECT winRect{};
 	//We have to recalculate and rescale the window because window size doesn't equal render (client) size, so windows will rescale the render targets
 	AdjustWindowRect(&winRect,WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME, true);
 	
 
-	GetClientRect(tSys->m_Window, &winRect);
+	GetClientRect(g_Window, &winRect);
 
 	ImGuiIO& imgIo = ImGui::GetIO();
 	imgIo.DisplaySize.x = (float)winRect.right;
@@ -466,90 +545,25 @@ int WINAPI WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,	LPSTR lpCmdLine,
 	imgIo.KeyMap[ImGuiKey_X] = 'X';
 	imgIo.KeyMap[ImGuiKey_Y] = 'Y';
 	imgIo.KeyMap[ImGuiKey_Z] = 'Z';
-	imgIo.ImeWindowHandle = tSys->m_Window;
+	imgIo.ImeWindowHandle = g_Window;
 
 	tSys->Start();
 
 	std::ofstream nConfig("config.ini");
 	if (nConfig.is_open())
 	{
-		for (std::map<std::string,float>::iterator i = tSys->m_SVars.begin(); i != tSys->m_SVars.end(); i++)
+		for (std::unordered_map<std::string,float>::iterator i = tSys->m_SVars.begin(); i != tSys->m_SVars.end(); i++)
 		{
 			nConfig << i->first << " " << i->second << std::endl;
 		}
 		nConfig.close();
 	}
 
-	fclose(Themp::System::logFile);
 	fclose(conout);
 	delete tSys;
 	return 0;
 }
 
-void Themp::System::Print(const char* message, ...)
-{
-	size_t strLength = strlen(message);
-	size_t fmtMsgSize = strLength < 128 ? 256 : strLength * 2;
-	char* buffer = new char[fmtMsgSize];
-	memset(buffer, 0, fmtMsgSize);
-	std::string timestamp;
-	char* msg = new char[fmtMsgSize];
-	timeb t;
-	ftime(&t);
-	strftime(msg, fmtMsgSize, "[%T", localtime(&t.time));
-	timestamp.insert(0, msg);
-	timestamp.append(":");
-	short msVal = t.millitm;
-	timestamp.append(std::to_string(t.millitm));
-	timestamp.append(msVal < 10 ? "00] " : (msVal < 100 ? "0] " : "] "));
-	va_list args;
-	va_start(args, message);
-	vsnprintf(buffer, fmtMsgSize, message, args);
-	//snprintf(buffer, fmtMsgSize, message, args);
-	va_end(args);
-	timestamp.append(buffer);
-	timestamp.append("\n");
-	printf("%s", timestamp.c_str());
-	delete[] buffer;
-	delete[] msg;
-	if (logFile)
-	{
-		fwrite(timestamp.c_str(), timestamp.size(), 1, logFile);
-		fflush(logFile);
-	}
-}
-void Themp::System::Print(const std::string& message, ...)
-{
-	size_t strLength =message.size();
-	size_t fmtMsgSize = strLength < 128 ? 256 : strLength * 2;
-	char* buffer = new char[fmtMsgSize];
-	memset(buffer, 0, fmtMsgSize);
-	std::string timestamp;
-	char* msg = new char[fmtMsgSize];
-	timeb t;
-	ftime(&t);
-	strftime(msg, fmtMsgSize, "[%T", localtime(&t.time));
-	timestamp.insert(0, msg);
-	timestamp.append(":");
-	short msVal = t.millitm;
-	timestamp.append(std::to_string(t.millitm));
-	timestamp.append(msVal < 10 ? "00] " : (msVal < 100 ? "0] " : "] "));
-	va_list args;
-	va_start(args, &message);
-	vsnprintf(buffer, fmtMsgSize, message.c_str(), args);
-	//snprintf(buffer, fmtMsgSize, message, args);
-	va_end(args);
-	timestamp.append(buffer);
-	timestamp.append("\n");
-	printf("%s", timestamp.c_str());
-	delete[] buffer;
-	delete[] msg;
-	if (logFile)
-	{
-		fwrite(timestamp.c_str(), timestamp.size(), 1, logFile);
-		fflush(logFile);
-	}
-}
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	ImGui_WndProcHandler(hWnd, message, wParam, lParam);
@@ -565,12 +579,12 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		if (wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED)
 		{
 			RECT windowRect;
-			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
+			GetWindowRect(g_Window, &windowRect);
 
 			newWindowSizeX = windowRect.right;
 			newWindowSizeY = windowRect.bottom;
 
-			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+			GetClientRect(g_Window, &windowRect);
 			imgIo.DisplaySize.x = (float)windowRect.right;
 			imgIo.DisplaySize.y = (float)windowRect.bottom;
 			if (Themp::System::tSys->m_D3D)
@@ -595,10 +609,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		{
 			if (Themp::System::tSys->m_D3D)
 			{
-				GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
+				GetWindowRect(g_Window, &windowRect);
 				newWindowSizeX = windowRect.right - windowRect.left;
 				newWindowSizeY = windowRect.bottom - windowRect.top;
-				GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+				GetClientRect(g_Window, &windowRect);
 				imgIo.DisplaySize.x = (float)(windowRect.right);
 				imgIo.DisplaySize.y = (float)(windowRect.bottom);
 				Themp::System::tSys->m_D3D->ResizeWindow(windowRect.right, windowRect.bottom);
@@ -613,7 +627,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		}break;
 		case WM_MOVING:
 		{
-			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
+			GetWindowRect(g_Window, &windowRect);
 			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSX)] = (float)windowRect.left;
 			Themp::System::tSys->m_SVars[std::string(SVAR_WINDOWPOSY)] = (float)windowRect.top;
 		}break;
@@ -631,10 +645,10 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		case WM_EXITSIZEMOVE:
 		{
 			//we're done resizing the window, now resize all the rendering resources
-			GetWindowRect(Themp::System::tSys->m_Window, &windowRect);
+			GetWindowRect(g_Window, &windowRect);
 			newWindowSizeX = windowRect.right;
 			newWindowSizeY = windowRect.bottom;
-			GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+			GetClientRect(g_Window, &windowRect);
 			imgIo.DisplaySize.x =(float)windowRect.right;
 			imgIo.DisplaySize.y =(float)windowRect.bottom;
 			Themp::System::tSys->m_D3D->ResizeWindow(windowRect.right, windowRect.bottom);
@@ -758,7 +772,7 @@ void ImGui_PrepareFrame()
 	if (io.WantMoveMouse)
 	{
 		POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
-		ClientToScreen(Themp::System::tSys->m_Window, &pos);
+		ClientToScreen(g_Window, &pos);
 		SetCursorPos(pos.x, pos.y);
 	}
 

@@ -7,6 +7,9 @@
 #include <DirectXMath.h>
 #include <algorithm>
 
+
+#include "d3dincl.h"
+
 #include <iostream>
 using namespace DirectX;
 namespace Themp
@@ -259,7 +262,7 @@ namespace Themp
 		m_Position = XMFLOAT3(x, y, z);
 		isDirty = true;
 	}
-	void Object3D::SetPosition(XMFLOAT3 & pos)
+	void Object3D::SetPosition(const XMFLOAT3& pos)
 	{
 		m_Position = pos;
 		isDirty = true;
@@ -269,7 +272,7 @@ namespace Themp
 		m_Scale = XMFLOAT3(x, y, z);
 		isDirty = true;
 	}
-	void Object3D::SetScale(XMFLOAT3 & scale)
+	void Object3D::SetScale(const XMFLOAT3& scale)
 	{
 		m_Scale = scale;
 		isDirty = true;
@@ -279,7 +282,7 @@ namespace Themp
 		m_Rotation = XMFLOAT3(x, y, z);
 		isDirty = true;
 	}
-	void Object3D::SetRotation(XMFLOAT3 & rot)
+	void Object3D::SetRotation(const XMFLOAT3& rot)
 	{
 		m_Rotation = rot;
 		isDirty = true;

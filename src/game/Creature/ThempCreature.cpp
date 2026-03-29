@@ -1,4 +1,8 @@
 #include "ThempSystem.h"
+
+
+#include "d3dincl.h"
+
 #include "ThempCreature.h"
 #include "ThempGame.h"
 #include "ThempFileManager.h"
@@ -12,16 +16,21 @@
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
-#include "ThempTileArrays.h"
+//#include "ThempTileArrays.h"
+#include "ThempGameTypes.h"
 #include "ThempEntity.h"
 #include "ThempAudio.h"
 #include "ThempLevelConfig.h"
 #include "ThempLevelScript.h"
 #include "Players/ThempPlayerBase.h"
+#include "utility/print.h"
 #include <DirectXMath.h>
 #include <unordered_map>
 #include <array>
 #include <imgui.h>
+
+
+
 using namespace Themp;
 
 //2 types (FP or World), 5 directions, 12 states
@@ -761,7 +770,7 @@ Themp::Creature::Creature(CreatureData::CreatureType creatureIndex)
 	m_Renderable->SetMaterial(material);
 
 	{
-		srand((uint32_t)this);
+		srand((uint32_t)(uintptr_t)this);
 		m_DebugColor = XMFLOAT3((rand() % 100) / 100.0f, (rand() % 100) / 100.0f, (rand() % 100) / 100.0f);
 	}
 
@@ -820,7 +829,7 @@ void Creature::UpdateBuffer()
 }
 void Creature::SetPosition(int subTileX,int height, int subTileY)
 {
-	m_Renderable->SetPosition(XMFLOAT3(subTileX, height, subTileY));
+	m_Renderable->SetPosition(XMFLOAT3(static_cast<float>(subTileX), static_cast<float>(height), static_cast<float>(subTileY)));
 }
 void Creature::SetSprite(int SpriteID)
 {
@@ -892,7 +901,7 @@ void Creature::Update(float delta)
 	}
 	const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
 	const XMINT2 subTilePos = XMINT2((int)round(m_Renderable->m_Position.x), (int)round(m_Renderable->m_Position.z));
-	m_Renderable->m_Position.y = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].pathSubTiles[subTilePos.y % 3][subTilePos.x % 3].height;
+	m_Renderable->m_Position.y = LevelData::s_Map.m_Tiles[tilePos.y][tilePos.x].pathSubTiles[subTilePos.y % 3][subTilePos.x % 3].height;
 
 	if (!m_InCombat && m_CurrentHealth > 0)
 	{
@@ -935,7 +944,7 @@ bool Creature::IsAttackable()
 int Creature::GetAreaCode()
 {
 	const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-	return LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+	return LevelData::s_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
 }
 float Distance(XMFLOAT3 a, XMFLOAT3 b)
 {
@@ -1002,7 +1011,7 @@ void Creature::CombatUpdate(float delta)
 	if (m_CombatTarget)
 	{
 #ifdef _DEBUG
-		char* name = m_CreatureID == CreatureData::CreatureType::CREATURE_IMP ? "Imp" : "Creature";
+		const char* name = m_CreatureID == CreatureData::CreatureType::CREATURE_IMP ? "Imp" : "Creature";
 		ImGui::TreePush(name);
 		ImGui::BulletText(name);
 
@@ -1110,8 +1119,8 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls, b
 			m_CurrentPathIndex = 0;
 		}
 
-		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3(targetSubTile.x, 2, targetSubTile.y));
-		const int targetAreaCode = LevelData::m_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
+		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3((float)targetSubTile.x, 2.0f, (float)targetSubTile.y));
+		const int targetAreaCode = LevelData::s_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
 		const int areaCode = GetAreaCode();
 
 		if (targetAreaCode != areaCode)
@@ -1154,12 +1163,12 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls, b
 			LevelData::PathsInvalidated = true;
 			if (m_CreatureID == CreatureData::CREATURE_IMP)
 			{
-				System::Print("Imp could not find path, resetting world pathing");
+				Print("Imp could not find path, resetting world pathing");
 				CreatureTaskManager::UnlistImpFromTask(this);
 			}
 			else
 			{
-				System::Print("Creature could not find path, resetting world pathing");
+				Print("Creature could not find path, resetting world pathing");
 			}
 		}
 	}
@@ -1167,7 +1176,7 @@ bool Creature::PathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWalls, b
 	if (pathingResult == micropather::MicroPather::SOLVED || pathingResult == micropather::MicroPather::START_END_SAME)
 	{
 		m_PathLerpTime += deltaTime * m_Speed;
-		for (int i = 0; i < m_Path.size(); i++)
+		for (unsigned int i = 0; i < m_Path.size(); i++)
 		{
 			const float PathX = (float)(((uint64_t)m_Path[i]) & 0xFFFFFFFF);
 			const float PathY = (float)((((uint64_t)m_Path[i]) >> 32) & 0xFFFFFFFF);
@@ -1239,8 +1248,8 @@ bool Creature::TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWa
 		m_CurrentPathIndex = 0;
 		m_PathLerpTime = 0;
 
-		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3(targetSubTile.x, 2, targetSubTile.y));
-		const int targetAreaCode = LevelData::m_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
+		XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3((float)targetSubTile.x, 2.0f, (float)targetSubTile.y));
+		const int targetAreaCode = LevelData::s_Map.m_Tiles[targetTilePos.y][targetTilePos.x].areaCode;
 
 		const int areaCode = GetAreaCode();
 
@@ -1266,12 +1275,12 @@ bool Creature::TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWa
 			LevelData::PathsInvalidated = true;
 			if (m_CreatureID == CreatureData::CREATURE_IMP)
 			{
-				System::Print("Imp could not find path, resetting world pathing");
+				Print("Imp could not find path, resetting world pathing");
 				CreatureTaskManager::UnlistImpFromTask(this);
 			}
 			else
 			{
-				System::Print("Creature could not find path, resetting world pathing");
+				Print("Creature could not find path, resetting world pathing");
 			}
 		}
 	}
@@ -1302,7 +1311,7 @@ bool Creature::TunnelPathTo(float deltaTime, XMINT2 targetSubTile, bool ignoreWa
 			const float PathY = (float)((((uint64_t)m_Path[m_CurrentPathIndex]) >> 32) & 0xFFFFFFFF);
 
 			XMINT2 targetTilePos = LevelData::WorldToTile(XMFLOAT3(PathX, 2, PathY));
-			Tile* targetTile = &LevelData::m_Map.m_Tiles[targetTilePos.y][targetTilePos.x];
+			Tile* targetTile = &LevelData::s_Map.m_Tiles[targetTilePos.y][targetTilePos.x];
 			//if (IsMineableForPlayer(targetTile->GetType(), targetTile->owner, m_Owner))
 			if (IsMineable(targetTile->GetType()))
 			{
@@ -1427,8 +1436,8 @@ void Creature::ImpUpdate(float delta)
 				{
 					const InstanceData& digInstance = LevelConfig::instanceData[INSTANCE_DIG];
 					m_ImpSpecialTimer = GAME_TURNS_TO_SECOND(digInstance.Time + digInstance.ActionTime + digInstance.ResetTime);
-					uint16_t miningType = Level::s_CurrentLevel->m_LevelData->GetTileType(m_Order.targetTilePos.y, m_Order.targetTilePos.x);
-					if (miningType == Type_Gold || miningType == Type_Gem)
+					TileType miningType = Level::s_CurrentLevel->m_LevelData->GetTileType(m_Order.targetTilePos.y, m_Order.targetTilePos.x);
+					if (miningType == TileType::Gold || miningType == TileType::Gem)
 					{
 						int addedGold = LevelConfig::gameSettings[GameSettings::GAME_GOLD_PER_GOLD_BLOCK].Value / LevelConfig::blockHealth[BlockHealth::BLOCK_HEALTH_GOLD].Value;
 						m_CurrentGoldHold += addedGold;
@@ -1439,10 +1448,10 @@ void Creature::ImpUpdate(float delta)
 						StopOrder();
 						CreatureTaskManager::RemoveMiningTask(m_Owner, m_Order.tile);
 						//Shouldn't be done here but I can't think of a better way to do this only for player red
-						if (m_Owner == Owner_PlayerRed)
+						if (m_Owner == PlayerID::Red)
 						{
 							//set the mined neighbouring tiles to visible
-							Level::s_CurrentLevel->m_LevelData->m_Map.m_Tiles[m_Order.targetTilePos.y][m_Order.targetTilePos.x].visible = true;
+							Level::s_CurrentLevel->m_LevelData->s_Map.m_Tiles[m_Order.targetTilePos.y][m_Order.targetTilePos.x].visible = true;
 							TileNeighbourTiles n = Level::s_CurrentLevel->m_LevelData->GetNeighbourTiles(m_Order.targetTilePos.y, m_Order.targetTilePos.x);
 							for (int i = 0; i < 4; i++)
 							{
@@ -1515,7 +1524,7 @@ void Creature::ImpUpdate(float delta)
 				m_CurrentGoldHold = 0;
 				StopOrder();
 				GetTask();
-				//	System::Print("Creature.cpp || Unimplemented task: %i Deliver Gold!", m_Order.orderType);
+				//	Print("Creature.cpp || Unimplemented task: %i Deliver Gold!", m_Order.orderType);
 			}
 			else if (m_Order.orderType == CreatureTaskManager::Order_IdleMovement)
 			{
@@ -1525,7 +1534,7 @@ void Creature::ImpUpdate(float delta)
 			else
 			{
 				taskString = "Executing task: Unimplemented Task!";
-				System::Print("Creature.cpp || Unimplemented task: %i", m_Order.orderType);
+				Print("Creature.cpp || Unimplemented task: %i", m_Order.orderType);
 			}
 		}
 	}
@@ -1545,7 +1554,7 @@ void Creature::AnimationDoneEvent()
 {
 	if (m_CurrentState == CreatureState::DYING)
 	{
-		System::Print("Dying State reached! removing creature");
+		Print("Dying State reached! removing creature");
 		//replace creature with body entity
 		SetCombatState(nullptr);
 		Level::s_CurrentLevel->m_Players[m_Owner]->CreatureDied(this);
@@ -1567,7 +1576,7 @@ void Creature::AnimationDoneEvent()
 			}
 		}
 	}
-	if (m_CreatureID == CreatureData::CREATURE_IMP || m_Owner == Owner_PlayerNone || m_Owner == Owner_PlayerWhite)return;
+	if (m_CreatureID == CreatureData::CREATURE_IMP || m_Owner == PlayerID::None || m_Owner == PlayerID::White)return;
 
 	if (m_CurrentState == CreatureState::HUNGRY)
 	{
@@ -1716,7 +1725,7 @@ void Creature::PlayDieSound()
 	case CreatureData::CreatureType::CREATURE_THIEF:
 	case CreatureData::CreatureType::CREATURE_WIZARD:
 	{
-		char* sounds[2] =
+		const char* sounds[2] =
 		{
 			"MAN1DIE1.WAV",
 			"MAN1DIE2.WAV",
@@ -1727,7 +1736,7 @@ void Creature::PlayDieSound()
 	case CreatureData::CreatureType::CREATURE_TUNNELLER:
 	case CreatureData::CreatureType::CREATURE_DWARF:
 	{
-		char* sounds[2] =
+		const char* sounds[2] =
 		{
 			"DWRFDIE1.WAV",
 			"DWRFDIE2.WAV",
@@ -1737,7 +1746,7 @@ void Creature::PlayDieSound()
 	break;
 	case CreatureData::CreatureType::CREATURE_IMP:
 	{
-		char* sounds[2] =
+		const char* sounds[2] =
 		{
 			"IMPDIE1.WAV",
 			"IMPDIE2.WAV",
@@ -1765,7 +1774,7 @@ void Creature::PlayHitSound()
 	case CreatureData::CreatureType::CREATURE_THIEF:
 	case CreatureData::CreatureType::CREATURE_WIZARD:
 		{
-			char* sounds[3] =
+			const char* sounds[3] =
 			{
 				"MAN1HIT1.WAV",
 				"MAN1HIT2.WAV",
@@ -1777,7 +1786,7 @@ void Creature::PlayHitSound()
 	case CreatureData::CreatureType::CREATURE_TUNNELLER:
 	case CreatureData::CreatureType::CREATURE_DWARF:
 		{
-			char* sounds[3] =
+			const char* sounds[3] =
 			{
 				"DWRFHIT1.WAV",
 				"DWRFHIT2.WAV",
@@ -1788,7 +1797,7 @@ void Creature::PlayHitSound()
 		break;
 	case CreatureData::CreatureType::CREATURE_IMP:
 		{
-			char* sounds[3] =
+			const char* sounds[3] =
 			{
 				"IMPHIT1.WAV",
 				"IMPHIT2.WAV",
@@ -1845,7 +1854,7 @@ void Creature::CreatureUpdate(float delta)
 		return;
 	}
 
-	if (m_CreatureData.HungerRate && m_Owner != Owner_PlayerWhite && m_Owner != Owner_PlayerNone)
+	if (m_CreatureData.HungerRate && m_Owner != PlayerID::White && m_Owner != PlayerID::None)
 	{
 		const float hungerPerDelta = (float)m_CreatureData.HungerRate / 100.0f;
 		m_HungerTimer += delta;
@@ -1959,7 +1968,7 @@ void Creature::CreatureUpdate(float delta)
 			else //implement other tasks like create lair , feed and sleep
 			{
 				taskString = "Doing Activity: Unimplemented Activity!";
-				System::Print("%s || Unimplemented Activity: %i",__FILE__, m_Activity.activityType);
+				Print("%s || Unimplemented Activity: %i",__FILE__, m_Activity.activityType);
 			}
 		}
 	}
@@ -2014,7 +2023,7 @@ void Creature::DoAnimationDirectionsImp()
 	creatureDir = Normalize(creatureDir);
 	XMFLOAT3 creatureRight = Cross(XMFLOAT3(0, 1.0f, 0), creatureDir);
 
-	int direction = Dot(camDir, creatureRight) < 0.0f ? -1.0f : 1.0f;
+	int direction = Dot(camDir, creatureRight) < 0.0f ? -1 : 1;
 
 	float d = Dot(camDir, creatureDir);
 	float angle = acos(std::min(std::max(d,-1.0f),1.0f)) + PI / 8.0f;
@@ -2047,7 +2056,7 @@ void Creature::DoAnimationDirections()
 	creatureDir = Normalize(creatureDir);
 	XMFLOAT3 creatureRight = Cross(XMFLOAT3(0, 1.0f, 0), creatureDir);
 
-	int direction = Dot(camDir, creatureRight) < 0.0f ? -1.0f : 1.0f;
+	int direction = Dot(camDir, creatureRight) < 0.0f ? -1 : 1;
 
 	float d = Dot(camDir, creatureDir);
 	float angle = acos(std::min(std::max(d, -1.0f), 1.0f)) + PI / 8.0f;
@@ -2089,12 +2098,12 @@ void Creature::SetVisibility(bool val)
 }
 void Creature::CheckVisibility()
 {
-	if (m_AreaNeedsDiscovering && m_Owner == Owner_PlayerRed)
+	if (m_AreaNeedsDiscovering && m_Owner == PlayerID::Red)
 	{
 		//creatures can see 7 tiles in each direction
 		const int range = 7;
 		const XMINT2 tilePos = LevelData::WorldToTile(m_Renderable->m_Position);
-		const int areaCode = LevelData::m_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
+		const int areaCode = LevelData::s_Map.m_Tiles[tilePos.y][tilePos.x].areaCode;
 		const int minY = tilePos.y - range >= range ? tilePos.y - range : range;
 		const int minX = tilePos.x - range >= range ? tilePos.x - range : range;
 		const int maxY = tilePos.y + range < MAP_SIZE_TILES ? tilePos.y + range : MAP_SIZE_TILES - range - 1;
@@ -2121,7 +2130,7 @@ void Creature::CheckVisibility()
 				int y = c->second.y;
 
 				//Tile is owned by us, they are always visible, mark it so and remove from the list 
-				if (c->first->owner == Owner_PlayerRed)
+				if (c->first->owner == PlayerID::Red)
 				{
 					c->first->visible = true;
 					//we explored this tile, check if there are any other tiles next to this we gotta mark unexplored
@@ -2143,7 +2152,7 @@ void Creature::CheckVisibility()
 					//we hit something, now we check if thats our target tile or not
 					int tileX = hit.posX / 3;
 					int tileY = hit.posZ / 3;
-					Tile* hitTile = &LevelData::m_Map.m_Tiles[tileY][tileX];
+					Tile* hitTile = &LevelData::s_Map.m_Tiles[tileY][tileX];
 
 					if (tileX == x && tileY == y)
 					{
@@ -2152,9 +2161,9 @@ void Creature::CheckVisibility()
 						c->first->visible = true;
 						ldata->AddExploredTileNeighboursVisibility(y, x, areaCode);
 
-						if (!IsMineableForPlayer(hitTile->GetType(), hitTile->owner, Owner_PlayerRed))
+						if (!IsMineableForPlayer(hitTile->GetType(), hitTile->owner, PlayerID::Red))
 						{
-							hitTile->marked[Owner_PlayerRed] = false;
+							hitTile->marked[PlayerID::Red] = false;
 						}
 
 						c = ldata->m_UnexploredTiles.erase(c);
@@ -2169,7 +2178,7 @@ void Creature::CheckVisibility()
 						{
 							hitTile->visible = true;
 							ldata->AddExploredTileNeighboursVisibility(tileY, tileX, areaCode);
-							auto& newIt = ldata->m_UnexploredTiles.find(hitTile);
+							const auto& newIt = ldata->m_UnexploredTiles.find(hitTile);
 							if (newIt != ldata->m_UnexploredTiles.end())
 							{
 								ldata->m_UnexploredTiles.erase(newIt);

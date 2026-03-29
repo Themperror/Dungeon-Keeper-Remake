@@ -2,6 +2,9 @@
 #include "ThempD3D.h"
 #include "ThempAudio.h"
 
+#include <assert.h>
+#include "utility/print.h"
+
 
 #pragma warning( disable : 4996) //disables warning unsafe function: freopen() fopen() .. etc
 class VoiceCallback : public IXAudio2VoiceCallback
@@ -27,7 +30,7 @@ public:
 			s->buffers.pop();
 			if (s->buffers.size() == 0)
 			{
-				Themp::System::Print("Number of Audio buffers is 0, consider feeding more data!");
+				Print("Number of Audio buffers is 0, consider feeding more data!");
 			}
 			return;
 		}
@@ -40,7 +43,7 @@ public:
 	}
 	void OnBufferStart(void * pBufferContext) {    }
 	void OnLoopEnd(void * pBufferContext) {    }
-	void OnVoiceError(void * pBufferContext, HRESULT Error) { Themp::System::Print("Some voice error occurred!"); }
+	void OnVoiceError(void * pBufferContext, HRESULT Error) { Print("Some voice error occurred!"); }
 };
 namespace Themp
 {
@@ -55,13 +58,13 @@ namespace Themp
 #endif
 		if (res != S_OK)
 		{
-			System::Print("Failed to initialize Audio subsystem");
+			Print("Failed to initialize Audio subsystem");
 			return;
 		}
 		res = m_Audio->CreateMasteringVoice(&m_MasterVoice);
 		if (res != S_OK)
 		{
-			System::Print("Failed to initialize Audio subsystem");
+			Print("Failed to initialize Audio subsystem");
 			return;
 		}
 		m_MasterVoice->SetVolume(0.5);

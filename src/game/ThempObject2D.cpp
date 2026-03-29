@@ -12,7 +12,13 @@
 #include "../Engine/ThempFunctions.h"
 #include "../Engine/ThempDebugDraw.h"
 #include "../Engine/ThempVideo.h"
+#include "utility/print.h"
+
+
+#include "d3dincl.h"
 #include <DirectXMath.h>
+
+
 
 using namespace Themp;
 
@@ -117,7 +123,7 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 	}
 	if (mainData.size == 0)
 	{
-		System::Print("Did not find %S%S", path.c_str(), ext.c_str());
+		Print("Did not find %S%S", path.c_str(), ext.c_str());
 		return;
 	}
 
@@ -134,7 +140,7 @@ Object2D::Object2D(std::wstring path, std::wstring ext)
 	}
 	else
 	{
-		width = sqrt(mainData.size);
+		width = (int)sqrtf((float)mainData.size);
 		height = width;
 	}
 

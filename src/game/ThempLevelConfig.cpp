@@ -1,7 +1,8 @@
 #include "ThempSystem.h"
 #include "ThempLevelConfig.h"
 #include "ThempFileManager.h"
-#include "ThempTileArrays.h"
+#include "ThempGameTypes.h"
+#include "utility/print.h"
 #include <sstream>
 #include <unordered_map>
 using namespace Themp;
@@ -530,7 +531,7 @@ bool LevelConfig::LoadConfiguration()
 			else
 			{
 				creatureData[CreatureData::CREATURE_NULL] = c;
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("ROOM_", 0) == 0)
@@ -547,7 +548,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("MAGIC_", 0) == 0)
@@ -565,7 +566,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("GAME_", 0) == 0)
@@ -582,7 +583,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("SPELL_", 0) == 0)
@@ -599,7 +600,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("SHOT_", 0) == 0)
@@ -616,7 +617,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("TRAP_", 0) == 0)
@@ -635,7 +636,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("DOOR_", 0) == 0)
@@ -653,7 +654,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("HEALTH_", 0) == 0)
@@ -670,7 +671,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("BLOCK_", 0) == 0)
@@ -687,7 +688,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("INSTANCE_", 0) == 0)
@@ -709,7 +710,7 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 		else if (line.find("RESEARCH_", 0) == 0)
@@ -726,33 +727,32 @@ bool LevelConfig::LoadConfiguration()
 			}
 			else
 			{
-				System::Print("%s type not found!", name.c_str());
+				Print("%s type not found!", name.c_str());
 			}
 		}
 	}
 	return true;
 }
-int LevelConfig::TypeToRoom(uint16_t type)
+int LevelConfig::TypeToRoom(TileType type)
 {
-	type = type & 0xFF;
 	switch (type)
 	{
-		case Type_Portal: return ROOM_ENTRANCE;
-		case Type_Treasure_Room: return ROOM_TREASURE_ROOM;
-		case Type_Library:return ROOM_RESEARCH_ROOM;
-		case Type_Prison:return ROOM_PRISON_ROOM;
-		case Type_Torture_Room :return ROOM_TORTURE_ROOM;
-		case Type_Training_Room :return ROOM_TRAINING_AREA;
-		case Type_Dungeon_Heart:return ROOM_DUNGEON_HEART;
-		case Type_Workshop:return ROOM_WORKSHOP_ROOM;
-		case Type_Scavenger_Room:return ROOM_SCAVENGER;
-		case Type_Temple:return ROOM_TEMPLE;
-		case Type_Graveyard:return ROOM_GRAVEYARD;
-		case Type_Hatchery :return ROOM_HATCHERY;
-		case Type_Lair:return ROOM_LAIR;
-		case Type_Barracks:return ROOM_BARRACK_ROOM;
-		case Type_Bridge:return ROOM_BRIDGE;
-		case Type_Guardpost:return ROOM_GUARD_POST;
+		case TileType::Portal: return ROOM_ENTRANCE;
+		case TileType::Treasure_Room: return ROOM_TREASURE_ROOM;
+		case TileType::Library:return ROOM_RESEARCH_ROOM;
+		case TileType::Prison:return ROOM_PRISON_ROOM;
+		case TileType::Torture_Room :return ROOM_TORTURE_ROOM;
+		case TileType::Training_Room :return ROOM_TRAINING_AREA;
+		case TileType::Dungeon_Heart:return ROOM_DUNGEON_HEART;
+		case TileType::Workshop:return ROOM_WORKSHOP_ROOM;
+		case TileType::Scavenger_Room:return ROOM_SCAVENGER;
+		case TileType::Temple:return ROOM_TEMPLE;
+		case TileType::Graveyard:return ROOM_GRAVEYARD;
+		case TileType::Hatchery :return ROOM_HATCHERY;
+		case TileType::Lair:return ROOM_LAIR;
+		case TileType::Barracks:return ROOM_BARRACK_ROOM;
+		case TileType::Bridge:return ROOM_BRIDGE;
+		case TileType::Guardpost:return ROOM_GUARD_POST;
 	}
 	return 0;
 }

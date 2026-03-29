@@ -3,6 +3,7 @@
 #include "ThempCreatureTaskManager.h"
 #include "ThempGame.h"
 #include "ThempLevel.h"
+#include "ThempGameTypes.h"
 #include "ThempLevelData.h"
 #include "ThempLevelConfig.h"
 #include "ThempResources.h"
@@ -25,7 +26,7 @@ void CreatureTaskManager::Update(float delta)
 
 
 
-void Themp::CreatureTaskManager::RemoveMiningTask(uint8_t player, Tile*  tile)
+void Themp::CreatureTaskManager::RemoveMiningTask(PlayerID player, Tile*  tile)
 {
 	auto it = MiningTasks[player].find(tile);
 	int numCreatures = 0;
@@ -45,7 +46,7 @@ void Themp::CreatureTaskManager::RemoveMiningTask(uint8_t player, Tile*  tile)
 		MiningTasks[player].erase(tile);
 	}
 }
-void Themp::CreatureTaskManager::RemoveClaimingTask(uint8_t player, Tile*  tile)
+void Themp::CreatureTaskManager::RemoveClaimingTask(PlayerID player, Tile*  tile)
 {
 	auto it = ClaimingTasks[player].find(tile);
 	int numCreatures = 0;
@@ -62,7 +63,7 @@ void Themp::CreatureTaskManager::RemoveClaimingTask(uint8_t player, Tile*  tile)
 		ClaimingTasks[player].erase(tile);
 	}
 }
-void Themp::CreatureTaskManager::RemoveReinforcingTask(uint8_t player, Tile* tile)
+void Themp::CreatureTaskManager::RemoveReinforcingTask(PlayerID player, Tile* tile)
 {
 	auto it = ReinforcingTasks[player].find(tile);
 	int numCreatures = 0;
@@ -81,12 +82,12 @@ void Themp::CreatureTaskManager::RemoveReinforcingTask(uint8_t player, Tile* til
 		ReinforcingTasks[player].erase(tile);
 	}
 }
-void Themp::CreatureTaskManager::AddMiningTask(uint8_t player, XMINT2 tilePos, Tile* tile)
+void Themp::CreatureTaskManager::AddMiningTask(PlayerID player, XMINT2 tilePos, Tile* tile)
 {
 	uint16_t type = tile->GetType();
-	if (player != tile->owner && type >= Type_Wall0  && type <= Type_Wall5) return;
+	if (player != tile->owner && type >= TileType::Wall0  && type <= TileType::Wall5) return;
 
-	if (type < Type_Gold && type > Type_Wall5 && type != Type_Gem) return;
+	if (type < TileType::Gold && type > TileType::Wall5 && type != TileType::Gem) return;
 
 	auto foundIt = MiningTasks[player].find(tile);
 	if (foundIt == MiningTasks[player].end())
@@ -94,7 +95,7 @@ void Themp::CreatureTaskManager::AddMiningTask(uint8_t player, XMINT2 tilePos, T
 		MiningTasks[player][tile] = Task(tilePos, tile);
 	}
 }
-void Themp::CreatureTaskManager::AddClaimingTask(uint8_t player, XMINT2 tilePos, Tile* tile)
+void Themp::CreatureTaskManager::AddClaimingTask(PlayerID player, XMINT2 tilePos, Tile* tile)
 {
 	auto foundIt = ClaimingTasks[player].find(tile);
 	if (foundIt == ClaimingTasks[player].end())
@@ -103,7 +104,7 @@ void Themp::CreatureTaskManager::AddClaimingTask(uint8_t player, XMINT2 tilePos,
 	}
 }
 
-void Themp::CreatureTaskManager::AddReinforcingTask(uint8_t player, XMINT2 tilePos, Tile* tile)
+void Themp::CreatureTaskManager::AddReinforcingTask(PlayerID player, XMINT2 tilePos, Tile* tile)
 {
 	auto foundIt = ReinforcingTasks[player].find(tile);
 	if (foundIt == ReinforcingTasks[player].end())
@@ -134,7 +135,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetMiningTask(Creature* r
 	{
 		Task& task = i->second;
 
-		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(Type_Earth, task.tilePosition.y, task.tilePosition.x);
+		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(TileType::Earth, task.tilePosition.y, task.tilePosition.x);
 		Themp::TileNeighbourTiles neighbourTiles = System::tSys->m_Game->m_CurrentLevel->m_LevelData->GetNeighbourTiles(task.tilePosition.y, task.tilePosition.x);
 
 		int Walkable[4] =
@@ -175,7 +176,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetMiningTask(Creature* r
 		}
 	SPOTFOUND:
 		XMINT2 creatureTilePos = XMINT2(creatureSubtilePos.x / 3, creatureSubtilePos.y / 3);
-		if (LevelData::m_Map.m_Tiles[creatureTilePos.y][creatureTilePos.x].areaCode != areaCode)
+		if (LevelData::s_Map.m_Tiles[creatureTilePos.y][creatureTilePos.x].areaCode != areaCode)
 		{
 			task.takenPositions[creatureSpotIndex] = nullptr;
 			continue;
@@ -212,7 +213,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 		{
 			continue;
 		}
-		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(Type_Earth, task.tilePosition.y, task.tilePosition.x);
+		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(TileType::Earth, task.tilePosition.y, task.tilePosition.x);
 		Themp::TileNeighbourTiles neighbourTiles = System::tSys->m_Game->m_CurrentLevel->m_LevelData->GetNeighbourTiles(task.tilePosition.y, task.tilePosition.x);
 
 		int Walkable[4] =
@@ -250,7 +251,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetSoloMiningTask(Creatur
 		}
 	SPOTFOUND:
 		const XMINT2 creatureTilePos = XMINT2(creatureSubtilePos.x / 3, creatureSubtilePos.y / 3);
-		if (LevelData::m_Map.m_Tiles[creatureTilePos.y][creatureTilePos.x].areaCode != areaCode)
+		if (LevelData::s_Map.m_Tiles[creatureTilePos.y][creatureTilePos.x].areaCode != areaCode)
 		{
 			task.takenPositions[creatureSpotIndex] = nullptr;
 			continue;
@@ -272,7 +273,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetClaimingTask(Creature*
 		if (task.assignedCreatures == 0)
 		{
 			XMFLOAT3 creaturePos = LevelData::TileToWorld(XMINT2(task.tilePosition.x, task.tilePosition.y));
-			if (LevelData::m_Map.m_Tiles[task.tilePosition.y][task.tilePosition.x].areaCode != areaCode)
+			if (LevelData::s_Map.m_Tiles[task.tilePosition.y][task.tilePosition.x].areaCode != areaCode)
 			{
 				continue;
 			}
@@ -299,7 +300,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 	for (auto i = ReinforcingTasks[player].begin(); i != ReinforcingTasks[player].end(); i++)
 	{
 		Task& task = i->second;
-		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(Type_Earth, task.tilePosition.y, task.tilePosition.x);
+		Themp::TileNeighbours neighbours = System::tSys->m_Game->m_CurrentLevel->m_LevelData->CheckNeighbours(TileType::Earth, task.tilePosition.y, task.tilePosition.x);
 		Themp::TileNeighbourTiles neighbourTiles = System::tSys->m_Game->m_CurrentLevel->m_LevelData->GetNeighbourTiles(task.tilePosition.y, task.tilePosition.x);
 
 		int walkable[4] =
@@ -326,7 +327,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetReinforcingTask(Creatu
 				break;
 			}
 		}
-		if (cameFrom == -1 || LevelData::m_Map.m_Tiles[creaturePos.y / 3][creaturePos.x / 3].areaCode != areaCode)
+		if (cameFrom == -1 || LevelData::s_Map.m_Tiles[creaturePos.y / 3][creaturePos.x / 3].areaCode != areaCode)
 		{
 			continue;
 		}
@@ -355,13 +356,18 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetRandomMovementOrder(Cr
 	{
 		for (int x = minX; x < maxX; x++)
 		{
-			Tile* t = &LevelData::m_Map.m_Tiles[y][x];
+			Tile* t = &LevelData::s_Map.m_Tiles[y][x];
 			if (IsWalkable(t->GetType()) && t->areaCode == areaCode)
 			{
 				walkableTiles.push_back({ t,XMINT2(x,y) });
 			}
 		}
 	}
+	if (walkableTiles.size() == 0)
+	{
+		return Order(false, XMINT2(-1, -1), XMINT2(-1, -1), Order_None, nullptr);
+	}
+
 	int randomTile = rand() % walkableTiles.size();
 	TileAndPos& t = walkableTiles[randomTile];
 	//really subpar subtile selection but fuck it, its 9 subtiles, no tiles with more than 2 unwalkable subtiles, so the chances this will cause lagg is minimal.
@@ -380,10 +386,10 @@ bool Themp::CreatureTaskManager::IsTreasuryAvailable(Creature* requestee, int ar
 {
 	const uint8_t owner = requestee->m_Owner;
 	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
-	auto& it = rooms.begin();
+	auto it = rooms.begin();
 	while (it != rooms.end())
 	{
-		if (it->second.areaCode == areaCode && it->second.roomType == Type_Treasure_Room)
+		if (it->second.areaCode == areaCode && it->second.roomType == TileType::Treasure_Room)
 		{
 			if (it->second.roomFillPercentage != 100)
 			{
@@ -396,19 +402,19 @@ bool Themp::CreatureTaskManager::IsTreasuryAvailable(Creature* requestee, int ar
 }
 CreatureTaskManager::Order Themp::CreatureTaskManager::GetAvailableTreasury(Creature* requestee, int areaCode)
 {
-	const uint8_t owner = requestee->m_Owner;
+	const PlayerID owner = requestee->m_Owner;
 	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
-	auto& it = rooms.begin();
-	while (it != rooms.end())
+	auto it = rooms.cbegin();
+	while (it != rooms.cend())
 	{
-		if (it->second.areaCode == areaCode && it->second.roomType == Type_Treasure_Room)
+		if (it->second.areaCode == areaCode && it->second.roomType == TileType::Treasure_Room)
 		{
 			if (it->second.roomFillPercentage != 100)
 			{
 				const int roomMaxGoldPerTile = LevelConfig::gameSettings[GameSettings::GAME_GOLD_PILE_MAXIMUM].Value * it->second.roomEfficiency / 100;
 				//find a suitable tile
-				auto& tileIt = it->second.tiles.begin();
-				while (tileIt != it->second.tiles.end())
+				auto tileIt = it->second.tiles.cbegin();
+				while (tileIt != it->second.tiles.cend())
 				{
 					if (tileIt->second.tileValue < roomMaxGoldPerTile)
 					{
@@ -425,7 +431,7 @@ CreatureTaskManager::Order Themp::CreatureTaskManager::GetAvailableTreasury(Crea
 }
 void Themp::CreatureTaskManager::UnlistImpFromTask(Creature * requestee)
 {
-	const uint8_t player = requestee->m_Owner;
+	const PlayerID player = requestee->m_Owner;
 	auto it = TaskedImps[player].find(requestee);
 	if (it != TaskedImps[player].end())
 	{
@@ -481,15 +487,15 @@ CreatureTaskManager::Activity CreatureTaskManager::GetDungeonEnteredActivity(Cre
 {
 	const uint8_t owner = requestee->m_Owner;
 	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
-	auto& it = rooms.begin();
-	while (it != rooms.end())
+	auto it = rooms.cbegin();
+	while (it != rooms.cend())
 	{
-		if (it->second.areaCode == areaCode && it->second.roomType == Type_Dungeon_Heart)
+		if (it->second.areaCode == areaCode && it->second.roomType == TileType::Dungeon_Heart)
 		{
-			for (auto& tile : it->second.tiles)
+			for (const auto& tile : it->second.tiles)
 			{
-				//find the middle tile (naive method atm), though its only 9 tiles anyhow
-				if (tile.first->type == (tile.first->GetType() + (5 << 8)))
+				//find the middle tile (naive method atm), its only 9 tiles anyway
+				if (tile.first->GetType() == tile.first->GetType() && tile.first->tile.variant == 5)
 				{
 					return Activity(true, XMINT2(tile.second.x*3 +1, tile.second.y*3 +1), XMINT2(tile.second.x, tile.second.y), Activity_GoToHeart, tile.first);
 				}
@@ -503,21 +509,21 @@ CreatureTaskManager::Activity CreatureTaskManager::GetFoodActivity(Creature* req
 {
 	const uint8_t owner = requestee->m_Owner;
 	std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
-	auto& it = rooms.begin();
-	while (it != rooms.end())
+	auto it = rooms.cbegin();
+	while (it != rooms.cend())
 	{
-		if (it->second.areaCode == areaCode && it->second.roomType == Type_Hatchery)
+		if (it->second.areaCode == areaCode && it->second.roomType == TileType::Hatchery)
 		{
 			//should target a random chicken inside the hatchery to feed upon, might do that when we are actually inside the hatchery though..
 
 			//Wow this is a shitty way to get a reference to a random tile..
-			auto& tileIt = it->second.tiles.begin();
+			auto tileIt = it->second.tiles.cbegin();
 			int off = (rand() % it->second.tiles.size());
 			for (int i = 0; i < off; i++)
 			{
 				tileIt++;
 			}
-			LevelData::Room::RoomTile& tile = tileIt->second;
+			const LevelData::Room::RoomTile& tile = tileIt->second;
 			return Activity(true, XMINT2(tile.x * 3 + 1, tile.y * 3 + 1), XMINT2(tile.x, tile.y), Activity_GetFood, tile.tile);
 		}
 		it++;
@@ -530,17 +536,17 @@ CreatureTaskManager::Activity CreatureTaskManager::GetCreateLairActivity(Creatur
 	if (requestee->m_LairLocation.x == -1 && requestee->m_LairLocation.y == -1)
 	{
 		std::unordered_map<int, LevelData::Room>& rooms = Level::s_CurrentLevel->m_LevelData->m_Rooms[owner];
-		auto& it = rooms.begin();
+		auto it = rooms.begin();
 		while (it != rooms.end())
 		{
-			if (it->second.areaCode == areaCode && it->second.roomType == Type_Lair)
+			if (it->second.areaCode == areaCode && it->second.roomType == TileType::Lair)
 			{
-				for (auto& tile = it->second.tiles.begin(); tile != it->second.tiles.end(); tile++)
+				for (auto& tile : it->second.tiles)
 				{
-					if (tile->second.tileValue == 0)
+					if (tile.second.tileValue == 0)
 					{
-						tile->second.tileValue = 1;
-						return Activity(true, XMINT2(tile->second.x * 3 + 1, tile->second.y * 3 + 1), XMINT2(tile->second.x, tile->second.y), Activity_CreateLair, tile->first);
+						tile.second.tileValue = 1;
+						return Activity(true, XMINT2(tile.second.x * 3 + 1, tile.second.y * 3 + 1), XMINT2(tile.second.x, tile.second.y), Activity_CreateLair, tile.first);
 					}
 				}
 			}
@@ -554,7 +560,7 @@ CreatureTaskManager::Activity CreatureTaskManager::GetSleepActivity(Creature* re
 	if (requestee->m_LairLocation.x != -1 && requestee->m_LairLocation.y != -1)
 	{
 		XMFLOAT3 subTilePos = LevelData::TileToWorld(requestee->m_LairLocation);
-		return Activity(true, XMINT2(subTilePos.x, subTilePos.z), requestee->m_LairLocation, Activity_GoToBed, &Level::s_CurrentLevel->m_LevelData->m_Map.m_Tiles[requestee->m_LairLocation.y][requestee->m_LairLocation.x]);
+		return Activity(true, XMINT2((int)subTilePos.x, (int)subTilePos.z), requestee->m_LairLocation, Activity_GoToBed, &Level::s_CurrentLevel->m_LevelData->s_Map.m_Tiles[requestee->m_LairLocation.y][requestee->m_LairLocation.x]);
 	}
 	return Activity(false, XMINT2(-1, -1), XMINT2(-1, -1), Activity_None, nullptr);
 }
@@ -577,7 +583,7 @@ CreatureTaskManager::Activity CreatureTaskManager::GetRandomMovementActivity(Cre
 	{
 		for (int x = minX; x < maxX; x++)
 		{
-			Tile* t = &LevelData::m_Map.m_Tiles[y][x];
+			Tile* t = &LevelData::s_Map.m_Tiles[y][x];
 			if (IsWalkable(t->GetType()) && t->areaCode == areaCode)
 			{
 				walkableTiles.push_back({ t,XMINT2(x,y) });
@@ -632,7 +638,7 @@ CreatureTaskManager::Activity CreatureTaskManager::GetExploreActivity(Creature* 
 	LevelData* l = Level::s_CurrentLevel->m_LevelData;
 	if (l->m_UnexploredTiles.size() > 0)
 	{
-		for (auto& it = l->m_UnexploredTiles.begin(); it != l->m_UnexploredTiles.end(); it++)
+		for (auto it = l->m_UnexploredTiles.cbegin(); it != l->m_UnexploredTiles.cend(); it++)
 		{
 			if (l->HasWalkableNeighbour(it->second.y, it->second.x,areaCode))
 			{

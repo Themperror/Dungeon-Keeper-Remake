@@ -31,6 +31,8 @@
 #include <cstdint>
 #include <stdio.h>
 #include <memory>
+#include <assert.h>
+
 typedef uint32_t uint32;
 typedef int32_t int32;
 typedef uint64_t uint64;
@@ -881,8 +883,7 @@ public:
 	 * If the stream's bitorder is LSB2MSB, the resulting value is 000y1100.
 	 */
 	void addBit(uint32 &x, uint32 n) {
-		if (n >= 32)
-			error("BitStreamImpl::addBit(): Too many bits requested to be read");
+		assert(n < 32);
 
 		if (isMSB2LSB)
 			x = (x << 1) | getBit();

@@ -3,6 +3,7 @@
 #include "ThempGame.h"
 #include "ThempObject2D.h"
 #include "ThempResources.h"
+#include "utility/print.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempMesh.h"
@@ -55,10 +56,10 @@ void Themp::MainMenu::Start()
 	Themp::System::tSys->m_Game->AddObject3D(m_SplashScreenTexture->m_Renderable);
 
 	//Set up video
-	m_Video = new Themp::Video(&FileManager::GetFileData(L"LDATA\\INTROMIX.SMK"));
+	m_Video = new Themp::Video(FileManager::GetFileData(L"LDATA\\INTROMIX.SMK"));
 	if (!m_Video->isLoaded)
 	{
-		System::Print("Could not find ldata\\intromix.smk");
+		Print("Could not find ldata\\intromix.smk");
 	}
 	m_VideoObject = new Object3D();
 	m_VideoObject->CreateQuad("", false);
@@ -122,9 +123,9 @@ void Themp::MainMenu::Start()
 	Themp::System::tSys->m_Game->AddObject3D(m_MainMenuBar[1]->m_Renderable);
 	Themp::System::tSys->m_Game->AddObject3D(m_MainMenuBar[0]->m_Renderable);
 
-	m_MainMenuBar[0]->m_Renderable->SetPosition(-0.75f, 1.645, 0.5);
-	m_MainMenuBar[1]->m_Renderable->SetPosition(0, 1.645, 0.5);
-	m_MainMenuBar[2]->m_Renderable->SetPosition(0.75f, 1.645, 0.5);
+	m_MainMenuBar[0]->m_Renderable->SetPosition(-0.75f, 1.645f, 0.5f);
+	m_MainMenuBar[1]->m_Renderable->SetPosition(0, 1.645f, 0.5f);
+	m_MainMenuBar[2]->m_Renderable->SetPosition(0.75f, 1.645f, 0.5f);
 
 	std::string buttonTexts[7] = { "Start New Game", "Continue Game", "Load Game", "Multiplayer", "Options", "High Score Table", "Quit" };
 	bool disabled[7] = { false,true,true,true,false,false,false };
@@ -142,12 +143,12 @@ void Themp::MainMenu::Start()
 			//m_GUIButtons[i]->SetSize(xSizes[j], ySizes[j], j);
 			m_GUIButtons[i]->SetSize(1,1,1,1, j);
 		}
-		m_GUIButtons[i]->SetPosition(0, 0.945 - (i * 0.415),0.5);
+		m_GUIButtons[i]->SetPosition(0, 0.945f - (i * 0.415f),0.5f);
 		m_GUIButtons[i]->SetVisibility(true);
 		m_GUIButtons[i]->m_IsDisabled = disabled[i];
 	}
 	m_LevelSelectFlag = new GUIButton(Object2D::sMENU_LEVELFLAG, 1,6,1, true);
-	m_TextObject = new Font("Main Menu", Font::FontTexID::MENU_NORMAL0,false, XMFLOAT3(0, 1.65, 0.4));
+	m_TextObject = new Font("Main Menu", Font::FontTexID::MENU_NORMAL0,false, XMFLOAT3(0, 1.65f, 0.4f));
 
 	//Load cursor sprite
 	m_Cursor = new Object2D(Object2D::sMENU_MAIN,94,true);
@@ -155,8 +156,8 @@ void Themp::MainMenu::Start()
 	System::tSys->m_Game->AddObject3D(m_Cursor->m_Renderable);
 
 	SetEverythingHidden();
-	//GoToSplash();
-	GoToMenu();
+	GoToSplash();
+	//GoToMenu();
 }
 
 
@@ -165,14 +166,14 @@ void Themp::MainMenu::Start()
 Themp::GUIButton* InitialClick = nullptr;
 int soundIndex = 0;
 float waitingTime = 0;
-XMFLOAT2 mouseOffset = XMFLOAT2(0.166, 0.18);
+XMFLOAT2 mouseOffset = XMFLOAT2(0.166f, 0.18f);
 void Themp::MainMenu::Update(double dt)
 {
 	Game* g = Themp::System::tSys->m_Game;
 
 	float uiMouseX = 0, uiMouseY = 0;
-	Game::TranslateMousePos(g->m_CursorWindowedX, g->m_CursorWindowedY, uiMouseX, uiMouseY);
-	m_Cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01);
+	Game::TranslateMousePos((int)g->m_CursorWindowedX, (int)g->m_CursorWindowedY, uiMouseX, uiMouseY);
+	m_Cursor->m_Renderable->SetPosition(uiMouseX+ mouseOffset.x,uiMouseY - mouseOffset.y, 0.01f);
 
 	const float scrollSpeed = 2.0; //map scroll speed
 
@@ -180,7 +181,7 @@ void Themp::MainMenu::Update(double dt)
 	{
 	case MenuState::Splash:
 		waitingTime+=dt;
-		if (waitingTime > 3.0 || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
+		if (waitingTime > 3.0f || (g->m_Keys[VK_SPACE] == 2 || g->m_Keys[VK_ESCAPE] == 2))
 		{
 			GoToIntro();
 			waitingTime = 0;
@@ -277,6 +278,17 @@ void Themp::MainMenu::Update(double dt)
 		}
 		ImGui::SliderInt("Sound Index", &soundIndex, 0, 335);
 
+		if (ImGui::Button("Some button that prints"))
+		{
+			printf("thing\n");
+		}
+		if (ImGui::BeginCombo("Group", "preview"))
+		{
+			ImGui::BulletText("Bullet Text");
+			ImGui::Button("Button!");
+			ImGui::EndCombo();
+		}
+
 		break;
 	case MenuState::CampaignSelect:
 		if (ImGui::Button("Next Level"))
@@ -293,8 +305,8 @@ void Themp::MainMenu::Update(double dt)
 			}
 			m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
 			m_MapFiles[m_CurrentLevel]->SetVisibility(true);
-			m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
-			m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
+			m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8f);
+			m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9f);
 			m_LevelSelectFlag->SetPosition(0, 0, 0.85f);
 
 			//Themp::System::tSys->m_Audio->Stop(FileManager::GetAtlasGoodSound(m_CurrentLevel - 1 >= 0 ? 0 : 20));
@@ -310,46 +322,46 @@ void Themp::MainMenu::Update(double dt)
 		//if clicked - stop menu -> load level
 		XMFLOAT3 borderPos = m_MapWindowFiles[m_CurrentLevel]->m_Renderable->m_Position;
 		XMFLOAT3 mapPos = m_MapFiles[m_CurrentLevel]->m_Renderable->m_Position;
-		borderPos.z = 0.8;
-		mapPos.z = 0.9;
-		if (uiMouseX < -1.8)
+		borderPos.z = 0.8f;
+		mapPos.z = 0.9f;
+		if (uiMouseX < -1.8f)
 		{
-			borderPos.x += dt * scrollSpeed  * 0.5;
+			borderPos.x += dt * scrollSpeed  * 0.5f;
 			mapPos.x += dt * scrollSpeed;
-			if (borderPos.x > 0.99)
+			if (borderPos.x > 0.99f)
 			{
-				borderPos.x = 0.99;
-				mapPos.x = 1.99;
+				borderPos.x = 0.99f;
+				mapPos.x = 1.99f;
 			}
 		}
-		else if (uiMouseX > 1.8)
+		else if (uiMouseX > 1.8f)
 		{
-			borderPos.x -= dt * scrollSpeed * 0.5;
+			borderPos.x -= dt * scrollSpeed * 0.5f;
 			mapPos.x -= dt * scrollSpeed;
-			if (borderPos.x < -0.99)
+			if (borderPos.x < -0.99f)
 			{
-				borderPos.x = -0.99;
-				mapPos.x = -1.99;
+				borderPos.x = -0.99f;
+				mapPos.x = -1.99f;
 			}
 		}
-		if (uiMouseY > 1.8)
+		if (uiMouseY > 1.8f)
 		{
-			borderPos.y -= dt * scrollSpeed * 0.75;
+			borderPos.y -= dt * scrollSpeed * 0.75f;
 			mapPos.y -= dt * scrollSpeed;
-			if (borderPos.y < -0.99)
+			if (borderPos.y < -0.99f)
 			{
-				borderPos.y = -0.99;
-				mapPos.y = -1.33;
+				borderPos.y = -0.99f;
+				mapPos.y = -1.33f;
 			}
 		}
-		else if (uiMouseY < -1.8)
+		else if (uiMouseY < -1.8f)
 		{
-			borderPos.y += dt * scrollSpeed * 0.75;
+			borderPos.y += dt * scrollSpeed * 0.75f;
 			mapPos.y += dt * scrollSpeed;
-			if (borderPos.y > 0.99)
+			if (borderPos.y > 0.99f)
 			{
-				borderPos.y = 0.99;
-				mapPos.y = 1.33;
+				borderPos.y = 0.99f;
+				mapPos.y = 1.33f;
 			}
 		}
 		m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(borderPos);
@@ -365,9 +377,9 @@ void Themp::MainMenu::Update(double dt)
 			{
 				Themp::System::tSys->m_Audio->Stop(FileManager::GetSound("NICELAND.WAV"));
 				Stop();
-				System::Print("Loading Level: %i",m_CurrentLevel);
+				Print("Loading Level: %i",m_CurrentLevel);
 				g->LoadLevel(m_CurrentLevel);
-				System::Print("Level Loaded!");
+				Print("Level Loaded!");
 			}
 		}
 		else
@@ -392,25 +404,25 @@ void MainMenu::GoToSplash()
 	SetEverythingHidden();
 	m_SplashScreenTexture->SetVisibility(true);
 	m_State = MenuState::Splash;
-	System::Print("Going to Splash");
+	Print("Going to Splash");
 }
 void MainMenu::GoToCampaignSelect()
 {
 	SetEverythingHidden();
 	m_State = MenuState::CampaignSelect;
 	m_MapFiles[m_CurrentLevel]->SetVisibility(true);
-	m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9);
+	m_MapFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.9f);
 	m_MapWindowFiles[m_CurrentLevel]->SetVisibility(true);
-	m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8);
+	m_MapWindowFiles[m_CurrentLevel]->m_Renderable->SetPosition(0, 0, 0.8f);
 	m_LevelSelectFlag->SetVisibility(true);
 	m_Cursor->SetVisibility(true);
 	m_Cursor->SetTexture(FileManager::GetMenuCursorTexture(0));
 	m_Cursor->SetScale(1, 1);
-	mouseOffset = XMFLOAT2(0.03, 0);
+	mouseOffset = XMFLOAT2(0.03f, 0);
 
 	Themp::System::tSys->m_Audio->Play(FileManager::GetSound("NICELAND.WAV"),true);
 	//Themp::System::tSys->m_Audio->Play(FileManager::GetAtlasGoodSound(m_CurrentLevel));
-	System::Print("Going to Campaign Select");
+	Print("Going to Campaign Select");
 }
 void MainMenu::GoToContinue()
 {
@@ -437,14 +449,14 @@ void MainMenu::GoToLoading()
 	SetEverythingHidden();
 	m_State = MenuState::Loading;
 	m_LoadingScreenTexture->SetVisibility(true);
-	System::Print("Going to Loading");
+	Print("Going to Loading");
 }
 void MainMenu::GoToIntro()
 {
 	SetEverythingHidden();
 	m_State = MenuState::Intro;
 	m_VideoObject->isVisible = true;
-	System::Print("Going to Intro");
+	Print("Going to Intro");
 }
 void MainMenu::GoToMenu()
 {
@@ -463,8 +475,8 @@ void MainMenu::GoToMenu()
 		m_MainMenuBar[i]->SetVisibility(true);
 	}
 	m_TextObject->SetVisibility(true);
-	mouseOffset = XMFLOAT2(0.166, 0.18);
-	System::Print("Going to Menu");
+	mouseOffset = XMFLOAT2(0.166f, 0.18f);
+	Print("Going to Menu");
 }
 void MainMenu::SetEverythingHidden()
 {
@@ -492,7 +504,7 @@ void MainMenu::SetEverythingHidden()
 }
 void MainMenu::Stop()
 {
-	System::Print("Stopping Menu!");
+	Print("Stopping Menu!");
 	if (!m_IsDone)
 	{
 		if (m_Video)

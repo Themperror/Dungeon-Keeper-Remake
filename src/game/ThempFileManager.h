@@ -8,7 +8,7 @@ namespace Themp
 	struct Sound;
 	struct FileData
 	{
-		BYTE* data;
+		uint8_t* data;
 		size_t size;
 		size_t currentOffset = 0;
 		int8_t ReadSInt8()

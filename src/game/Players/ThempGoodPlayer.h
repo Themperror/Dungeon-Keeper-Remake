@@ -7,7 +7,7 @@ namespace Themp
 	class GoodPlayer : public PlayerBase
 	{
 	public:
-		GoodPlayer(uint8_t playerID);
+		GoodPlayer(PlayerID playerID);
 		virtual ~GoodPlayer();
 		virtual void Update(float delta);
 	};

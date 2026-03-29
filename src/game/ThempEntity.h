@@ -1,8 +1,7 @@
 #pragma once
 #include <vector>
-#include <d3d11.h>
+#include <d3dfwd.h>
 #include <DirectXMath.h>
-#include "ThempTileArrays.h"
 namespace Themp
 {
 	class D3D;

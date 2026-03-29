@@ -15,6 +15,9 @@
 #include <DirectXMath.h>
 #include <unordered_map>
 #include <array>
+
+#include "d3dincl.h"
+#include <d3d11.h>
 using namespace Themp;
 
 //first FP sprite, then W sprite
@@ -111,8 +114,8 @@ Themp::Entity::Entity(Entity::EntityType entityType)
 	SetSprite(m_EntitySpriteIndex);
 
 	m_EntityCBData._AnimIndex = 0;
-	m_EntityCBData._NumAnim = m_Sprite->numAnim;
-	m_EntityCBData._SpriteWidth = m_Sprite->texture->m_Width;
+	m_EntityCBData._NumAnim = (float)m_Sprite->numAnim;
+	m_EntityCBData._SpriteWidth = (float)m_Sprite->texture->m_Width;
 	m_EntityCBData._isFrozen = false;
 	m_EntityCBData._isFlipped = true;
 	if (!m_EntityCB)
@@ -156,7 +159,7 @@ void Entity::SetSprite(int SpriteID)
 	m_Sprite = FileManager::GetCreatureSprite(SpriteID);
 	m_EntitySpriteIndex = SpriteID;
 	m_Renderable->m_Meshes[0]->m_Material->SetTexture(m_Sprite->texture);
-	m_EntityCBData._NumAnim = m_Sprite->numAnim;
+	m_EntityCBData._NumAnim = (float)m_Sprite->numAnim;
 }
 void Entity::ResetScale()
 {
@@ -183,7 +186,7 @@ void Entity::Update(float delta)
 		m_AnimationTime -= 1.0f / 10.0f;
 		m_AnimationIndex++;
 		m_AnimationIndex = m_AnimationIndex % (int)m_EntityCBData._NumAnim;
-		m_EntityCBData._AnimIndex = m_AnimationIndex;
+		m_EntityCBData._AnimIndex = (float)m_AnimationIndex;
 
 		//const Camera::CameraType camType = System::tSys->m_Game->m_Camera->GetProjection();
 		//SetSprite(EntityIDs[m_EntityID + (camType != Camera::Orthographic)]);

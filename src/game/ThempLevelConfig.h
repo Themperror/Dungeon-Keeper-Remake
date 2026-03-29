@@ -1,5 +1,6 @@
 #pragma once
 #include "Creature/ThempCreatureData.h"
+#include "ThempGameTypes.h"
 namespace Themp
 {
 	struct RoomData
@@ -463,7 +464,7 @@ namespace Themp
 
 		static bool LoadConfiguration();
 
-		static int TypeToRoom(uint16_t type);
+		static int TypeToRoom(TileType type);
 
 		static CreatureData creatureData[32];
 		static RoomData roomData[17];

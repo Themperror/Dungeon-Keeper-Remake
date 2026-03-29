@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_map>
 #include "ThempCreatureData.h"
+#include "ThempGameTypes.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -86,12 +87,12 @@ namespace Themp
 		static Activity GetRandomMovementActivity(Creature * requestee, int areaCode);
 		static Activity GetActivityByJob(Creature * requestee, int areaCode, CreatureData::Jobs job);
 		static Activity GetExploreActivity(Creature * requestee, int areaCode);
-		static void RemoveMiningTask(uint8_t player, Tile* tile);
-		static void RemoveClaimingTask(uint8_t player, Tile* tile);
-		static void RemoveReinforcingTask(uint8_t player, Tile* tile);
-		static void AddMiningTask(uint8_t player, XMINT2 tilePos, Tile* tile);
-		static void AddClaimingTask(uint8_t player, XMINT2 tilePos, Tile* tile);
-		static void AddReinforcingTask(uint8_t player, XMINT2 tilePos, Tile* tile);
+		static void RemoveMiningTask(PlayerID player, Tile* tile);
+		static void RemoveClaimingTask(PlayerID player, Tile* tile);
+		static void RemoveReinforcingTask(PlayerID player, Tile* tile);
+		static void AddMiningTask(PlayerID player, XMINT2 tilePos, Tile* tile);
+		static void AddClaimingTask(PlayerID player, XMINT2 tilePos, Tile* tile);
+		static void AddReinforcingTask(PlayerID player, XMINT2 tilePos, Tile* tile);
 		static Order GetMiningTask(Creature * requestee, int areaCode);
 		static Order GetSoloMiningTask(Creature * requestee, int areaCode);
 		static Order GetClaimingTask(Creature* requestee, int areaCode);

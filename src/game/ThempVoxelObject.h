@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <d3d11.h>
+#include <d3dfwd.h>
 #include "ThempTileArrays.h"
 #include "ThempResources.h"
 namespace Themp
@@ -25,8 +25,8 @@ namespace Themp
 		bool EditVertexBuffer(VoxelVertex * vertices, size_t numVertices);
 		bool CreateIndexBuffer(uint32_t * indices, size_t numIndices);
 		bool EditIndexBuffer(uint32_t * indices, size_t numIndices);
-		bool CreateLightBuffer(const std::unordered_map<uint32_t, Light>& lights);
-		bool EditLightBuffer(const std::unordered_map<uint32_t, Light>& lights);
+		bool CreateLightBuffer(const std::array<Light, MAP_SIZE_TILES* MAP_SIZE_TILES* MAX_LIGHTS_PER_TILE>& lights);
+		bool EditLightBuffer(const std::array<Light, MAP_SIZE_TILES* MAP_SIZE_TILES* MAX_LIGHTS_PER_TILE>& lights);
 		Object3D* m_Obj3D = nullptr;
 		float m_AnimationTime = 0;
 		uint8_t m_AnimationIndex = 0;

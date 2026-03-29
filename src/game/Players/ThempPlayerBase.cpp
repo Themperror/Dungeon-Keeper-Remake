@@ -7,7 +7,11 @@
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
 #include "ThempLevelScript.h"
+
 #include "ThempObject3D.h"
+
+#include <DirectXMath.h>
+using namespace DirectX;
 using namespace Themp;
 
 std::unordered_map<CreatureData::CreatureType, std::string> CreatureTypeToString =
@@ -45,14 +49,14 @@ std::unordered_map<CreatureData::CreatureType, std::string> CreatureTypeToString
 	{CreatureData::CreatureType::CREATURE_WIZARD,"WIZARD"},
 };
 
-void PlayerBase::AddPartyToLevel(uint8_t owner, CreatureParty party, XMINT2 tilePos)
+void PlayerBase::AddPartyToLevel(PlayerID owner, CreatureParty party, XMINT2 tilePos)
 {
 	Creature* leader = nullptr;
 	{
 		CreatureParty::Partee& p = party.m_Partees[0];
 		leader = new Creature(p.type);
 		leader->SetPosition(tilePos.x, 2, tilePos.y);
-		leader->m_Hero_TimeTillStrike = p.timetillstrike;
+		leader->m_Hero_TimeTillStrike = (float)p.timetillstrike;
 		leader->m_HeroObjective = p.objective;
 		leader->m_CurrentGoldHold = p.gold_hold;
 		leader->m_Level = p.level;
@@ -64,7 +68,7 @@ void PlayerBase::AddPartyToLevel(uint8_t owner, CreatureParty party, XMINT2 tile
 		CreatureParty::Partee& p = party.m_Partees[i];
 		Creature* c = new Creature(p.type);
 		c->SetPosition(tilePos.x, 2, tilePos.y);
-		c->m_Hero_TimeTillStrike = p.timetillstrike;
+		c->m_Hero_TimeTillStrike = (float)p.timetillstrike;
 		c->m_HeroObjective = p.objective;
 		c->m_CurrentGoldHold = p.gold_hold;
 		c->m_Level = p.level;
@@ -72,7 +76,7 @@ void PlayerBase::AddPartyToLevel(uint8_t owner, CreatureParty party, XMINT2 tile
 		AddCreature(owner, c);
 	}
 }
-void Themp::PlayerBase::AddTunnellerPartyToLevel(uint8_t owner, int tunnelerLevel, int tunnelerGold, CreatureParty party, XMINT2 spawnPos, std::string headfor, int targetID)
+void Themp::PlayerBase::AddTunnellerPartyToLevel(PlayerID owner, int tunnelerLevel, int tunnelerGold, CreatureParty party, XMINT2 spawnPos, std::string headfor, int targetID)
 {
 	Creature* leader = new Creature(CreatureData::CreatureType::CREATURE_TUNNELLER);
 	leader->m_Level = tunnelerLevel;
@@ -105,7 +109,7 @@ void Themp::PlayerBase::AddTunnellerPartyToLevel(uint8_t owner, int tunnelerLeve
 
 
 	XMINT2 tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
-	leader->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::m_Map.m_Tiles[tileTarget.y][tileTarget.x]);
+	leader->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::s_Map.m_Tiles[tileTarget.y][tileTarget.x]);
 	AddCreature(owner, leader);
 
 	for (int i = 0; i < party.m_Partees.size(); i++)
@@ -121,7 +125,7 @@ void Themp::PlayerBase::AddTunnellerPartyToLevel(uint8_t owner, int tunnelerLeve
 		AddCreature(owner, c);
 	}
 }
-void  Themp::PlayerBase::AddTunnellerToLevel(uint8_t owner, int tunnelerLevel, int tunnelerGold,XMINT2 spawnPos,std::string headfor, int targetID)
+void  Themp::PlayerBase::AddTunnellerToLevel(PlayerID owner, int tunnelerLevel, int tunnelerGold,XMINT2 spawnPos,std::string headfor, int targetID)
 {
 	Creature* creature = new Creature(CreatureData::CreatureType::CREATURE_TUNNELLER);
 	creature->m_Level = tunnelerLevel;
@@ -153,15 +157,15 @@ void  Themp::PlayerBase::AddTunnellerToLevel(uint8_t owner, int tunnelerLevel, i
 	}
 
 	XMINT2 tileTarget = XMINT2(subtileTarget.x/3, subtileTarget.y / 3);
-	creature->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::m_Map.m_Tiles[tileTarget.y][tileTarget.x]);
+	creature->m_Activity = CreatureTaskManager::Activity(true, subtileTarget, tileTarget, CreatureTaskManager::ActivityType::Activity_Tunnel, &LevelData::s_Map.m_Tiles[tileTarget.y][tileTarget.x]);
 	AddCreature(owner, creature);
 }
-void PlayerBase::AddCreature(uint8_t owner, Creature* c)
+void PlayerBase::AddCreature(PlayerID owner, Creature* c)
 {
 	if(c->m_CreatureID != CreatureData::CreatureType::CREATURE_IMP)
-		LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]++; //Imps don't count toward total creature count
+		LevelScript::GameValues[(int)m_PlayerID]["TOTAL_CREATURES"]++; //Imps don't count toward total creature count
 
-	LevelScript::GameValues[m_PlayerID][CreatureTypeToString[c->m_CreatureID]]++;
+	LevelScript::GameValues[(int)m_PlayerID][CreatureTypeToString[c->m_CreatureID]]++;
 	m_CreatureCount[c->m_CreatureID]++;
 	m_Creatures.push_back(c);
 	c->m_Owner = owner;
@@ -175,8 +179,8 @@ void PlayerBase::CreatureDied(Creature* c)
 		{
 			std::string& creatureTypeString = CreatureTypeToString[c->m_CreatureID];
 			if (c->m_CreatureID != CreatureData::CreatureType::CREATURE_IMP)
-				LevelScript::GameValues[m_PlayerID]["TOTAL_CREATURES"]--;
-			LevelScript::GameValues[m_PlayerID][creatureTypeString]--;
+				LevelScript::GameValues[(int)m_PlayerID]["TOTAL_CREATURES"]--;
+			LevelScript::GameValues[(int)m_PlayerID][creatureTypeString]--;
 			m_CreatureCount[c->m_CreatureID]--;
 			m_Creatures.erase(m_Creatures.begin() + i);
 			Entity* e = Level::s_CurrentLevel->m_LevelData->GetMapEntity();
@@ -205,13 +209,13 @@ void PlayerBase::CreatureDied(Creature* c)
 		}
 	}
 }
-bool PlayerBase::IsAlliedWith(uint8_t player)
+bool PlayerBase::IsAlliedWith(PlayerID player)
 {
-	return m_Allies[player][m_PlayerID];
+	return m_Allies[(int)player][(int)m_PlayerID];
 }
-void PlayerBase::AllyWith(uint8_t player)
+void PlayerBase::AllyWith(PlayerID player)
 {
-	m_Allies[m_PlayerID][player] = true;
+	m_Allies[(int)m_PlayerID][(int)player] = true;
 }
 PlayerBase::~PlayerBase()
 {

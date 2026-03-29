@@ -7,7 +7,7 @@
 
 using namespace Themp;
 
-Themp::NeutralPlayer::NeutralPlayer(uint8_t playerID)
+Themp::NeutralPlayer::NeutralPlayer(PlayerID playerID)
 {
 	m_PlayerID = playerID;
 }

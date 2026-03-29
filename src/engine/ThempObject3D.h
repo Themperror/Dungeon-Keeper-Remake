@@ -1,6 +1,7 @@
 #pragma once
 #include <DirectXMath.h>
-#include <d3d11.h>
+#include "d3dfwd.h"
+#include <vector>
 namespace Themp
 {
 	using namespace DirectX;
@@ -30,17 +31,17 @@ namespace Themp
 		void Construct();
 
 		std::vector<Themp::Mesh*> m_Meshes;
-		XMFLOAT3 m_Position, m_Rotation, m_Scale;
+		DirectX::XMFLOAT3 m_Position, m_Rotation, m_Scale;
 
 		void SetPosition(float x, float y, float z);
-		void SetPosition(XMFLOAT3& pos);
+		void SetPosition(const DirectX::XMFLOAT3& pos);
 		void SetScale(float x, float y, float z);
-		void SetScale(XMFLOAT3& scale);
+		void SetScale(const DirectX::XMFLOAT3& scale);
 		void SetRotation(float x, float y, float z);
-		void SetRotation(XMFLOAT3& rot);
+		void SetRotation(const DirectX::XMFLOAT3& rot);
 
 		//axis aligned
-		XMFLOAT3 m_BoundsMin, m_BoundsMax;
+		DirectX::XMFLOAT3 m_BoundsMin, m_BoundsMax;
 		ID3D11Buffer* m_ConstantBuffer = nullptr;
 		Object3DConstantBufferData m_ConstantBufferData;
 		bool isDirty = true;

@@ -7,7 +7,7 @@ namespace Themp
 	class Player : public PlayerBase
 	{
 	public:
-		Player(uint8_t playerID);
+		Player(PlayerID playerID);
 		virtual ~Player();
 		virtual void Update(float delta);
 		int m_GoldAmount;

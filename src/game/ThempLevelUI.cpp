@@ -7,7 +7,7 @@
 #include "ThempResources.h"
 #include "ThempMaterial.h"
 #include "ThempGUIButton.h"
-#include "ThempTileArrays.h"
+#include "ThempGameTypes.h"
 #include "ThempObject2D.h"
 #include "ThempObject3D.h"
 #include <DirectXMath.h>
@@ -19,6 +19,10 @@
 #include "ThempLevelConfig.h"
 #include "../Engine/ThempAudio.h"
 #include "ThempLevelScript.h"
+
+
+#include "d3dincl.h"
+
 using namespace Themp;
 const int buttonIcons[16] =
 {
@@ -34,12 +38,12 @@ const int bigButtonIcons[16] =
 	36,34,40,44,
 	42,48,0,106,
 };
-const int buttonRooms[14] =
+const TileType buttonRooms[14] =
 {
-	Type_Treasure_Room, Type_Lair, Type_Hatchery, Type_Training_Room,
-	Type_Library, Type_Bridge, Type_Guardpost, Type_Workshop,
-	Type_Prison, Type_Torture_Room,Type_Barracks, Type_Temple,
-	Type_Graveyard,Type_Scavenger_Room,
+	TileType::Treasure_Room, TileType::Lair, TileType::Hatchery, TileType::Training_Room,
+	TileType::Library, TileType::Bridge, TileType::Guardpost, TileType::Workshop,
+	TileType::Prison, TileType::Torture_Room,TileType::Barracks, TileType::Temple,
+	TileType::Graveyard,TileType::Scavenger_Room,
 };
 
 
@@ -102,23 +106,24 @@ Themp::LevelUI::LevelUI()
 int texIDMisc = 0;
 int texIDPane = 0;
 int texIDText = 0;
-
+float textureScale = 1.0f;
 bool LevelUI::Update(float delta)
 {
 	ImGui::Begin("Texture Finder");
+	ImGui::DragFloat("Texture Scale", &textureScale, 0.1f, 0.1f, 3.0f);
 	ImGui::SliderInt("MiscGUI", &texIDMisc, 0, FileManager::GetLevelMiscAmount());
 	Texture* tex = FileManager::GetLevelMiscGUITexture(texIDMisc, true)->texture;
-	ImGui::Image(tex->m_View,ImVec2(tex->m_Width*2,tex->m_Height * 2));
+	ImGui::Image(tex->m_View,ImVec2(tex->m_Width*textureScale,tex->m_Height* textureScale));
 	ImGui::SliderInt("PaneGUI", &texIDPane, 0, FileManager::GetLevelPaneAmount());
 	tex = FileManager::GetLevelPaneGUITexture(texIDPane, true)->texture;
-	ImGui::Image(tex->m_View, ImVec2(tex->m_Width * 2, tex->m_Height * 2));
+	ImGui::Image(tex->m_View, ImVec2(tex->m_Width*textureScale, tex->m_Height*textureScale));
 	ImGui::SliderInt("Text", &texIDText, 0, 95);
 	tex = FileManager::GetFont(1)->at(texIDText).texture;
-	ImGui::Image(tex->m_View, ImVec2(tex->m_Width * 2, tex->m_Height * 2));
+	ImGui::Image(tex->m_View, ImVec2(tex->m_Width*textureScale, tex->m_Height*textureScale));
 	ImGui::End();
 	if (m_ShowUI)
 	{
-		Player* player = ((Player*)Level::s_CurrentLevel->m_Players[Owner_PlayerRed]);
+		Player* player = ((Player*)Level::s_CurrentLevel->m_Players[PlayerID::Red]);
 		if (player->m_GoldAmount != m_GoldAmount) //changing gold text is expensive, only change when we need to..
 		{
 			m_GoldAmount = player->m_GoldAmount;
@@ -157,7 +162,7 @@ bool LevelUI::Update(float delta)
 		Game* g = System::tSys->m_Game;
 
 		float uiMouseX = 0, uiMouseY = 0;
-		Game::TranslateMousePos(g->m_CursorWindowedX, g->m_CursorWindowedY, uiMouseX, uiMouseY);
+		Game::TranslateMousePos((int)g->m_CursorWindowedX, (int)g->m_CursorWindowedY, uiMouseX, uiMouseY);
 
 		for (size_t i = 0; i < 16; i++)
 		{
@@ -177,7 +182,7 @@ bool LevelUI::Update(float delta)
 						{
 							if (i > 14)
 							{
-								Level::s_CurrentLevel->m_SelectedBuilding = 0;
+								Level::s_CurrentLevel->m_SelectedBuilding = TileType::None;
 							}
 							else
 							{
@@ -235,7 +240,7 @@ void LevelUI::ToggleVisibility()
 			}
 			if (bp.RoomButtons[i])
 			{
-				AvailableObject& ao = Level::s_CurrentLevel->m_LevelScript->AvailableRooms[Owner_PlayerRed][buttonRooms[i]];
+				AvailableObject& ao = Level::s_CurrentLevel->m_LevelScript->AvailableRooms[PlayerID::Red][buttonRooms[i]];
 				if (ao.isAvailable)
 				{
 					bp.RoomButtons[i]->SetVisibility(m_ShowUI);
@@ -342,11 +347,11 @@ void LevelUI::UpdateRoomIcons()
 	{
 		c.second = 0;
 	}
-	for (auto& room : Level::s_CurrentLevel->m_LevelData->m_Rooms[Owner_PlayerRed])
+	for (auto& room : Level::s_CurrentLevel->m_LevelData->m_Rooms[PlayerID::Red])
 	{
 		RoomCounts[room.second.roomType]++;
 	}
-	uint16_t selectedBuilding = Level::s_CurrentLevel->m_SelectedBuilding;
+	TileType selectedBuilding = Level::s_CurrentLevel->m_SelectedBuilding;
 	if (Level::s_CurrentLevel->m_BuildMode && selectedBuilding > 0)
 	{
 		bp.BuildingAmount->SetVisibility(true);
@@ -355,9 +360,9 @@ void LevelUI::UpdateRoomIcons()
 		std::string roomAmount = std::to_string(RoomCounts[selectedBuilding]);
 		std::string roomCost = std::to_string(LevelConfig::roomData[LevelConfig::TypeToRoom(selectedBuilding)].Cost);
 		bp.BuildingAmount->ChangeText(std::string("@") + roomAmount,20);
-		bp.BuildingAmount->SetScale(1.0, 1.333, 1);
+		bp.BuildingAmount->SetScale(1.0f, 1.333f, 1.0f);
 		bp.BuildingCost->ChangeText(roomCost, 20);
-		bp.BuildingCost->SetScale(1.0, 1.333, 1);
+		bp.BuildingCost->SetScale(1.0f, 1.333f, 1.0f);
 		for (int i = 0; i < 14; i++)
 		{
 			if (selectedBuilding == buttonRooms[i])
@@ -403,7 +408,7 @@ void LevelUI::UpdateRoomIcons()
 		}
 		else
 		{
-			AvailableObject& ao = Level::s_CurrentLevel->m_LevelScript->AvailableRooms[Owner_PlayerRed][buttonRooms[i]];
+			AvailableObject& ao = Level::s_CurrentLevel->m_LevelScript->AvailableRooms[PlayerID::Red][buttonRooms[i]];
 			if (ao.isAvailable)
 			{
 				bp.ButtonSquares[i]->SetTexture(FileManager::GetLevelPaneGUITexture(23, true));
@@ -448,8 +453,8 @@ void LevelUI::CreateBuildingPanel()
 			if (iconIndex != 106) //The Sell button comes with its own square
 			{
 				Object2D* obj = new Object2D(Object2D::Source::sLEVEL_PANE, 23, true);
-				obj->SetScale(1.0, 1.15);
-				obj->m_Renderable->SetPosition(-1.9 + ((float)x*0.2), -0.8 - ((float)y*0.35), 0.85f);
+				obj->SetScale(1.0f, 1.15f);
+				obj->m_Renderable->SetPosition(-1.9f + ((float)x*0.2f), -0.8f - ((float)y*0.35f), 0.85f);
 				Themp::System::tSys->m_Game->AddObject3D(obj->m_Renderable);
 
 				bp.ButtonSquares[x + y * 4] = obj;
@@ -458,7 +463,7 @@ void LevelUI::CreateBuildingPanel()
 					GUIButton* button = new GUIButton(Object2D::Source::sLEVEL_PANE, iconIndex, iconIndex, iconIndex, true);
 					button->SetVisibility(false);
 					button->SetPosition(obj->m_Renderable->m_Position);
-					button->SetSize(1.0, 1.15,1,1);
+					button->SetSize(1.0f, 1.15f,1,1);
 					bp.RoomButtons[x + y * 4] = button;
 				}
 			}
@@ -466,17 +471,17 @@ void LevelUI::CreateBuildingPanel()
 	}
 	GUIButton* button = new GUIButton(Object2D::Source::sLEVEL_PANE, 106, 106, 106, true);
 	button->SetVisibility(true);
-	button->SetPosition(-1.9 + ((float)3*0.2), -0.8 - ((float)3*0.35), 0.85f);
-	button->SetSize(1.0, 1.15, 1, 1);
+	button->SetPosition(-1.9f + (3.0f * 0.2f), -0.8f - (3.0f * 0.35f), 0.85f);
+	button->SetSize(1.0f, 1.15f, 1, 1);
 	bp.RoomButtons[15] = button;
 
-	bp.BuildingAmount = new Font("@0", Font::FontTexID::INGAME, true, XMFLOAT3(-1.65, -0.15, 0.85), 20);
-	bp.BuildingCost = new Font("50", Font::FontTexID::INGAME, true, XMFLOAT3(-1.6, -0.4, 0.85), 20);
-	bp.BuildingAmount->SetScale(1.0, 1.333, 1);
-	bp.BuildingCost->SetScale(1.0, 1.333, 1);
+	bp.BuildingAmount = new Font("@0", Font::FontTexID::INGAME, true, XMFLOAT3(-1.65f, -0.15f, 0.85f), 20);
+	bp.BuildingCost = new Font("50", Font::FontTexID::INGAME, true, XMFLOAT3(-1.6f, -0.4f, 0.85f), 20);
+	bp.BuildingAmount->SetScale(1.0f, 1.333f, 1);
+	bp.BuildingCost->SetScale(1.0f, 1.333f, 1);
 	bp.BuildingIcon = new Object2D(Object2D::Source::sLEVEL_PANE, 28, true);
-	bp.BuildingIcon->SetScale(1.0, 1.333);
-	bp.BuildingIcon->m_Renderable->SetPosition(-1.8, -0.28, 0.85);
+	bp.BuildingIcon->SetScale(1.0f, 1.333f);
+	bp.BuildingIcon->m_Renderable->SetPosition(-1.8f, -0.28f, 0.85f);
 	Themp::System::tSys->m_Game->AddObject3D(bp.BuildingIcon->m_Renderable);
 }
 

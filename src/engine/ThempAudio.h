@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d11.h>
+#include <d3dfwd.h>
 #include <xaudio2.h>
 #include <queue>
 #define STREAMING_BUFFER_SIZE 65536

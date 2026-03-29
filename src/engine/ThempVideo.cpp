@@ -3,7 +3,13 @@
 #include "ThempD3D.h"
 #include "ThempMaterial.h"
 #include "ThempAudio.h"
+#include "utility/print.h"
+#include "utility/timer.h"
 #include <chrono>
+
+
+#include "d3dincl.h"
+#include <d3d11.h>
 
 #include "SmackerDecoder.h"
 
@@ -22,16 +28,16 @@ namespace Themp
 	}
 
 	//override for game
-	Video::Video(FileData* file)
+	Video::Video(const FileData& file)
 	{
 		decoder = new SmackerDecoder();
-		if (Load(file->data, (uint32_t)file->size))
+		if (Load(file.data, (uint32_t)file.size))
 		{
 			isLoaded = true;
 		}
 	}
 
-	bool Video::Load(BYTE* data, uint32_t size)
+	bool Video::Load(uint8_t* data, uint32_t size)
 	{
 		if (decoder->loadStream(new MemoryReadStream(data, size, false)))
 		{
@@ -41,7 +47,7 @@ namespace Themp
 			m_NumFrames = decoder->video->getFrameCount();
 			m_Width = decoder->video->getWidth();
 			m_Height = decoder->video->getHeight();
-			//System::Print("Opened file %s\nWidth: %d\nHeight: %d\nFrames: %d\nFPS: %f", path.c_str(), w, h, f, m_Fps);
+			//Print("Opened file %s\nWidth: %d\nHeight: %d\nFrames: %d\nFPS: %f", path.c_str(), w, h, f, m_Fps);
 			m_DePalettizedImage = new unsigned char[m_Width*m_Height * 4];
 			if (decoder->_header.audioInfo[0].hasAudio)
 			{
@@ -64,7 +70,7 @@ namespace Themp
 		}
 		else
 		{
-			System::Print("ThempVideo::Load - Failed to open video file");
+			Print("ThempVideo::Load - Failed to open video file");
 			return false;
 		}
 

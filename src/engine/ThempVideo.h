@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d3d11.h>
+#include "utility/timer.h"
 
 namespace Themp
 {
@@ -11,8 +11,8 @@ namespace Themp
 	{
 	public:
 		Video();
-		Video(FileData* file);
-		bool Load(BYTE * data, uint32_t size);
+		Video(const FileData& file);
+		bool Load(uint8_t * data, uint32_t size);
 		int Play();
 		void Stop();
 		~Video();
@@ -32,7 +32,7 @@ namespace Themp
 
 		unsigned long m_Width, m_Height, m_NumFrames;
 
-		Timer videoTimer;
+		Utility::Timer videoTimer;
 		Sound* sound;
 	};
 };

@@ -7,13 +7,21 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <utility/fileutils.h>
+#include "utility/print.h"
 
 #pragma warning( disable : 4996)
 
+#include "d3dincl.h"
+#include <d3d11.h>
+
+extern HWND g_Window;
+
 namespace Themp
 {
-	std::unordered_map<std::string,std::vector<BYTE>> ShaderFiles =
+	std::unordered_map<std::string,std::vector<uint8_t>> ShaderFiles =
 	{
+#if 0
 #ifndef _DEBUG
 #include "shaders\debugline_vs.h"
 #include "shaders\debugline_ps.h"
@@ -44,6 +52,7 @@ namespace Themp
 #include "shaders\indicator_vs_d.h"
 #include "shaders\creature_vs_d.h"
 #include "shaders\creature_ps_d.h"
+#endif
 #endif
 	};
 
@@ -128,7 +137,7 @@ namespace Themp
 		m_3DObjects.clear();
 		Resources::TRes = nullptr;
 	}
-	void Resources::RemoveObject3D(std::string name, Object3D* m)
+	void Resources::RemoveObject3D(const std::string& name, Object3D* m)
 	{
 		//TODO: Safely be able to "delete" objects, requires manager rework
 		assert(false);
@@ -162,28 +171,37 @@ namespace Themp
 		//	}
 		//}
 	}
-	ID3D10Blob* Resources::ReadToBlob(std::string path)
+	ID3D10Blob* Resources::ReadToBlob(const std::string& path)
 	{
 		ID3D10Blob* nBlob = nullptr;
 		auto shaderData = ShaderFiles.find(path);
 		if (shaderData != ShaderFiles.end())
 		{
 			D3D10CreateBlob(shaderData->second.size(), &nBlob);
-			//memcpy
 			memcpy(nBlob->GetBufferPointer(), shaderData->second.data(), shaderData->second.size());
-			//ifs.read((char*)nBlob->GetBufferPointer(), length);
 		}
 		else
 		{
-			std::wstring converted = L"";
-			std::copy(path.begin(), path.end(), std::back_inserter(converted));
-			std::wstring ErrorMsg = L"Could not find shader: " + converted;
-			MessageBox(System::tSys->m_Window, ErrorMsg.c_str(), L"Shader Error!", MB_OK);
-			System::tSys->m_Quitting = true;
+			std::string filePath = "../data/shaders/" + path + ".cso";
+			const auto& fileData = Utility::ReadFileToVector(filePath);
+
+			if (fileData.size() == 0)
+			{
+				std::wstring converted = L"";
+				std::copy(path.begin(), path.end(), std::back_inserter(converted));
+				std::wstring ErrorMsg = L"Could not find shader: " + converted;
+				MessageBox(g_Window, ErrorMsg.c_str(), L"Shader Error!", MB_OK);
+				System::tSys->m_Quitting = true;
+			}
+			else
+			{
+				ShaderFiles[path] = fileData;
+				return ReadToBlob(path);
+			}
 		}
 		return nBlob;
 	}
-	Texture* Resources::GetTexture(std::string path, int d3d11_CPU_ACCESS_FLAG)
+	Texture* Resources::GetTexture(const std::string& path, int d3d11_CPU_ACCESS_FLAG)
 	{
 		if (path == "")
 		{
@@ -228,25 +246,28 @@ namespace Themp
 		return tex;
 	}
 
-	Themp::Material* Resources::GetMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
+	Themp::Material* Resources::GetMaterial(const std::string& materialName, const std::string& texture, const std::string& shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
 	{
 		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find("_" + materialName);
 		if (s != m_Materials.end()) return s->second;
-		if (shaderPath == "")
+
+		std::string adjustedPath = shaderPath;
+		if (adjustedPath == "")
 		{
-			shaderPath = "default";
+			adjustedPath = "default";
 		}
-		return LoadMaterial("_" + materialName, texture, shaderPath, geometryShader, nonDefaultIED, numElements, multisample);
+		return LoadMaterial("_" + materialName, texture, adjustedPath, geometryShader, nonDefaultIED, numElements, multisample);
 	}
-	Themp::Material* Resources::GetMaterial(std::string materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, std::string shaderPath, bool geometryShader, bool multisample)
+	Themp::Material* Resources::GetMaterial(const std::string& materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, const std::string& shaderPath, bool geometryShader, bool multisample)
 	{
 		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find("_" + materialName);
 		if (s != m_Materials.end()) return s->second;
-		if (shaderPath == "")
+		std::string adjustedPath = shaderPath;
+		if (adjustedPath == "")
 		{
-			shaderPath = "default";
+			adjustedPath = "default";
 		}
-		return LoadMaterial("_" + materialName, textures, textureTypes, shaderPath, geometryShader, multisample);
+		return LoadMaterial("_" + materialName, textures, textureTypes, adjustedPath, geometryShader, multisample);
 	}
 	//Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath)
 	//{
@@ -262,7 +283,7 @@ namespace Themp
 	//	}
 	//	return LoadMaterial(uniqueName, texture, shaderPath, false);
 	//}
-	Themp::Material * Resources::GetUniqueMaterial(std::string texture, std::string shaderPath,D3D11_INPUT_ELEMENT_DESC* IED,int IEDNumElements)
+	Themp::Material * Resources::GetUniqueMaterial(const std::string& texture, const std::string& shaderPath, D3D11_INPUT_ELEMENT_DESC* IED,int IEDNumElements)
 	{
 		char buf[64] = { 0 };
 		_ui64toa(currentUniqueMatIndex, buf, 10);
@@ -270,13 +291,14 @@ namespace Themp
 		currentUniqueMatIndex++;
 		std::unordered_map<std::string, Themp::Material*>::iterator s = m_Materials.find(uniqueName);
 		if (s != m_Materials.end()) return s->second;
-		if (shaderPath == "")
+		std::string adjustedPath = shaderPath;
+		if (adjustedPath == "")
 		{
-			shaderPath = "default";
+			adjustedPath = "default";
 		}
-		return LoadMaterial(uniqueName, texture, shaderPath, false,IED,IEDNumElements);
+		return LoadMaterial(uniqueName, texture, adjustedPath, false,IED,IEDNumElements);
 	}
-	Themp::Object3D* Resources::GetModel(std::string path, bool uniqueMesh)
+	Themp::Object3D* Resources::GetModel(const std::string& path, bool uniqueMesh)
 	{
 		std::unordered_map<std::string, Themp::Object3D*>::iterator s = m_Models.find(path);
 		if (s != m_Models.end())
@@ -345,7 +367,7 @@ namespace Themp
 			m_VertexBuffers.push_back(buf);
 			return m_VertexBuffers.size() - 1;
 		}
-		System::Print("Could not create vertex buffer!");
+		Print("Could not create vertex buffer!");
 		return 0;
 	}
 	bool Resources::EditVertexBuffer(int vertexBuffer, Vertex* vertices, size_t numVertices)
@@ -418,7 +440,7 @@ namespace Themp
 			m_IndexBuffers.push_back(buf);
 			return m_IndexBuffers.size() - 1;
 		}
-		System::Print("Could not create index buffer!");
+		Print("Could not create index buffer!");
 		return 0;
 	}
 	bool Resources::EditIndexBuffer(int indexBuffer, uint32_t* indices, size_t numIndices)
@@ -464,7 +486,7 @@ namespace Themp
 		}
 		return false;
 	}
-	ID3D11VertexShader * Resources::GetVertexShader(std::string name)
+	ID3D11VertexShader * Resources::GetVertexShader(const std::string& name)
 	{
 		std::unordered_map<std::string, ID3D11VertexShader*>::iterator s = m_VertexShaders.find(name);
 		if (s != m_VertexShaders.end()) return s->second;
@@ -473,14 +495,14 @@ namespace Themp
 		ID3D11VertexShader* vShader = nullptr;
 		ID3D10Blob* VSRaw = ReadToBlob(name);
 		result = System::tSys->m_D3D->m_Device->CreateVertexShader(VSRaw->GetBufferPointer(), VSRaw->GetBufferSize(), nullptr, &vShader);
-		if (result != S_OK) { System::Print("Could not create Vertex shader from: %s", name.c_str()); CLEAN(VSRaw); return nullptr; }
+		if (result != S_OK) { Print("Could not create Vertex shader from: %s", name.c_str()); CLEAN(VSRaw); return nullptr; }
 		m_VertexShaders[name] = vShader;
 		CLEAN(VSRaw);
 
 		return vShader;
 	}
 
-	ID3D11PixelShader * Resources::GetPixelShader(std::string name)
+	ID3D11PixelShader * Resources::GetPixelShader(const std::string& name)
 	{
 		std::unordered_map<std::string, ID3D11PixelShader*>::iterator s = m_PixelShaders.find(name);
 		if (s != m_PixelShaders.end()) return s->second;
@@ -489,12 +511,12 @@ namespace Themp
 		ID3D11PixelShader* pShader = nullptr;
 		ID3D10Blob* PSRaw = ReadToBlob(name);
 		result = System::tSys->m_D3D->m_Device->CreatePixelShader(PSRaw->GetBufferPointer(), PSRaw->GetBufferSize(), nullptr, &pShader);
-		if (result != S_OK) { System::Print("Could not create Pixel shader from: %s", name.c_str() ); CLEAN(PSRaw); return nullptr; }
+		if (result != S_OK) { Print("Could not create Pixel shader from: %s", name.c_str() ); CLEAN(PSRaw); return nullptr; }
 		m_PixelShaders[name] = pShader;
 		CLEAN(PSRaw);
 		return pShader;
 	}
-	ID3D11GeometryShader * Resources::GetGeometryShader(std::string name)
+	ID3D11GeometryShader * Resources::GetGeometryShader(const std::string& name)
 	{
 		std::unordered_map<std::string, ID3D11GeometryShader*>::iterator s = m_GeometryShaders.find(name);
 		if (s != m_GeometryShaders.end()) return s->second;
@@ -503,15 +525,15 @@ namespace Themp
 		ID3D11GeometryShader* gShader = nullptr;
 		ID3D10Blob* GSRaw = ReadToBlob(name);
 		result = System::tSys->m_D3D->m_Device->CreateGeometryShader(GSRaw->GetBufferPointer(), GSRaw->GetBufferSize(), nullptr, &gShader);
-		if (result != S_OK) { System::Print("Could not create Geometry shader from: %", name.c_str()); CLEAN(GSRaw); return nullptr; }
+		if (result != S_OK) { Print("Could not create Geometry shader from: %", name.c_str()); CLEAN(GSRaw); return nullptr; }
 		m_GeometryShaders[name] = gShader;
 		CLEAN(GSRaw);
 		return gShader;
 	}
-	Themp::Material* Resources::LoadMaterial(std::string materialName, std::string texture, std::string shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
+	Themp::Material* Resources::LoadMaterial(const std::string& materialName, const std::string& texture, const std::string& shaderPath, bool geometryShader, D3D11_INPUT_ELEMENT_DESC* nonDefaultIED, int numElements, bool multisample)
 	{
-		std::transform(shaderPath.begin(), shaderPath.end(), shaderPath.begin(), ::tolower);
 		std::string tempPath = shaderPath;
+		std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 		std::unordered_map<std::string, Material*>::iterator s = m_Materials.find(materialName);
 		if (s != m_Materials.end()) return s->second;
 
@@ -528,7 +550,7 @@ namespace Themp
 			material->m_VertexShader = Resources::TRes->GetVertexShader(tempPath);
 			if (!material->m_VertexShader)
 			{
-				System::Print("Couldn't find Vertex shader: %s" ,tempPath.c_str());
+				Print("Couldn't find Vertex shader: %s" ,tempPath.c_str());
 				delete material;
 				return nullptr;
 			}
@@ -545,7 +567,7 @@ namespace Themp
 			CLEAN(vsShaderBlob);
 			if (res != S_OK) 
 			{
-				System::Print("Could not create shader input layout"); 
+				Print("Could not create shader input layout"); 
 				delete material;
 				return nullptr; 
 			}
@@ -553,6 +575,7 @@ namespace Themp
 		//PIXEL SHADER
 		{
 			tempPath = shaderPath;
+			std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 #ifdef _DEBUG
 			tempPath.append("_ps_d");
 #else
@@ -561,7 +584,7 @@ namespace Themp
 			material->m_PixelShader = Resources::TRes->GetPixelShader(tempPath);
 			if (!material->m_PixelShader)
 			{
-				System::Print("Couldn't find Pixel shader: %s", tempPath.c_str());
+				Print("Couldn't find Pixel shader: %s", tempPath.c_str());
 				delete material;
 				return nullptr;
 			}
@@ -569,13 +592,14 @@ namespace Themp
 		if (geometryShader)
 		{
 			tempPath = shaderPath;
+			std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 #ifdef _DEBUG
 			tempPath.append("_gs_d");
 #else
 			tempPath.append("_gs");
 #endif
 			material->m_GeometryShader = Resources::TRes->GetGeometryShader(tempPath);
-			if (!material->m_GeometryShader)System::Print("Couldn't find Geometry shader: %s", tempPath.c_str());
+			if (!material->m_GeometryShader)Print("Couldn't find Geometry shader: %s", tempPath.c_str());
 		}
 		std::vector<std::string> textures = { texture };
 		std::vector<std::uint8_t> textureTypes = { 0 };
@@ -584,11 +608,11 @@ namespace Themp
 		return material;
 	}
 
-	Themp::Material* Resources::LoadMaterial(std::string materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, std::string shaderPath, bool geometryShader, bool multisample)
+	Themp::Material* Resources::LoadMaterial(const std::string& materialName, std::vector<std::string>& textures, std::vector<uint8_t>& textureTypes, const std::string& shaderPath, bool geometryShader, bool multisample)
 	{
 
-		std::transform(shaderPath.begin(), shaderPath.end(), shaderPath.begin(), ::tolower);
 		std::string tempPath = shaderPath;
+		std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 
 		std::unordered_map<std::string, Material*>::iterator s = m_Materials.find(materialName);
 		if (s != m_Materials.end()) return s->second;
@@ -606,7 +630,7 @@ namespace Themp
 			material->m_VertexShader = Resources::TRes->GetVertexShader(tempPath);
 			if (!material->m_VertexShader)
 			{
-				System::Print("Couldn't find Vertex shader: %s" ,tempPath.c_str());
+				Print("Couldn't find Vertex shader: %s" ,tempPath.c_str());
 				delete material;
 				return nullptr;
 			}
@@ -616,30 +640,32 @@ namespace Themp
 			res = Themp::System::tSys->m_D3D->m_Device->CreateInputLayout(Themp::D3D::DefaultInputLayoutDesc, Themp::D3D::DefaultInputLayoutNumElements, vsShaderBlob->GetBufferPointer(), vsShaderBlob->GetBufferSize(), &material->m_InputLayout);
 
 			CLEAN(vsShaderBlob);
-			if (res != S_OK) {System::Print( "Could not create shader input layout"); delete material;  return nullptr; }
+			if (res != S_OK) {Print( "Could not create shader input layout"); delete material;  return nullptr; }
 		}
 		//PIXEL SHADER
 		{
 			tempPath = shaderPath;
+			std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 #ifdef _DEBUG
 			tempPath.append("_ps_d");
 #else
 			tempPath.append("_ps");
 #endif
 			material->m_PixelShader = Resources::TRes->GetPixelShader(tempPath);
-			if (!material->m_PixelShader)System::Print( "Couldn't find Pixel shader: %s" ,tempPath.c_str());
+			if (!material->m_PixelShader)Print( "Couldn't find Pixel shader: %s" ,tempPath.c_str());
 		}
 
 		if (geometryShader)
 		{
 			tempPath = shaderPath;
+			std::transform(tempPath.begin(), tempPath.end(), tempPath.begin(), ::tolower);
 #ifdef _DEBUG
 			tempPath.append("_gs_d");
 #else
 			tempPath.append("_gs");
 #endif
 			material->m_GeometryShader = Resources::TRes->GetGeometryShader(tempPath);
-			if (!material->m_GeometryShader)System::Print( "Couldn't find Geometry shader: %s" , tempPath.c_str());
+			if (!material->m_GeometryShader)Print( "Couldn't find Geometry shader: %s" , tempPath.c_str());
 		}
 
 		material->ReadTextures(textures,textureTypes);
@@ -647,7 +673,7 @@ namespace Themp
 		return material;
 	}
 
-	Themp::Object3D* Resources::LoadModel(std::string name)
+	Themp::Object3D* Resources::LoadModel(const std::string& name)
 	{
 		return 0;
 	}
@@ -676,5 +702,67 @@ namespace Themp
 		}
 
 		return output;
+	}
+
+	void Resources::Buffer::InitBuf(int data_size, int structSize, uint32_t bindFlags, D3D11_CPU_ACCESS_FLAG cpuType, void* initData)
+	{
+		D3D11_BUFFER_DESC desc{ 0 };
+		desc.ByteWidth = data_size;
+		desc.StructureByteStride = structSize;
+		desc.BindFlags = bindFlags;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.MiscFlags = (bindFlags & D3D11_BIND_UNORDERED_ACCESS || bindFlags & D3D11_BIND_SHADER_RESOURCE) ? D3D11_RESOURCE_MISC_BUFFER_STRUCTURED : 0;
+		desc.CPUAccessFlags = cpuType;
+		if (initData != nullptr)
+		{
+			D3D11_SUBRESOURCE_DATA data;
+			data.pSysMem = initData;
+			Themp::D3D::s_D3D->m_Device->CreateBuffer(&desc, &data, &buf);
+		}
+		else
+		{
+			Themp::D3D::s_D3D->m_Device->CreateBuffer(&desc, nullptr, &buf);
+		}
+
+	}
+	void Resources::Buffer::InitUAV()
+	{
+		if (!buf)
+		{
+			Print("Can't Init UAV, Buf wasn't initialized yet!");
+			return;
+		}
+
+		D3D11_BUFFER_DESC bufDesc{ 0 };
+		buf->GetDesc(&bufDesc);
+
+		D3D11_UNORDERED_ACCESS_VIEW_DESC UAVdesc;
+		ZeroMemory(&UAVdesc, sizeof(D3D11_UNORDERED_ACCESS_VIEW_DESC));
+		UAVdesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		UAVdesc.Buffer.FirstElement = 0;
+		UAVdesc.Format = DXGI_FORMAT_UNKNOWN;
+		UAVdesc.Buffer.NumElements = bufDesc.ByteWidth / bufDesc.StructureByteStride;
+		Themp::D3D::s_D3D->m_Device->CreateUnorderedAccessView(buf, &UAVdesc, &uav);
+	}
+	void Resources::Buffer::InitSRV()
+	{
+		if (!buf)
+		{
+			Print("Can't Init SRV, Buf wasn't initialized yet!");
+			return;
+		}
+
+		D3D11_BUFFER_DESC bufDesc{ 0 };
+		buf->GetDesc(&bufDesc);
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
+		ZeroMemory(&SRVdesc, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+
+		SRVdesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+		SRVdesc.Format = DXGI_FORMAT_UNKNOWN;
+		SRVdesc.BufferEx.FirstElement = 0;
+		SRVdesc.BufferEx.NumElements = bufDesc.ByteWidth / bufDesc.StructureByteStride;
+
+		Themp::D3D::s_D3D->m_Device->CreateShaderResourceView(buf, &SRVdesc, &srv);
 	}
 }

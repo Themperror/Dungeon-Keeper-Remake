@@ -3,8 +3,10 @@
 #include "ThempD3D.h"
 #include "ThempResources.h"
 #include "ThempMaterial.h"
-#include <d3d10.h>
+
+#include "d3dincl.h"
 #include <d3d11.h>
+#include <d3d10_1.h>
 
 using namespace DirectX;
 namespace Themp

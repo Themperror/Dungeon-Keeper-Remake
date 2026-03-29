@@ -1,18 +1,20 @@
 #include "ThempSystem.h"
 #include "ThempLevelScript.h"
+#include "ThempGameTypes.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
 #include "Players/ThempCPUPlayer.h"
 #include "Players/ThempGoodPlayer.h"
 #include "Players/ThempPlayer.h"
-#include "ThempTileArrays.h"
 #include "Creature/ThempCreature.h"
 #include "Creature/ThempCreatureParty.h"
 #include "ThempLevelUI.h"
+#include "utility/print.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
 #include <list>
+#include <imgui.h>
 using namespace Themp;
 
 const std::unordered_map<std::string, LevelScript::Command::ScriptFunctions> StringToScriptFunction =
@@ -92,23 +94,23 @@ std::unordered_map<std::string, CreatureData::CreatureType> StringToCreatureType
 	{"WIZARD",CreatureData::CreatureType::CREATURE_WIZARD},
 };
 
-std::unordered_map<std::string, uint16_t> StringToRoomType
+std::unordered_map<std::string, TileType> StringToRoomType
 {
-	{"TREASURE", Type_Treasure_Room},
-	{"LAIR", Type_Lair},
-	{"GARDEN", Type_Hatchery},
-	{"BRIDGE", Type_Bridge},
-	{"BARRACKS", Type_Barracks},
-	{"TRAINING", Type_Training_Room},
-	{"RESEARCH",Type_Library},
-	{"WORKSHOP",Type_Workshop},
-	{"PRISON",Type_Prison},
-	{"TORTURE",Type_Torture_Room},
-	{"SCAVENGER",Type_Scavenger_Room},
-	{"TEMPLE",Type_Temple},
-	{"GRAVEYARD",Type_Graveyard},
-	{"GUARD_POST",Type_Guardpost},
-	{"ENTRANCE",Type_Portal},
+	{"TREASURE", TileType::Treasure_Room},
+	{"LAIR", TileType::Lair},
+	{"GARDEN", TileType::Hatchery},
+	{"BRIDGE", TileType::Bridge},
+	{"BARRACKS", TileType::Barracks},
+	{"TRAINING", TileType::Training_Room},
+	{"RESEARCH",TileType::Library},
+	{"WORKSHOP",TileType::Workshop},
+	{"PRISON",TileType::Prison},
+	{"TORTURE",TileType::Torture_Room},
+	{"SCAVENGER",TileType::Scavenger_Room},
+	{"TEMPLE",TileType::Temple},
+	{"GRAVEYARD",TileType::Graveyard},
+	{"GUARD_POST",TileType::Guardpost},
+	{"ENTRANCE",TileType::Portal},
 };
 
 struct GameTurnTimer
@@ -121,7 +123,7 @@ std::array<std::unordered_map<std::string, GameTurnTimer>, 6> turnTimers;
 std::array<std::unordered_map<std::string,int>,6> LevelScript::GameValues;
 
 std::array<std::unordered_map<CreatureData::CreatureType, AvailableObject>, 6> LevelScript::AvailableCreatures;
-std::array<std::unordered_map<uint16_t, AvailableObject>, 6> LevelScript::AvailableRooms;
+std::array<std::unordered_map<TileType, AvailableObject>, 6> LevelScript::AvailableRooms;
 std::array<std::unordered_map<Spells, AvailableObject>, 6> LevelScript::AvailableSpells;
 std::array<std::unordered_map<Traps, AvailableObject>, 6> LevelScript::AvailableTraps;
 std::array<std::unordered_map<Doors, AvailableObject>, 6> LevelScript::AvailableDoors;
@@ -281,8 +283,72 @@ void LevelScript::Parse(FileData data)
 		//temporary to deal with IF_AVAILABLE on later levels
 		if (line.find("IF_AVAILABLE(") == 0)
 		{
-			IfStatement* ifs = new IfStatement();
+			IfAvailable* ifs = new IfAvailable();
 			ifs->child = nullptr;
+
+			if (currentIf.size() > 0)
+			{
+				currentIf.back()->child = ifs;
+			}
+			currentIf.push_back(ifs);
+			continue;
+		}
+		//temporary to deal with IF_ACTION_POINT on later levels
+		if (line.find("IF_ACTION_POINT(") == 0)
+		{
+			IfActionPoint* ifs = new IfActionPoint();
+			ifs->child = nullptr;
+
+			int argCount = 0;
+			int offset = 16; //skip the IF_ACTION_POINT(
+			while (offset < line.size() - 1 && line[offset] != ')')
+			{
+				std::string token = "";
+
+				while (offset < line.size() - 1 && isdigit(line[offset]))
+				{
+					token += line[offset];
+					offset++;
+				}
+				if (token.size() == 0)
+				{
+					Print("Syntax Error!, expected integral value after evaluator @L%i", token.c_str(), linenum);
+					//goto END;
+				}
+				ifs->actionPointID = atoi(token.c_str());
+				//followed by a ,
+				if (line[offset] != ',')
+				{
+					Print("Syntax Error!, expected ',' @L%i", linenum);
+					goto END;
+				}
+
+				offset++; //skip the ,
+
+				token = "";
+
+				while (isalnum(line[offset]))
+				{
+					token += line[offset];
+					offset++;
+				}
+
+				ifs->owner =
+					(token == "PLAYER0" ? PlayerID::Red :
+						token == "PLAYER1" ? PlayerID::Blue :
+						token == "PLAYER2" ? PlayerID::Green :
+						token == "PLAYER3" ? PlayerID::Yellow :
+						token == "PLAYER_GOOD" ? PlayerID::White :
+						token == "ALL_PLAYERS" ? PlayerID::None : 255);
+
+				if (ifs->owner == 255)
+				{
+					Print("Syntax Error!, expected a valid player qualifier! Got: %s  @L%i", token.c_str(), linenum);
+					ifs->owner = 0;
+					goto END;
+				}
+			}
+
 
 			if (currentIf.size() > 0)
 			{
@@ -296,7 +362,7 @@ void LevelScript::Parse(FileData data)
 		if (line.find("IF(") == 0)
 		{
 			//we enter a if-statement, next lines are nested inside
-			IfStatement* ifs = new IfStatement();
+			IfVar* ifs = new IfVar();
 			ifs->child = nullptr;
 
 			int argCount = 0;
@@ -311,23 +377,23 @@ void LevelScript::Parse(FileData data)
 				}
 
 				ifs->owner =
-					(token == "PLAYER0" ? Owner_PlayerRed :
-						token == "PLAYER1" ? Owner_PlayerBlue :
-						token == "PLAYER2" ? Owner_PlayerGreen :
-						token == "PLAYER3" ? Owner_PlayerYellow :
-						token == "PLAYER_GOOD" ? Owner_PlayerWhite :
-						token == "ALL_PLAYERS" ? Owner_PlayerNone : 255);
+					(token == "PLAYER0" ? PlayerID::Red :
+						token == "PLAYER1" ? PlayerID::Blue :
+						token == "PLAYER2" ? PlayerID::Green :
+						token == "PLAYER3" ? PlayerID::Yellow :
+						token == "PLAYER_GOOD" ? PlayerID::White :
+						token == "ALL_PLAYERS" ? PlayerID::None : 255);
 
 				if (ifs->owner == 255)
 				{
-					System::Print("Syntax Error!, expected a valid player qualifier! Got: %s  @L%i",token.c_str(), linenum);
+					Print("Syntax Error!, expected a valid player qualifier! Got: %s  @L%i",token.c_str(), linenum);
 					ifs->owner = 0;
 					goto END;
 				}
 				//followed by a ,
 				if (line[offset] != ',')
 				{
-					System::Print("Syntax Error!, expected ',' @L%i", linenum);
+					Print("Syntax Error!, expected ',' @L%i", linenum);
 					goto END;
 				}
 				offset++; //skip the ,
@@ -344,7 +410,7 @@ void LevelScript::Parse(FileData data)
 
 				if (token.size() <= 1)
 				{
-					System::Print("Syntax Error!, expected engine variable name, got: %s  @L%i",token.c_str(), linenum);
+					Print("Syntax Error!, expected engine variable name, got: %s  @L%i",token.c_str(), linenum);
 					//goto END;
 				}
 
@@ -356,15 +422,15 @@ void LevelScript::Parse(FileData data)
 					offset++;
 				}
 				ifs->eval =
-					(token == "<" ? IfStatement::Evaluator::SMALLERTHAN :
-						token == "<=" ? IfStatement::Evaluator::SMALLEROREQUALTO :
-						token == "==" ? IfStatement::Evaluator::EQUALTO :
-						token == ">=" ? IfStatement::Evaluator::BIGGEROREQUALTO :
-						token == ">" ? IfStatement::Evaluator::BIGGERTHAN :
-						IfStatement::Evaluator::NOTEQUAL);
-				if (token != "!=" && ifs->eval == IfStatement::Evaluator::NOTEQUAL)
+					(token == "<" ? Evaluator::SMALLERTHAN :
+						token == "<=" ? Evaluator::SMALLEROREQUALTO :
+						token == "==" ? Evaluator::EQUALTO :
+						token == ">=" ? Evaluator::BIGGEROREQUALTO :
+						token == ">" ? Evaluator::BIGGERTHAN :
+						Evaluator::NOTEQUAL);
+				if (token != "!=" && ifs->eval == Evaluator::NOTEQUAL)
 				{
-					System::Print("Syntax Error!,invalid evaluator!, got: %s  @L%i", token.c_str(), linenum);
+					Print("Syntax Error!,invalid evaluator!, got: %s  @L%i", token.c_str(), linenum);
 				}
 				token = "";
 				while (offset < line.size() - 1 && isdigit(line[offset]))
@@ -374,7 +440,7 @@ void LevelScript::Parse(FileData data)
 				}
 				if (token.size() == 0)
 				{
-					System::Print("Syntax Error!, expected integral value after evaluator @L%i", token.c_str(), linenum);
+					Print("Syntax Error!, expected integral value after evaluator @L%i", token.c_str(), linenum);
 					//goto END;
 				}
 				ifs->number = atoi(token.c_str());
@@ -394,6 +460,7 @@ void LevelScript::Parse(FileData data)
 			{
 				m_IfStatements.push_back(currentIf.back());
 			}
+			//if(currentIf.size() > 0) //some levels have more ENDIF's than IF's .. ignore
 			currentIf.pop_back();
 			continue;
 		}
@@ -457,7 +524,7 @@ void LevelScript::Parse(FileData data)
 			}
 			else
 			{
-				System::Print("Unrecognized Command: %s",command.c_str());
+				Print("Unrecognized Command: %s",command.c_str());
 			}
 			if (currentIf.size() > 0)
 			{
@@ -470,32 +537,31 @@ void LevelScript::Parse(FileData data)
 		}
 	}
 END:
-	System::Print("Finished Parsing the level script!");
+	Print("Finished Parsing the level script!");
 }
 
-uint8_t PlayerTagToNumber(const std::string& tag)
+PlayerID PlayerTagToNumber(const std::string& tag)
 {
-	return tag == "PLAYER0" ? Owner_PlayerRed :
-		tag == "PLAYER1" ? Owner_PlayerBlue :
-		tag == "PLAYER2" ? Owner_PlayerGreen :
-		tag == "PLAYER3" ? Owner_PlayerYellow :
-		tag == "PLAYER_GOOD" ? Owner_PlayerWhite :
-		tag == "ALL_PLAYERS" ? Owner_PlayerNone : 0;
+	return tag == "PLAYER0" ? PlayerID::Red :
+		tag == "PLAYER1" ? PlayerID::Blue :
+		tag == "PLAYER2" ? PlayerID::Green :
+		tag == "PLAYER3" ? PlayerID::Yellow :
+		tag == "PLAYER_GOOD" ? PlayerID::White :
+		tag == "ALL_PLAYERS" ? PlayerID::None : PlayerID::Red;
 }
 void LevelScript::ExecuteCommand(Command* c)
 {
-	//if PlayerTagToNumber == ALL_PLAYERS ( Owner_PlayerNone )
+	//if PlayerTagToNumber == ALL_PLAYERS ( PlayerID::None )
 	//execute it for ALL players
 
-	uint8_t nr = 0;
 	switch (c->function)
 	{
 	case Command::ScriptFunctions::WIN_GAME:
-		System::Print("Level beaten! You win! Yay!");
+		Print("Level beaten! You win! Yay!");
 		Level::s_CurrentLevel->m_IsCompleted = true;
 		break;
 	case Command::ScriptFunctions::LOSE_GAME:
-		System::Print("Level lost! Sad times.. Aww..");
+		Print("Level lost! Sad times.. Aww..");
 		Level::s_CurrentLevel->m_IsCompleted = true;
 		break;
 	case Command::ScriptFunctions::DISPLAY_INFORMATION:
@@ -516,12 +582,12 @@ void LevelScript::ExecuteCommand(Command* c)
 		break;
 	case Command::ScriptFunctions::ADD_TO_PARTY:
 	{
-		GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[Owner_PlayerWhite];
+		GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[PlayerID::White];
 		std::string partyName = c->argsStrings[0];
-		auto& party =  m_CreatureParties.find(partyName);
+		const auto& party =  m_CreatureParties.find(partyName);
 		if (party == m_CreatureParties.end())
 		{
-			System::Print("Party %s does not exist!", partyName.c_str());
+			Print("Party %s does not exist!", partyName.c_str());
 			return;
 		}
 		party->second.AddToParty(StringToCreatureType[c->argsStrings[1]], c->argsInts[2], c->argsInts[3], CreatureParty::StringToObjectives.find(c->argsStrings[4])->second, c->argsInts[5]);
@@ -542,19 +608,19 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		else //command specifies a player name in which case we spawn it at their dungeon heart
 		{
-			System::Print("Unimplemented: ADD_PARTY_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
+			Print("Unimplemented: ADD_PARTY_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
 			return;
 		}
 		for(int i = 0; i < c->argsInts[3];i++)
 		{
 			std::string partyName = c->argsStrings[1];
-			auto& party = m_CreatureParties.find(partyName);
+			const auto& party = m_CreatureParties.find(partyName);
 			if (party == m_CreatureParties.end())
 			{
-				System::Print("Party %s does not exist!", partyName.c_str());
+				Print("Party %s does not exist!", partyName.c_str());
 				return;
 			}
-			uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+			PlayerID owner = PlayerTagToNumber(c->argsStrings[0]);
 			Level::s_CurrentLevel->m_Players[owner]->AddPartyToLevel(owner,party->second, subtileTarget);
 		}
 		break;
@@ -574,24 +640,24 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		else //command specifies a player name in which case we spawn it at their dungeon heart
 		{
-			System::Print("Unimplemented: ADD_TUNNELLER_PARTY_TO_LEVEL, Argument 2 == %s", c->argsStrings[2]);
+			Print("Unimplemented: ADD_TUNNELLER_PARTY_TO_LEVEL, Argument 2 == %s", c->argsStrings[2]);
 			return;
 		}
 		std::string partyName = c->argsStrings[1];
 		auto party = m_CreatureParties.find(partyName);
 		if (party == m_CreatureParties.end())
 		{
-			System::Print("Party %s does not exist!", partyName.c_str());
+			Print("Party %s does not exist!", partyName.c_str());
 			return;
 		}
-		uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+		PlayerID owner = PlayerTagToNumber(c->argsStrings[0]);
 		Level::s_CurrentLevel->m_Players[owner]->AddTunnellerPartyToLevel(owner,c->argsInts[5], c->argsInts[6], party->second, subtileTarget,c->argsStrings[3],c->argsInts[4]);
 
 	}
 		break;
 	case Command::ScriptFunctions::ADD_TUNNELLER_TO_LEVEL:
 	{
-		//GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[Owner_PlayerWhite];
+		//GoodPlayer* player = (GoodPlayer*)Level::s_CurrentLevel->m_Players[PlayerID::White];
 		XMINT2 subtileTarget;
 		if (c->argsInts[1] < 0)
 		{
@@ -606,12 +672,12 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		else //command specifies a player name in which case we spawn it at their dungeon heart
 		{
-			System::Print("Unimplemented: ADD_TUNNELLER_TO_LEVEL, Argument 1 == %s", c->argsStrings[1]);
+			Print("Unimplemented: ADD_TUNNELLER_TO_LEVEL, Argument 1 == %s", c->argsStrings[1]);
 			return;
 			//subtileTarget = XMINT2(128, 128);
 			//tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
 		}
-		uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+		PlayerID owner = PlayerTagToNumber(c->argsStrings[0]);
 		Level::s_CurrentLevel->m_Players[owner]->AddTunnellerToLevel(owner,c->argsInts[4], c->argsInts[5], subtileTarget, c->argsStrings[2],c->argsInts[3]);
 	}
 		break;
@@ -631,7 +697,7 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		else //command specifies a player name in which case we spawn it at their dungeon heart
 		{
-			System::Print("Unimplemented: ADD_CREATURE_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
+			Print("Unimplemented: ADD_CREATURE_TO_LEVEL, Argument 1 == %s", c->argsStrings[2]);
 			return;
 			//subtileTarget = XMINT2(128, 128);
 			//tileTarget = XMINT2(subtileTarget.x / 3, subtileTarget.y / 3);
@@ -642,7 +708,7 @@ void LevelScript::ExecuteCommand(Command* c)
 			creature->m_Level = c->argsInts[4];
 			creature->m_CurrentGoldHold = c->argsInts[5];
 			creature->SetPosition(subtileTarget.x, 2, subtileTarget.y);
-			uint8_t owner = PlayerTagToNumber(c->argsStrings[0]);
+			PlayerID owner = PlayerTagToNumber(c->argsStrings[0]);
 			Level::s_CurrentLevel->m_Players[owner]->AddCreature(owner,creature);
 		}
 	}
@@ -650,12 +716,12 @@ void LevelScript::ExecuteCommand(Command* c)
 	case Command::ScriptFunctions::MAGIC_AVAILABLE:
 		{
 
-			System::Print("Unimplemented: MAGIC_AVAILABLE");
+			Print("Unimplemented: MAGIC_AVAILABLE");
 		}
 		break;
 	case Command::ScriptFunctions::ROOM_AVAILABLE:
 		{
-			AvailableObject& ao = AvailableRooms[PlayerTagToNumber(c->argsStrings[0])][StringToRoomType[c->argsStrings[1]]];
+			AvailableObject& ao = AvailableRooms[PlayerTagToNumber(c->argsStrings[0])] [StringToRoomType[c->argsStrings[1]]];
 			ao.canBeAvailable = c->argsInts[2] > 0 ? true : false;
 			ao.isAvailable = c->argsInts[3] > 0 ? true : false;
 			Level::s_CurrentLevel->m_LevelUI->RoomAvailable(StringToRoomType[c->argsStrings[1]], c->argsInts[3] > 0 ? true : false);
@@ -671,10 +737,10 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		break;
 	case Command::ScriptFunctions::DOOR_AVAILABLE:
-		System::Print("Unimplemented: DOOR_AVAILABLE");
+		Print("Unimplemented: DOOR_AVAILABLE");
 		break;
 	case Command::ScriptFunctions::TRAP_AVAILABLE:
-		System::Print("Unimplemented: TRAP_AVAILABLE");
+		Print("Unimplemented: TRAP_AVAILABLE");
 		break;
 	case Command::ScriptFunctions::SET_TIMER:
 		{
@@ -684,57 +750,59 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		break;
 	case Command::ScriptFunctions::BONUS_LEVEL_TIME:
-		System::Print("Unimplemented: BONUS_LEVEL_TIME");
+		Print("Unimplemented: BONUS_LEVEL_TIME");
 		break;
 	case Command::ScriptFunctions::SET_CREATURE_FEAR:
-		System::Print("Unimplemented: SET_CREATURE_FEAR");
+		Print("Unimplemented: SET_CREATURE_FEAR");
 		break;
 	case Command::ScriptFunctions::SET_CREATURE_ARMOUR:
-		System::Print("Unimplemented: SET_CREATURE_ARMOUR");
+		Print("Unimplemented: SET_CREATURE_ARMOUR");
 		break;
 	case Command::ScriptFunctions::SET_CREATURE_HEALTH:
-		System::Print("Unimplemented: SET_CREATURE_HEALTH");
+		Print("Unimplemented: SET_CREATURE_HEALTH");
 		break;
 	case Command::ScriptFunctions::SET_CREATURE_STRENGTH:
-		System::Print("Unimplemented: SET_CREATURE_STRENGTH");
+		Print("Unimplemented: SET_CREATURE_STRENGTH");
 		break;
 	case Command::ScriptFunctions::SET_CREATURE_MAX_LEVEL:
-		System::Print("Unimplemented: SET_CREATURE_MAX_LEVEL");
+		Print("Unimplemented: SET_CREATURE_MAX_LEVEL");
 		break;
 	case Command::ScriptFunctions::TUTORIAL_FLASH_BUTTON:
-		System::Print("Unimplemented: TUTORIAL_FLASH_BUTTON");
+		Print("Unimplemented: TUTORIAL_FLASH_BUTTON");
 		break;
 	case Command::ScriptFunctions::CREATE_TEXT:
-		System::Print("Unimplemented: CREATE_TEXT");
+		Print("Unimplemented: CREATE_TEXT");
 		break;
 	case Command::ScriptFunctions::PRINT:
-		System::Print("Unimplemented: PRINT");
+		Print("Unimplemented: PRINT");
 		break;
 	case Command::ScriptFunctions::QUICK_OBJECTIVE:
-		System::Print("Unimplemented: QUICK_OBJECTIVE");
+		Print("Unimplemented: QUICK_OBJECTIVE");
 		break;
 	case Command::ScriptFunctions::QUICK_INFORMATION:
-		System::Print("Unimplemented: QUICK_INFORMATION");
+		Print("Unimplemented: QUICK_INFORMATION");
 		break;
 	case Command::ScriptFunctions::COMPUTER_PLAYER:
-		nr = PlayerTagToNumber(c->argsStrings[0]);
+	{
+		PlayerID nr = PlayerTagToNumber(c->argsStrings[0]);
 		Themp::Level::s_CurrentLevel->m_Players[nr] = new CPUPlayer(nr);
 		Themp::Level::s_CurrentLevel->m_Players[nr]->m_IsEnabled = true;
+	}
 
 		break;
 	case Command::ScriptFunctions::SET_COMPUTER_PROCESS:
-		System::Print("Unimplemented: SET_COMPUTER_PROCESS");
+		Print("Unimplemented: SET_COMPUTER_PROCESS");
 		break;
 	case Command::ScriptFunctions::SET_COMPUTER_CHECKS:
-		System::Print("Unimplemented: SET_COMPUTER_CHECKS");
+		Print("Unimplemented: SET_COMPUTER_CHECKS");
 		break;
 	case Command::ScriptFunctions::SET_COMPUTER_GLOBALS:
-		System::Print("Unimplemented: SET_COMPUTER_GLOBALS");
+		Print("Unimplemented: SET_COMPUTER_GLOBALS");
 		break;
 	case Command::ScriptFunctions::ALLY_PLAYERS:
 	{
-		uint8_t p1 = PlayerTagToNumber(c->argsStrings[0]);
-		uint8_t p2 = PlayerTagToNumber(c->argsStrings[1]);
+		PlayerID p1 = PlayerTagToNumber(c->argsStrings[0]);
+		PlayerID p2 = PlayerTagToNumber(c->argsStrings[1]);
 		Themp::Level::s_CurrentLevel->m_Players[p1]->AllyWith(p2);
 		Themp::Level::s_CurrentLevel->m_Players[p2]->AllyWith(p1);
 	}
@@ -750,10 +818,10 @@ void LevelScript::ExecuteCommand(Command* c)
 		}
 		break;
 	case Command::ScriptFunctions::NEXT_COMMAND_REUSABLE:
-		//System::Print("Unimplemented: NEXT_COMMAND_REUSABLE");
+		//Print("Unimplemented: NEXT_COMMAND_REUSABLE");
 		break;
 	case Command::ScriptFunctions::MAX_CREATURES:
-		System::Print("Unimplemented: MAX_CREATURES");
+		Print("Unimplemented: MAX_CREATURES");
 		break;
 	case Command::ScriptFunctions::ADD_CREATURE_TO_POOL:
 		{
@@ -767,70 +835,86 @@ void LevelScript::ExecuteCommand(Command* c)
 }
 bool LevelScript::EvaluateIfStatement(IfStatement* ifs)
 {
-	switch (ifs->eval)
+	return ifs->Evaluate();
+}
+
+bool LevelScript::IfAvailable::Evaluate()
+{
+	return false;
+}
+
+bool LevelScript::IfVar::Evaluate()
+{
+	switch (eval)
 	{
-	case IfStatement::Evaluator::SMALLERTHAN:
-		return GameValues[ifs->owner][ifs->var] < ifs->number;
-	case IfStatement::Evaluator::SMALLEROREQUALTO:
-		return GameValues[ifs->owner][ifs->var] <= ifs->number;
-	case IfStatement::Evaluator::EQUALTO:
-		return GameValues[ifs->owner][ifs->var] == ifs->number;
-	case IfStatement::Evaluator::BIGGEROREQUALTO:
-		return GameValues[ifs->owner][ifs->var] >= ifs->number;
-	case IfStatement::Evaluator::BIGGERTHAN:
-		return GameValues[ifs->owner][ifs->var] > ifs->number;
-	case IfStatement::Evaluator::NOTEQUAL:
-		return GameValues[ifs->owner][ifs->var] != ifs->number;
+	case Evaluator::SMALLERTHAN:
+		return GameValues[owner][var] < number;
+	case Evaluator::SMALLEROREQUALTO:
+		return GameValues[owner][var] <= number;
+	case Evaluator::EQUALTO:
+		return GameValues[owner][var] == number;
+	case Evaluator::BIGGEROREQUALTO:
+		return GameValues[owner][var] >= number;
+	case Evaluator::BIGGERTHAN:
+		return GameValues[owner][var] > number;
+	case Evaluator::NOTEQUAL:
+		return GameValues[owner][var] != number;
 	}
 	return false;
 }
-void LevelScript::AddRoom(uint8_t owner, uint16_t roomType, int count)
+
+bool LevelScript::IfActionPoint::Evaluate()
+{
+	return false; //Don't support action points yet
+}
+
+void LevelScript::AddRoom(PlayerID owner, uint16_t roomType, int count)
 {
 	switch (roomType)
 	{
-	case Type_Treasure_Room:
+	case TileType::Treasure_Room:
 		GameValues[owner]["TREASURE"] += count;
 		break;
-	case Type_Lair:
+	case TileType::Lair:
 		GameValues[owner]["LAIR"] += count;
 		break;
-	case Type_Hatchery:
+	case TileType::Hatchery:
 		GameValues[owner]["GARDEN"] += count;
 		break;
-	case Type_Bridge:
+	case TileType::Bridge:
 		GameValues[owner]["BRIDGE"] += count;
 		break;
-	case Type_Barracks:
+	case TileType::Barracks:
 		GameValues[owner]["BARRACKS"] += count;
 		break;
-	case Type_Training_Room:
+	case TileType::Training_Room:
 		GameValues[owner]["TRAINING"] += count;
 		break;
-	case Type_Library:
+	case TileType::Library:
 		GameValues[owner]["RESEARCH"] += count;
 		break;
-	case Type_Workshop:
+	case TileType::Workshop:
 		GameValues[owner]["WORKSHOP"] += count;
 		break;
-	case Type_Prison:
+	case TileType::Prison:
 		GameValues[owner]["PRISON"] += count;
 		break;
-	case Type_Torture_Room:
+	case TileType::Torture_Room:
 		GameValues[owner]["TORTURE"] += count;
 		break;
-	case Type_Scavenger_Room:
+	case TileType::Scavenger_Room:
 		GameValues[owner]["SCAVENGER"] += count;
 		break;
-	case Type_Temple:
+	case TileType::Temple:
 		GameValues[owner]["TEMPLE"] += count;
 		break;
-	case Type_Graveyard:
+	case TileType::Graveyard:
 		GameValues[owner]["GRAVEYARD"] += count;
 		break;
-	case Type_Guardpost:
+	case TileType::Guardpost:
 		GameValues[owner]["GUARD_POST"] += count;
 		break;
-	case Type_Portal:
+	case TileType::Portal:
 		GameValues[owner]["ENTRANCE"] += count;
 		break;
 	}
@@ -872,6 +956,31 @@ void LevelScript::RunInitCommands()
 float TurnTimer = 0;
 void LevelScript::Update(float dt)
 {
+	if (ImGui::Begin("Script"))
+	{
+		for (int i = 0; i < m_IfStatements.size(); i++)
+		{
+			int depth = 0;
+			IfStatement* node = m_IfStatements[i];
+			while (node != nullptr)
+			{
+				ImGui::Indent(depth * 15.0f);
+				ImGui::TextColored(EvaluateIfStatement(node) ? ImVec4(0.2f, 1.0f,0.2f,1.0f) : ImVec4(1.0f,0.2f,0.2f,1.0f), 
+					node->debug_GetConditionString().c_str());
+
+				for (int j = 0; j < node->commands.size(); j++)
+				{
+					ImGui::Text("   %s", ScriptFunctionToString[(int)node->commands[j].function]);
+				}
+				ImGui::Text("ENDIF");
+				ImGui::Unindent(depth * 15.0f);
+				node = node->child;
+				depth++;
+			}
+		}
+	}
+	ImGui::End();
+	
 	TurnTimer += dt;
 	const float turnDelta = 1.0f / GAME_TURNS_PER_SECOND;
 	if (TurnTimer > turnDelta)
@@ -895,7 +1004,7 @@ void LevelScript::Update(float dt)
 		}
 	}
 
-	for (int i = m_IfStatements.size()-1; i >= 0; i--)
+	for (int i = 0; i < m_IfStatements.size(); i++)
 	{
 		IfStatement* node = m_IfStatements[i];
 		while (node != nullptr)
@@ -911,7 +1020,7 @@ void LevelScript::Update(float dt)
 						commandsToKeep.push_back(node->commands[j]);
 						commandsToKeep.push_back(node->commands[j+1]);
 						containsReusableCommand = true;
-						System::Print("Reusable command found, WATCH FOR BUGS!, this might not be implemented correctly yet!");
+						Print("Reusable command found, WATCH FOR BUGS!, this might not be implemented correctly yet!");
 						continue;
 					}
 					ExecuteCommand(&node->commands[j]);
@@ -922,6 +1031,7 @@ void LevelScript::Update(float dt)
 				{
 					//we went through the entire tree, remove this statement from the list
 					m_IfStatements.erase(m_IfStatements.begin() + i);
+					i--;
 				}
 			}
 			else

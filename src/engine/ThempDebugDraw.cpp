@@ -3,6 +3,9 @@
 #include "ThempD3D.h"
 #include "ThempRenderTexture.h"
 #include "ThempMaterial.h"
+
+#include "d3dincl.h"
+
 namespace Themp
 {
 	D3D11_INPUT_ELEMENT_DESC DebugDraw::DefaultLineInputLayoutDesc[] =

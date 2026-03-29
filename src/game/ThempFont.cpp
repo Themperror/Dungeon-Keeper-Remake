@@ -15,6 +15,10 @@
 #include "../Engine/ThempVideo.h"
 #include <DirectXMath.h>
 
+
+#include "d3dincl.h"
+#include <d3d11.h>
+
 using namespace Themp;
 
 Themp::Font::~Font()
@@ -31,7 +35,9 @@ Themp::Font::~Font()
 		m_ScreenObj = nullptr;
 	}
 	delete m_Texture->texture;
+	m_Texture->texture = nullptr;
 	delete m_Texture;
+	m_Texture = nullptr;
 }
 
 //Themp::Font::Font(std::string text, FontTexID fontTexture, bool hiRes, DirectX::XMFLOAT3 position)

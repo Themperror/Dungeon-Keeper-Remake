@@ -1,7 +1,8 @@
 #include "ThempSystem.h"
+
+#include "d3dincl.h"
+
 #include "ThempFunctions.h"
-#undef min
-#undef max
 using namespace DirectX;
 namespace Themp
 {

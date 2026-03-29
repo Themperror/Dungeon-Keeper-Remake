@@ -2,6 +2,8 @@
 #include "ThempCamera.h"
 #include "ThempD3D.h"
 #include "ThempFunctions.h"
+
+#include "d3dincl.h"
 namespace Themp
 {
 	Camera::Camera()

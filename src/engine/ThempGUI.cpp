@@ -4,10 +4,14 @@
 #include "ThempResources.h"
 #include "ThempD3D.h"
 #include "../Library/imgui.h"
+#include "utility/print.h"
 
+#include "d3dincl.h"
+
+extern HWND g_Window;
 namespace Themp
 {
-
+	
 	GUI* GUI::gui;
 
 	// Backup DX state that will be modified to restore it afterwards (unfortunately this is very ugly looking and verbose. Close your eyes!)
@@ -41,11 +45,10 @@ namespace Themp
 		{ "COLOR",    0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	GUI::GUI(HWND handle)
+	GUI::GUI()
 	{
 		assert(gui == nullptr);
 		GUI::gui = this;
-		m_WindowHandle = handle;
 		Init();
 	}
 	GUI::~GUI()
@@ -144,7 +147,7 @@ namespace Themp
 		io.KeyMap[ImGuiKey_Y] = 'Y';
 		io.KeyMap[ImGuiKey_Z] = 'Z';
 
-		io.ImeWindowHandle = m_WindowHandle;
+		io.ImeWindowHandle = g_Window;
 	}
 	BACKUP_DX11_STATE old;
 	void GUI::PrepareDraw(ImDrawData* draw_data)
@@ -360,7 +363,7 @@ namespace Themp
 			}
 			else
 			{
-				System::Print("Could not load font texture");
+				Print("Could not load font texture");
 			}
 		}
 

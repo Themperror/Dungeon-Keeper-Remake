@@ -1,5 +1,5 @@
 #pragma once
-#include <d3d11.h>
+#include <d3dfwd.h>
 struct ImDrawData;
 namespace Themp
 {
@@ -16,7 +16,7 @@ namespace Themp
 			uint8_t r, g, b, a;
 		};
 	public:
-		GUI(HWND handle);
+		GUI();
 		~GUI();
 		void Init();
 		void PrepareDraw(ImDrawData* draw_data);
@@ -35,7 +35,6 @@ namespace Themp
 		ID3D11Buffer* m_VertexBuffer = nullptr;
 		ID3D11Buffer* m_IndexBuffer = nullptr;
 		int m_VertexBufferSize = 0, m_IndexBufferSize = 0;
-		HWND m_WindowHandle = 0;
 
 	};
 };

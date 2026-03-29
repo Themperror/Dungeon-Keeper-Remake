@@ -1,6 +1,7 @@
 #include "ThempSystem.h"
 #include "ThempTileArrays.h"
 #include <DirectXMath.h>
+#include "utility/print.h"
 #include "../Library/micropather.h"
 #include "ThempLevel.h"
 #include "ThempLevelData.h"
@@ -102,5 +103,5 @@ without an ending newline.
 */
 void Themp::TileMap::PrintStateInfo(void* state)
 {
-	System::Print("(X: %3i, Y: %3i)", (((uint64_t)state) & 0xFFFFFFFF), ((((uint64_t)state)>>32) & 0xFFFFFFFF));
+	Print("(X: %3i, Y: %3i)", (((uint64_t)state) & 0xFFFFFFFF), ((((uint64_t)state)>>32) & 0xFFFFFFFF));
 }

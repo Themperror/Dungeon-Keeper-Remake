@@ -26,6 +26,7 @@
 // http://git.ffmpeg.org/?p=ffmpeg;a=blob;f=libavcodec/smacker.c;hb=b8437a00a2f14d4a437346455d624241d726128e
 
 #include "ThempSystem.h"
+#include "utility/print.h"
 #include "SmackerDecoder.h"
 #include <assert.h>
 
@@ -291,7 +292,7 @@ namespace Smacker {
 
 		if (_header.signature != MKTAG('S','M','K','2') && _header.signature != MKTAG('S', 'M', 'K', '4'))
 		{
-			Themp::System::Print("Tag mismatch!");
+			Print("Tag mismatch!");
 			return false;
 		}
 

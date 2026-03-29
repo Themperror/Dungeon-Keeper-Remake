@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_map>
 #include <stack>
 #include "ThempTileArrays.h"
 #include "ThempFileManager.h"
@@ -8,9 +9,11 @@ namespace Themp
 	class LevelData
 	{
 	public:
+
 		struct ActionPoint
 		{
-			uint8_t sx, tx, sy, ty, sz, tz;
+			uint8_t sx, tx, sy, ty;
+			uint8_t rangeX, rangeY;
 			uint16_t ID;
 		};
 		struct Thing
@@ -67,8 +70,8 @@ namespace Themp
 				biggestSquare = biggestSquare >= rhs.biggestSquare ? biggestSquare : rhs.biggestSquare;
 				tilecount += rhs.tilecount;
 				roomFillAmount += rhs.roomFillAmount;
-				auto& it = rhs.tiles.begin();
-				while (it != rhs.tiles.end())
+				auto it = rhs.tiles.cbegin();
+				while (it != rhs.tiles.cend())
 				{
 					tiles[it->first] = it->second;
 					it++;
@@ -108,49 +111,60 @@ namespace Themp
 			int posY;
 			int posZ;
 		};
+		struct Dimension
+		{
+			int x;
+			int y;
+			int w;
+			int h;
+		};
+
+
 		~LevelData();
 		LevelData(int levelIndex);
 		void Init();
 		LevelData::HitData Raycast(XMFLOAT3 origin, XMFLOAT3 direction, float range, bool tileMode = false);
-		uint8_t GetNeighbourInfo(uint16_t currentType, uint16_t nType);
-		TileNeighbours CheckNeighbours(uint16_t type, int y, int x);
+		uint8_t GetNeighbourInfo(TileType currentType, TileType nType);
+		TileNeighbours CheckNeighbours(TileType type, int y, int x);
 		TileNeighbourTiles GetNeighbourTiles(int y, int x);
 		NeighbourSubTiles GetNeighbourSubTiles(int y, int x);
 		uint8_t GetSubtileHeight(int tileY, int tileX, int subTileY, int subTileX);
-		void DoUVs(uint16_t type, int x, int y);
+		void DoUVs(TileType type, int x, int y);
 		uint32_t GetFreeLightIndex(uint16_t base);
-		void AddLightToTiles(const Light & light);
-		void DoRoomUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
-		void DoWallUVs(const TileNeighbours& neighbour, int type, int texIndex, int x, int y);
+		void AddLightToTiles(const Light& light);
+		void DoRoomUVs(const TileNeighbours& neighbour, TileType type, int texIndex, int x, int y);
+		void DoWallUVs(const TileNeighbours& neighbour, TileType type, int texIndex, int x, int y);
 		void AddExploredTileNeighboursVisibility(int y, int x, int areaCode);
-		uint16_t Handle3by3Rooms(int yPos, int xPos);
-		uint16_t HandleNon3by3RoomsPillars(int yPos, int xPos);
+		TileTypeAndVariant Handle3by3Rooms(int yPos, int xPos);
+		TileTypeAndVariant HandleNon3by3RoomsPillars(int yPos, int xPos);
 		void UpdateWalls(int y, int x);
 		bool MineTile(int y, int x);
-		bool ReinforceTile(uint8_t owner, int y, int x);
+		bool ReinforceTile(PlayerID owner, int y, int x);
 		void DestroyTile(int y, int x);
-		bool MarkTile(uint8_t player, int y, int x);
-		void UnMarkTile(uint8_t player, int y, int x);
+		bool MarkTile(PlayerID player, int y, int x);
+		void UnMarkTile(PlayerID player, int y, int x);
 		void UpdateArea(int minY, int maxY, int minX, int maxX);
-		uint16_t GetTileType(int y, int x);
+		TileType GetTileType(int y, int x);
+		bool IsSolidFloor(TileType type);
 		bool HasWalkableNeighbour(int y, int x, int areaCode);
 		XMINT2 GetWalkableNeighbour(int y, int x, int areaCode);
 		void SetRoomFloodID(int ID, int startID, uint16_t type, int y, int x);
 		void CreateRoomFromTile(Room & room, int ID, int startID, uint16_t type, int y, int x);
 		int CreateRoomFromArea(uint16_t type, int initialRoomID, int y, int x);
-		void ClaimRoomFromEnemy(uint8_t newOwner, uint16_t type, int y, int x);
-		void UpdateSurroundingRoomsAdd(uint16_t type, int y, int x);
-		void UpdateSurroundingRoomsRemove(uint16_t type, int y, int x);
+		void ClaimRoomFromEnemy(PlayerID newOwner, TileType type, int y, int x);
+		void UpdateSurroundingRoomsAdd(TileType type, int y, int x);
+		void UpdateSurroundingRoomsRemove(TileType type, int y, int x);
 		Entity * GetMapEntity();
 		void AdjustRoomTile(const LevelData::Room & room, const LevelData::Room::RoomTile & roomTile);
-		void UpdateAreaCode(uint32_t newCode, uint16_t currentType, int ty, int tx);
-		bool CollectiveClaimRoom(uint16_t type, int ty, int tx);
-		void ClaimRoom(uint8_t newOwner, uint16_t type, int ty, int tx);
+		void UpdateAreaCode(uint32_t newCode, int ty, int tx);
+		bool CollectiveClaimRoom(TileType type, int ty, int tx);
+		void ClaimRoom(PlayerID newOwner, TileType type, int ty, int tx);
 		bool IsClaimableCorner(int y, int x);
-		bool IsOwnedRoom(uint8_t player, int y, int x);
-		void ClaimTile(uint8_t player, int y, int x);
-		bool BuildRoom(uint16_t type, uint8_t owner, int y, int x);
-		bool DeleteRoom(uint8_t owner, int y, int x);
+		bool IsOwnedRoom(PlayerID player, int y, int x);
+		void ClaimTile(PlayerID player, int y, int x);
+		bool BuildRoom(TileType type, PlayerID owner, int y, int x);
+		bool DeleteRoom(PlayerID owner, int y, int x);
+		Dimension GetRoomDimensionForTile(int x, int y, bool ownedOnly);
 		static XMINT2 WorldToTile(XMFLOAT3 pos);
 		static XMFLOAT3 TileToWorld(XMINT2 tPos);
 		static XMFLOAT3 WorldToSubtileFloat(XMFLOAT3 pos);
@@ -168,13 +182,12 @@ namespace Themp
 		std::stack<Entity*> m_MapEntityPool;
 		std::vector<Entity*> m_MapEntityUsed;
 		//Map that keeps the initial state of the map (for water/lava blocks)
-		TileMap m_OriginalMap;
+		TileMap m_OriginalMap{};
 
 		//Map which the current changes to it (mined/dug out blocks, rooms etc..)
 		static TileMap s_Map;
 		static bool PathsInvalidated;
-		static std::unordered_map<uint32_t, Light> s_Lights;
-		static std::array<uint32_t, MAP_SIZE_TILES*MAP_SIZE_TILES * MAX_LIGHTS_PER_TILE> s_PerTileLights;
+		static std::array<Light, MAP_SIZE_TILES*MAP_SIZE_TILES * MAX_LIGHTS_PER_TILE> s_PerTileLights;
 		//Map in subtile format, used for pathfinding/picking
 		Block m_BlockMap[MAP_SIZE_HEIGHT][MAP_SIZE_SUBTILES_RENDER][MAP_SIZE_SUBTILES_RENDER];
 		std::vector<ActionPoint> m_ActionPoints;
@@ -182,6 +195,6 @@ namespace Themp
 		std::vector<Thing> m_LevelThings;
 		std::unordered_map<int32_t,Room> m_Rooms[6];
 
-		std::unordered_map<Tile*,XMINT2> m_UnexploredTiles;
+		std::unordered_map<Tile*, DirectX::XMINT2> m_UnexploredTiles;
 	};
 };

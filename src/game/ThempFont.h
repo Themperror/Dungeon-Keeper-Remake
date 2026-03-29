@@ -22,7 +22,7 @@ namespace Themp
 		FontTexID m_TexID = MENU_NORMAL0;
 		std::string m_Text;
 		std::vector<GUITexture>* m_Font = nullptr;
-		GUITexture* m_Texture;
+		GUITexture* m_Texture = nullptr;
 
 	};
 };

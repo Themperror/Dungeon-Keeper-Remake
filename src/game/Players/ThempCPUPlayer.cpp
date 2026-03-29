@@ -7,7 +7,7 @@
 
 using namespace Themp;
 
-CPUPlayer::CPUPlayer(uint8_t playerID)
+CPUPlayer::CPUPlayer(PlayerID playerID)
 {
 	m_PlayerID = playerID;
 }

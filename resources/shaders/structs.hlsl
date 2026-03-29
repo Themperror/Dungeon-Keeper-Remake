@@ -1,12 +1,7 @@
 #include "defines.hlsl"
 #pragma pack_matrix( row_major )
 
-struct Light
-{
-    int enabled, ldummy0, ldummy1, ldummy2;
-    float4 position;
-    float4 color;
-};
+
 struct VS_OUTPUT
 {
     float4 position : SV_POSITION;

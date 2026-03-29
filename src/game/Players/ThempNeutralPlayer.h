@@ -7,7 +7,7 @@ namespace Themp
 	class NeutralPlayer : public PlayerBase
 	{
 	public:
-		NeutralPlayer(uint8_t playerID);
+		NeutralPlayer(PlayerID playerID);
 		virtual void Update(float delta);
 	};
 };

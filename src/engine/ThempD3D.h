@@ -1,8 +1,5 @@
 #pragma once
-
-#include <d3d11.h>
-#include <d3d10.h>
-#include <DirectXMath.h>
+#include "d3dfwd.h"
 
 
 #define NUM_RENDER_TEXTURES 5
@@ -12,8 +9,6 @@
 
 namespace Themp
 { 
-	using namespace DirectX;
-
 	struct CONSTANT_BUFFER
 	{
 		float screenWidth;

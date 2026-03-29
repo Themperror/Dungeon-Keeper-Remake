@@ -66,20 +66,117 @@ namespace Themp
 			std::array<std::string, 8> argsStrings;
 			std::array<int, 8> argsInts; 
 		};
+
+		static constexpr const char* ScriptFunctionToString[] =
+		{
+			"UNKNOWN_COMMAND",
+			"SET_FLAG",
+			"CREATE_PARTY",
+			"ADD_TO_PARTY",
+			"ADD_PARTY_TO_LEVEL",
+			"ADD_TUNNELLER_PARTY_TO_LEVEL",
+			"ADD_TUNNELLER_TO_LEVEL",
+			"ADD_CREATURE_TO_LEVEL",
+			"MAGIC_AVAILABLE",
+			"ROOM_AVAILABLE",
+			"CREATURE_AVAILABLE",
+			"DOOR_AVAILABLE",
+			"TRAP_AVAILABLE",
+			"SET_TIMER",
+			"BONUS_LEVEL_TIME",
+			"SET_CREATURE_FEAR",
+			"SET_CREATURE_ARMOUR",
+			"SET_CREATURE_HEALTH",
+			"SET_CREATURE_STRENGTH",
+			"SET_CREATURE_MAX_LEVEL",
+			"TUTORIAL_FLASH_BUTTON",
+			"DISPLAY_INFORMATION",
+			"DISPLAY_OBJECTIVE",
+			"CREATE_TEXT",
+			"PRINT",
+			"QUICK_OBJECTIVE",
+			"QUICK_INFORMATION",
+			"COMPUTER_PLAYER",
+			"SET_COMPUTER_PROCESS",
+			"SET_COMPUTER_CHECKS",
+			"SET_COMPUTER_GLOBALS",
+			"ALLY_PLAYERS",
+			"START_MONEY",
+			"SET_GENERATE_SPEED",
+			"NEXT_COMMAND_REUSABLE",
+			"WIN_GAME",
+			"LOSE_GAME",
+			"MAX_CREATURES",
+			"ADD_CREATURE_TO_POOL",
+		};
+
+		enum class Evaluator { SMALLERTHAN, SMALLEROREQUALTO, EQUALTO, BIGGEROREQUALTO, BIGGERTHAN, NOTEQUAL };
 		struct IfStatement
 		{
-			enum class Evaluator { SMALLERTHAN, SMALLEROREQUALTO, EQUALTO, BIGGEROREQUALTO, BIGGERTHAN, NOTEQUAL};
 			IfStatement* child;
+			
+			virtual bool Evaluate() = 0;
+			virtual std::string debug_GetConditionString() = 0;
+			std::vector<Command>  commands;
+		};
 
-			uint8_t owner;
+		struct IfAvailable : public IfStatement
+		{
+			virtual bool Evaluate();
+			virtual std::string debug_GetConditionString()
+			{
+				return "IF_AVAILABLE(.?.)";
+			}
+		};
+
+		struct IfVar : public IfStatement
+		{
+			PlayerID owner;
 			std::string var;
 			Evaluator eval;
 			int number;
-			
-			std::vector<Command>  commands;
+
+			virtual bool Evaluate();
+			virtual std::string debug_GetConditionString()
+			{
+	//				"IF( %s(%i)  %s %i )  - %s",
+				return std::string("IF( ")
+					+ var
+					+ std::to_string(GameValues[owner][var])
+					+ ( eval == Evaluator::SMALLERTHAN ? "<" :
+						eval == Evaluator::SMALLEROREQUALTO ? "<=" :
+						eval == Evaluator::EQUALTO ? "==" :
+						eval == Evaluator::BIGGEROREQUALTO ? ">=" :
+						eval == Evaluator::BIGGERTHAN ? ">" : "!=")
+					+ std::to_string(number) 
+					+ ") - "
+					+ ( owner == PlayerID::Red ? "PLAYER0" :
+						owner == PlayerID::Blue ? "PLAYER1" :
+						owner == PlayerID::Green ? "PLAYER2" : 
+						owner == PlayerID::Yellow ? "PLAYER3" : 
+						owner == PlayerID::White ? "PLAYER_GOOD" : 
+						"PLAYER_NONE");
+			};
 		};
-		
-		static void AddRoom(uint8_t owner, uint16_t roomType, int count);
+
+		struct IfActionPoint : public IfStatement
+		{
+			int actionPointID;
+			PlayerID owner;
+			virtual bool Evaluate();
+			virtual std::string debug_GetConditionString()
+			{
+				return "IF_ACTION_POINT( " + std::to_string(actionPointID) + ", " + 
+					(owner == PlayerID::Red ? "PLAYER0" :
+					owner == PlayerID::Blue ? "PLAYER1" :
+					owner == PlayerID::Green ? "PLAYER2" :
+					owner == PlayerID::Yellow ? "PLAYER3" :
+					owner == PlayerID::White ? "PLAYER_GOOD" :
+					"PLAYER_NONE")
+					+ ")";
+			}
+		};
+		static void AddRoom(PlayerID owner, uint16_t roomType, int count);
 
 
 		~LevelScript();
@@ -95,7 +192,7 @@ namespace Themp
 		std::vector<IfStatement*> m_IfStatements;
 		static std::array<std::unordered_map<std::string, int>,6> GameValues;
 		static std::array<std::unordered_map<CreatureData::CreatureType, AvailableObject>, 6> AvailableCreatures;
-		static std::array<std::unordered_map<uint16_t, AvailableObject>, 6> AvailableRooms;
+		static std::array<std::unordered_map<TileType, AvailableObject>, 6> AvailableRooms;
 		static std::array<std::unordered_map<Spells, AvailableObject>, 6> AvailableSpells;
 		static std::array<std::unordered_map<Traps, AvailableObject>, 6> AvailableTraps;
 		static std::array<std::unordered_map<Doors, AvailableObject>, 6> AvailableDoors;

@@ -3,6 +3,9 @@
 #include "../Library/micropather.h"
 #include <array>
 #include <unordered_map>
+
+#include "ThempGameTypes.h"
+
 using namespace DirectX;
 
 #define MAP_SIZE_HEIGHT (8)
@@ -17,162 +20,27 @@ using namespace DirectX;
 
 #define L8(x) ((x)&0xFF)
 
-static constexpr int Type_Rock = 0;
-static constexpr int Type_Gold = 1;
-static constexpr int Type_Earth = 2;
-static constexpr int Type_Earth_Torch = 3;
-static constexpr int Type_Wall0 = 4;
-static constexpr int Type_Wall1 = 5;
-static constexpr int Type_Wall2 = 6;
-static constexpr int Type_Wall3 = 7;
-static constexpr int Type_Wall4 = 8;
-static constexpr int Type_Wall5 = 9;
-static constexpr int Type_Unclaimed_Path = 10;
-static constexpr int Type_Claimed_Land = 11;
-static constexpr int Type_Lava = 12;
-static constexpr int Type_Water = 13;
-static constexpr int Type_Portal = 14;
-static constexpr int Type_Treasure_Room = 16;
-static constexpr int Type_Library = 18;
-static constexpr int Type_Prison = 20;
-static constexpr int Type_Torture_Room = 22;
-static constexpr int Type_Training_Room = 24;
-static constexpr int Type_Dungeon_Heart = 26;
-static constexpr int Type_Workshop = 28;
-static constexpr int Type_Scavenger_Room = 30;
-static constexpr int Type_Temple = 32;
-static constexpr int Type_Graveyard = 34;
-static constexpr int Type_Hatchery = 36;
-static constexpr int Type_Lair = 38;
-static constexpr int Type_Barracks = 40;
-static constexpr int Type_Wooden_DoorH = 42;
-static constexpr int Type_Wooden_DoorV = 43;
-static constexpr int Type_Braced_DoorH = 44;
-static constexpr int Type_Braced_DoorV = 45;
-static constexpr int Type_Iron_DoorH = 46;
-static constexpr int Type_Iron_DoorV = 47;
-static constexpr int Type_Magic_DoorH = 48;
-static constexpr int Type_Magic_DoorV = 49;
-static constexpr int Type_Bridge = 51;
-static constexpr int Type_Gem = 52;
-static constexpr int Type_Guardpost = 53;
 
-//not real types currently for future doors unless I think of something better
-static constexpr int Type_Wooden_DoorH_Locked = 54;
-static constexpr int Type_Wooden_DoorV_Locked = 55;
-static constexpr int Type_Braced_DoorH_Locked = 56;
-static constexpr int Type_Braced_DoorV_Locked = 57;
-static constexpr int Type_Iron_DoorH_Locked = 58;
-static constexpr int Type_Iron_DoorV_Locked = 59;
-static constexpr int Type_Magic_DoorH_Locked = 60;
-static constexpr int Type_Magic_DoorV_Locked = 61;
-
-
-const std::unordered_map<uint16_t, std::string> RoomTypeToString
+const std::unordered_map<TileType, std::string> RoomTypeToString
 {
-	{Type_Portal		 , "Portal" },
-	{Type_Treasure_Room	 , "Treasure Room" },
-	{Type_Library		 , "Library" },
-	{Type_Prison		 , "Prison" },
-	{Type_Torture_Room	 , "Torture Chamber" },
-	{Type_Training_Room	 , "Training Room" },
-	{Type_Dungeon_Heart	 , "Dungeon Heart" },
-	{Type_Workshop		 , "Workshop" },
-	{Type_Scavenger_Room , "Scavenge Room" },
-	{Type_Temple		 , "Temple" },
-	{Type_Graveyard		 , "Graveyard" },
-	{Type_Hatchery		 , "Hatchery" },
-	{Type_Lair			 , "Lair" },
-	{Type_Barracks		 , "Barracks" },
-	{Type_Guardpost		 , "Guardpost" },
-	{Type_Bridge		 , "Bridge" },
+	{TileType::Portal		 , "Portal" },
+	{TileType::Treasure_Room , "Treasure Room" },
+	{TileType::Library		 , "Library" },
+	{TileType::Prison		 , "Prison" },
+	{TileType::Torture_Room	 , "Torture Chamber" },
+	{TileType::Training_Room , "Training Room" },
+	{TileType::Dungeon_Heart , "Dungeon Heart" },
+	{TileType::Workshop		 , "Workshop" },
+	{TileType::Scavenger_Room, "Scavenge Room" },
+	{TileType::Temple		 , "Temple" },
+	{TileType::Graveyard	 , "Graveyard" },
+	{TileType::Hatchery		 , "Hatchery" },
+	{TileType::Lair			 , "Lair" },
+	{TileType::Barracks		 , "Barracks" },
+	{TileType::Guardpost	 , "Guardpost" },
+	{TileType::Bridge		 , "Bridge" },
 };
 
-
-static bool IsWall(uint16_t type)
-{
-	return type >= Type_Wall0 && type <= Type_Wall5;
-}
-static bool IsWalkable(uint16_t type)
-{
-	return (type > Type_Wall5 && type != Type_Gem);
-}
-static bool IsMineable(uint16_t type)
-{
-	return (type >= Type_Gold && type <= Type_Wall5 || type == Type_Gem);
-}
-static bool IsMineableForPlayer(uint16_t type, uint8_t tileOwner, uint8_t player)
-{
-	if ((type >= Type_Gold && type < Type_Wall0 || type == Type_Gem))
-	{
-		return true;
-	}
-	else if (type >= Type_Wall0 && type <= Type_Wall5)
-	{
-		return tileOwner == player;
-	}
-	return false;
-}
-static bool IsClaimableRoom(uint16_t type)
-{
-	return ((type >= Type_Portal && type <= Type_Barracks || type == Type_Bridge || type == Type_Guardpost) && type != Type_Dungeon_Heart);
-}
-static uint16_t TypeToTexture(uint16_t type)
-{
-	switch (type & 0xFF)
-	{
-	case Type_Earth: 
-		return 1;
-		break;
-	case Type_Water:
-		return 2;
-		break;
-	case Type_Lava:
-		return 8;
-		break;
-	case Type_Gold:
-		return 3;
-		break;
-	case Type_Wall0:
-	case Type_Wall1:
-	case Type_Wall2:
-	case Type_Wall3:
-	case Type_Wall4:
-	case Type_Wall5:
-		return 6;
-		break;
-	case Type_Unclaimed_Path:
-		return 4;
-		break;
-	case Type_Claimed_Land:
-	case Type_Portal:
-		return 5;
-		break;
-	case Type_Treasure_Room:
-		return 9;
-	case Type_Lair:
-		return 10;
-	case Type_Hatchery:
-		return 11;
-	default:
-		return 0; 
-		break;
-	}
-}
-
-static constexpr int Owner_PlayerRed = 0;
-static constexpr int Owner_PlayerBlue = 1;
-static constexpr int Owner_PlayerGreen = 2;
-static constexpr int Owner_PlayerYellow = 3;
-static constexpr int Owner_PlayerWhite = 4;
-static constexpr int Owner_PlayerNone = 5;
-
-//3 bits
-static constexpr int N_DIFF = 0b00;
-static constexpr int N_SAME = 0b01;
-static constexpr int N_WATER = 0b10;
-static constexpr int N_LAVA = 0b11;
-static constexpr int N_WALKABLE = 0b100;
 
 namespace Themp
 {
@@ -258,23 +126,13 @@ namespace Themp
 		uint16_t activeBlocks = 0;
 	}; 
 
-	struct Light
-	{
-		uint8_t range = 0;
-		uint8_t lightIntensity = 0;
-		uint8_t x = 0;
-		uint8_t y = 0;
-		uint8_t z = 0;
-		uint16_t lightIndex = 0;
-	};
-
 	struct Tile
 	{
 		Tile()
 		{
 			visible = false;
-			owner = Owner_PlayerNone;
-			type = Type_Rock;
+			owner = PlayerID::None;
+			tile = {TileType::Rock, 0};
 			numBlocks = 6 * SUBTILESY * SUBTILESX;
 			marked[0] = false;
 			marked[1] = false;
@@ -295,14 +153,11 @@ namespace Themp
 			}
 		}
 
-		uint16_t GetType() const
-		{
-			return (type & 0xFF);
-		}
+		inline TileType GetType() const { return tile.type; }
 
 		bool visible;
-		uint8_t owner;
-		uint16_t type;
+		PlayerID owner;
+		TileTypeAndVariant tile;
 		uint32_t areaCode;
 		int32_t roomID;
 		uint16_t lightArrayIndex;
@@ -319,7 +174,7 @@ namespace Themp
 		{
 			uint8_t height;
 			uint8_t owner;
-			uint16_t type;
+			TileType type;
 			uint32_t areaCode;
 			float cost;
 		};
@@ -445,6 +300,8 @@ namespace Themp
 		//tiles next to liquids (normal , lava , water)
 		std::vector<std::vector<XMFLOAT2>> edge; 
 	};
+
+	//offset in texture, in tile size
 	const XMFLOAT2 t_WallOwners[6] =
 	{
 		{ 3,13 },

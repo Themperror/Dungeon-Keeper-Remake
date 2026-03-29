@@ -5,6 +5,8 @@
 #include "../Library/micropather.h"
 #include "Creature/ThempCreatureData.h"
 #include "ThempFileManager.h"
+#include "ThempGameTypes.h"
+
 namespace Themp
 {
 	class D3D;
@@ -35,7 +37,7 @@ namespace Themp
 		int PathFind(DirectX::XMINT2 A, DirectX::XMINT2 B, micropather::MPVector<void*>& outPath, float & outCost, bool AllowDoors);
 		int PathFindThroughWalls(DirectX::XMINT2 A, DirectX::XMINT2 B, micropather::MPVector<void*>& outPath, float & outCost, bool AllowDoors);
 		void UpdateMinimap();
-		void SpawnCreature(uint8_t player);
+		void SpawnCreature(PlayerID player);
 
 
 		bool m_IsCompleted = false;
@@ -44,7 +46,7 @@ namespace Themp
 		float m_CreatureGenerateTurnTimer = 0;
 		float UnOwnedRoomColorTimer = 0;
 
-		uint16_t m_SelectedBuilding = 0;
+		TileType m_SelectedBuilding = TileType::None;
 		bool m_BuildMode = false;
 
 		Creature* m_HoveringCreature = nullptr;
@@ -52,7 +54,7 @@ namespace Themp
 		DirectX::XMINT2 m_HoveringTile = DirectX::XMINT2(-1, -1);
 		std::stack<Creature*> m_HeldCreatures;
 		std::vector<std::string> m_Messages;
-		std::string m_Objective = "";
+		std::string m_Objective;
 
 		int m_CreatureGenerateTurns = 0;
 		int UnownedRoomColorIndex = 0;

@@ -10,6 +10,7 @@
 #include "ThempVoxelObject.h"
 #include "ThempEntity.h"
 #include "ThempLevelScript.h"
+#include "ThempGameTypes.h"
 #include "../Library/imgui.h"
 #include "../Engine/ThempCamera.h"
 #include "../Engine/ThempObject3D.h"
@@ -26,6 +27,10 @@
 #include "Creature/ThempCreatureParty.h"
 #include "ThempLevelUI.h"
 #include <DirectXMath.h>
+
+
+#include "d3dincl.h"
+
 using namespace Themp;
 
 Level* Level::s_CurrentLevel = nullptr;
@@ -63,11 +68,14 @@ Level::Level(int levelIndex)
 
 
 	//Red is the Human player, this always exists in single player levels
-	m_Players[Owner_PlayerRed] = new Player(Owner_PlayerRed);
+	m_Players[PlayerID::Red] = new Player(PlayerID::Red);
+	m_Players[PlayerID::Blue] = new Player(PlayerID::Blue);
+	m_Players[PlayerID::Green] = new Player(PlayerID::Green);
+	m_Players[PlayerID::Yellow] = new Player(PlayerID::Yellow);
 	//White is the "Good" player, always exists
-	m_Players[Owner_PlayerWhite] = new GoodPlayer(Owner_PlayerWhite);
+	m_Players[PlayerID::White] = new GoodPlayer(PlayerID::White);
 	//None is the "Neutral" player, always exists
-	m_Players[Owner_PlayerNone] = new NeutralPlayer(Owner_PlayerNone);
+	m_Players[PlayerID::None] = new NeutralPlayer(PlayerID::None);
 
 	m_LevelData = new LevelData(levelIndex);
 	m_LevelScript = new LevelScript(LevelData::LevelIDtoString(levelIndex));
@@ -79,13 +87,6 @@ Level::Level(int levelIndex)
 
 	//System::tSys->m_Game->m_Camera->SetOrtho(20, 20);
 	//System::tSys->m_Game->m_Camera->SetProjection(Camera::CameraType::Orthographic)
-
-	for (int i = 0; i < 6; i++)
-	{
-		Creature* creature = new Themp::Creature(CreatureData::CREATURE_IMP);
-		m_Players[Owner_PlayerRed]->AddCreature(Owner_PlayerRed,creature);
-		creature->m_Renderable->SetPosition(42*3 +i, 2, 43*3);
-	}
 
 
 	tileIndicator = new Object3D();
@@ -107,9 +108,14 @@ Level::Level(int levelIndex)
 	System::tSys->m_Game->m_Camera->SetPosition(42 * 3, 12, 38 * 3);
 	System::tSys->m_Game->m_Camera->SetTarget(XMFLOAT3(42 * 3, 12, 38 * 3));
 
+	for (int i = 0; i < 6; i++) //FH Todo, should not run this by default, the game code would need to handle this
+	{
+		Creature* creature = new Themp::Creature(CreatureData::CREATURE_IMP);
+		m_Players[PlayerID::Red]->AddCreature(PlayerID::Red, creature);
+		creature->m_Renderable->SetPosition(m_Players[PlayerID::Red]->m_DungeonHeartLocation.x * 3.0f, 5.0f, m_Players[PlayerID::Red]->m_DungeonHeartLocation.y * 3.0f);
+	}
 
 	m_LevelScript->RunInitCommands();
-
 }
 
 int SelectedTool = 0;
@@ -163,11 +169,11 @@ void Level::Update(float delta)
 		m_LevelUI->ToggleVisibility();
 	}
 	
-	while (LevelScript::GameValues[Owner_PlayerRed]["IMP"] < 3)
+	while (LevelScript::GameValues[PlayerID::Red]["IMP"] < 3)
 	{
 		Creature* creature = new Themp::Creature(CreatureData::CREATURE_IMP);
-		m_Players[Owner_PlayerRed]->AddCreature(Owner_PlayerRed, creature);
-		creature->m_Renderable->SetPosition(m_Players[Owner_PlayerRed]->m_DungeonHeartLocation.x * 3, 5,m_Players[Owner_PlayerRed]->m_DungeonHeartLocation.y*3);
+		m_Players[PlayerID::Red]->AddCreature(PlayerID::Red, creature);
+		creature->m_Renderable->SetPosition(m_Players[PlayerID::Red]->m_DungeonHeartLocation.x * 3.0f, 5.0f, m_Players[PlayerID::Red]->m_DungeonHeartLocation.y * 3.0f);
 	}
 
 
@@ -185,11 +191,11 @@ void Level::Update(float delta)
 	}
 	if (ImGui::Button("Set Low Gold"))
 	{
-		LevelScript::GameValues[Owner_PlayerRed]["MONEY"] = 10;
+		LevelScript::GameValues[PlayerID::Red]["MONEY"] = 10;
 	}
 	if (ImGui::Button("Set High Gold"))
 	{
-		LevelScript::GameValues[Owner_PlayerRed]["MONEY"] = 10000;
+		LevelScript::GameValues[PlayerID::Red]["MONEY"] = 10000;
 	}
 	ImGui::Checkbox("Wireframe", &D3D::s_D3D->m_Wireframe);
 
@@ -262,7 +268,7 @@ void Level::Update(float delta)
 				tileIndicator->isVisible = true;
 				if (m_SelectedBuilding != 0)
 				{
-					if (t->GetType() == Type_Claimed_Land && t->owner == Owner_PlayerRed)
+					if (t->GetType() ==TileType::Claimed_Land && t->owner == PlayerID::Red)
 					{
 						tileIndicator->m_ConstantBufferData.misc0 = 0;
 					}
@@ -273,8 +279,8 @@ void Level::Update(float delta)
 				}
 				else
 				{
-					uint16_t type = t->GetType();
-					if (IsClaimableRoom(type) && type != Type_Portal)
+					TileType type = t->GetType();
+					if (IsClaimableRoom(type) && type !=TileType::Portal)
 					{
 						tileIndicator->m_ConstantBufferData.misc0 = 0;
 					}
@@ -287,15 +293,15 @@ void Level::Update(float delta)
 			else if(!IsWalkable(t->GetType()))
 			{
 				tileIndicator->isVisible = true;
-				tileIndicator->m_ConstantBufferData.misc0 = !IsMineableForPlayer(t->GetType(), t->owner, Owner_PlayerRed);
+				tileIndicator->m_ConstantBufferData.misc0 = !IsMineableForPlayer(t->GetType(), t->owner, PlayerID::Red);
 			}
 			else
 			{
 				//Hovering over a ground tile
 				
-				for (int i = 0; i < m_Players[Owner_PlayerRed]->m_Creatures.size(); i++)
+				for (int i = 0; i < m_Players[PlayerID::Red]->m_Creatures.size(); i++)
 				{
-					Creature* c = m_Players[Owner_PlayerRed]->m_Creatures[i];
+					Creature* c = m_Players[PlayerID::Red]->m_Creatures[i];
 					XMINT2 creatureTilePos = LevelData::WorldToTile(c->m_Renderable->m_Position);
 					if (creatureTilePos == tilePos)
 					{
@@ -324,7 +330,7 @@ void Level::Update(float delta)
 				}
 				if (g->m_Keys[257] == 2)
 				{
-					if (t->owner == Owner_PlayerRed)
+					if (t->owner == PlayerID::Red)
 					{
 						if (m_HeldCreatures.size() > 0)
 						{
@@ -339,25 +345,25 @@ void Level::Update(float delta)
 			{
 				if (!m_BuildMode)
 				{
-					if (m_LevelData->s_Map.m_Tiles[tilePos.y][tilePos.x].marked[Owner_PlayerRed])
+					if (m_LevelData->s_Map.m_Tiles[tilePos.y][tilePos.x].marked[PlayerID::Red])
 					{
 						IsMarking = false;
-						m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+						m_LevelData->UnMarkTile(PlayerID::Red, tilePos.y, tilePos.x);
 					}
-					else if (m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x))
+					else if (m_LevelData->MarkTile(PlayerID::Red, tilePos.y, tilePos.x))
 					{
 						IsMarking = true;
 					}
 				}
 				else if (m_BuildMode)
 				{
-					if (m_SelectedBuilding != 0)
+					if (m_SelectedBuilding != TileType::None)
 					{
-						m_LevelData->BuildRoom(m_SelectedBuilding, Owner_PlayerRed, tilePos.y, tilePos.x);
+						m_LevelData->BuildRoom(m_SelectedBuilding, PlayerID::Red, tilePos.y, tilePos.x);
 					}
 					else
 					{
-						m_LevelData->DeleteRoom(Owner_PlayerRed, tilePos.y, tilePos.x);
+						m_LevelData->DeleteRoom(PlayerID::Red, tilePos.y, tilePos.x);
 					}
 				}
 			}
@@ -367,11 +373,11 @@ void Level::Update(float delta)
 				{
 					if (IsMarking)
 					{
-						m_LevelData->MarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+						m_LevelData->MarkTile(PlayerID::Red, tilePos.y, tilePos.x);
 					}
 					else
 					{
-						m_LevelData->UnMarkTile(Owner_PlayerRed, tilePos.y, tilePos.x);
+						m_LevelData->UnMarkTile(PlayerID::Red, tilePos.y, tilePos.x);
 					}
 				}
 			}
@@ -384,7 +390,7 @@ void Level::Update(float delta)
 
 
 	//Update the map
-	m_MapObject->ConstructFromLevel(camPos.x,camPos.z);
+	m_MapObject->ConstructFromLevel((int)camPos.x, (int)camPos.z);
 
 	//minimap room color animation
 	UnOwnedRoomColorTimer += delta;
@@ -414,13 +420,13 @@ void Level::Update(float delta)
 	{
 		m_CreatureGenerateTurnTimer -= turnDelta;
 		m_CreatureGenerateTurns++;
-		int generateSpeed = LevelScript::GameValues[Owner_PlayerRed]["GENERATE_SPEED"];
+		int generateSpeed = LevelScript::GameValues[PlayerID::Red]["GENERATE_SPEED"];
 		if (m_CreatureGenerateTurns >= generateSpeed)
 		{
 			m_CreatureGenerateTurns -= generateSpeed;
 			for (int i = 0; i < 6; i++)
 			{
-				SpawnCreature(i);
+				SpawnCreature((PlayerID)i);
 			}
 		}
 		if (m_CreatureGenerateTurnTimer > turnDelta * 2)
@@ -512,38 +518,38 @@ void Level::UpdateMinimap()
 			const int xTile = x / 3;
 			const Tile& tile = m_LevelData->s_Map.m_Tiles[yTile][xTile];
 			const unsigned int texPos = (x + y * MAP_SIZE_SUBTILES) * 4;
-			uint16_t tileType = tile.type & 0xFF;
+			TileType tileType = tile.GetType();
 			if (tile.visible)
 			{
-				if (tileType == Type_Claimed_Land)
+				if (tileType ==TileType::Claimed_Land)
 				{
 					miniMapScratchData[texPos + 0] = OwnerColorsPath[tile.owner][0];
 					miniMapScratchData[texPos + 1] = OwnerColorsPath[tile.owner][1];
 					miniMapScratchData[texPos + 2] = OwnerColorsPath[tile.owner][2];
 					miniMapScratchData[texPos + 3] = OwnerColorsPath[tile.owner][3];
 				}
-				else if (tileType == Type_Unclaimed_Path)
+				else if (tileType ==TileType::Unclaimed_Path)
 				{
-					miniMapScratchData[texPos + 0] = OwnerColorsPath[Owner_PlayerNone][0];
-					miniMapScratchData[texPos + 1] = OwnerColorsPath[Owner_PlayerNone][1];
-					miniMapScratchData[texPos + 2] = OwnerColorsPath[Owner_PlayerNone][2];
-					miniMapScratchData[texPos + 3] = OwnerColorsPath[Owner_PlayerNone][3];
+					miniMapScratchData[texPos + 0] = OwnerColorsPath[PlayerID::None][0];
+					miniMapScratchData[texPos + 1] = OwnerColorsPath[PlayerID::None][1];
+					miniMapScratchData[texPos + 2] = OwnerColorsPath[PlayerID::None][2];
+					miniMapScratchData[texPos + 3] = OwnerColorsPath[PlayerID::None][3];
 				}
-				else if (tileType == Type_Rock)
+				else if (tileType ==TileType::Rock)
 				{
 					miniMapScratchData[texPos + 0] = 0x00;
 					miniMapScratchData[texPos + 1] = 0x00;
 					miniMapScratchData[texPos + 2] = 0x00;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType == Type_Lava)
+				else if (tileType ==TileType::Lava)
 				{
 					miniMapScratchData[texPos + 0] = 0x38;
 					miniMapScratchData[texPos + 1] = 0x1C;
 					miniMapScratchData[texPos + 2] = 0x00;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType == Type_Water)
+				else if (tileType ==TileType::Water)
 				{
 					miniMapScratchData[texPos + 0] = 0x65;
 					miniMapScratchData[texPos + 1] = 0x4D;
@@ -557,23 +563,23 @@ void Level::UpdateMinimap()
 					miniMapScratchData[texPos + 2] = 0x1C;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType == Type_Earth || tileType == Type_Earth_Torch)
+				else if (tileType ==TileType::Earth || tileType ==TileType::Earth_Torch)
 				{
 					miniMapScratchData[texPos + 0] = 0x30;
 					miniMapScratchData[texPos + 1] = 0x20;
 					miniMapScratchData[texPos + 2] = 0x04;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType == Type_Gold)
+				else if (tileType ==TileType::Gold)
 				{
 					miniMapScratchData[texPos + 0] = 0x71;
 					miniMapScratchData[texPos + 1] = 0x6D;
 					miniMapScratchData[texPos + 2] = 0x18;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType >= Type_Portal && tileType <= Type_Barracks)
+				else if (tileType >=TileType::Portal && tileType <=TileType::Barracks)
 				{
-					if (tile.owner == Owner_PlayerNone)
+					if (tile.owner == PlayerID::None)
 					{
 						miniMapScratchData[texPos + 0] = OwnerColorsRoom[UnownedRoomColorIndex][0];
 						miniMapScratchData[texPos + 1] = OwnerColorsRoom[UnownedRoomColorIndex][1];
@@ -588,14 +594,14 @@ void Level::UpdateMinimap()
 						miniMapScratchData[texPos + 3] = OwnerColorsRoom[tile.owner][3];
 					}
 				}
-				else if (tileType >= Type_Wooden_DoorH && tileType <= Type_Magic_DoorV)
+				else if (tileType >=TileType::Wooden_DoorH && tileType <=TileType::Magic_DoorV)
 				{
 					miniMapScratchData[texPos + 0] = 0x92;
 					miniMapScratchData[texPos + 1] = 0x9A;
 					miniMapScratchData[texPos + 2] = 0x51;
 					miniMapScratchData[texPos + 3] = 0xFF;
 				}
-				else if (tileType >= Type_Wooden_DoorH_Locked && tileType <= Type_Magic_DoorV_Locked)
+				else if (tileType >=TileType::Wooden_DoorH_Locked && tileType <=TileType::Magic_DoorV_Locked)
 				{
 					miniMapScratchData[texPos + 0] = 0xF7;
 					miniMapScratchData[texPos + 1] = 0x86;
@@ -617,9 +623,9 @@ void Level::UpdateMinimap()
 				miniMapScratchData[texPos + 2] = 0x04;
 				miniMapScratchData[texPos + 3] = 0xFF;
 			}
-			if (tile.marked[Owner_PlayerRed])
+			if (tile.marked[PlayerID::Red])
 			{
-				if (tileType == Type_Gold || tileType == Type_Gem)
+				if (tileType ==TileType::Gold || tileType ==TileType::Gem)
 				{
 					miniMapScratchData[texPos + 0] = 0xE2;
 					miniMapScratchData[texPos + 1] = 0xBC;
@@ -672,12 +678,12 @@ void Level::UpdateMinimap()
 		},
 
 	};
-	for (int c = 0; c < m_Players[Owner_PlayerRed]->m_Creatures.size(); c++)
+	for (int c = 0; c < m_Players[PlayerID::Red]->m_Creatures.size(); c++)
 	{
-		for (unsigned int i = 0; i < m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path.size(); i++)
+		for (unsigned int i = 0; i < m_Players[PlayerID::Red]->m_Creatures[c]->m_Path.size(); i++)
 		{
-			int PathX = (((uint64_t)m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path[i]) & 0xFFFFFFF);
-			int PathY = ((((uint64_t)m_Players[Owner_PlayerRed]->m_Creatures[c]->m_Path[i]) >> 32) & 0xFFFFFFF);
+			int PathX = (((uint64_t)m_Players[PlayerID::Red]->m_Creatures[c]->m_Path[i]) & 0xFFFFFFF);
+			int PathY = ((((uint64_t)m_Players[PlayerID::Red]->m_Creatures[c]->m_Path[i]) >> 32) & 0xFFFFFFF);
 
 			const unsigned int texPos = (PathX + (254 - PathY) * MAP_SIZE_SUBTILES) * 4;
 
@@ -688,7 +694,7 @@ void Level::UpdateMinimap()
 		}
 	}
 
-	GoodPlayer* player = ((GoodPlayer*)m_Players[Owner_PlayerWhite]);
+	GoodPlayer* player = ((GoodPlayer*)m_Players[PlayerID::White]);
 
 	for (int cpi = 0; cpi < player->m_Creatures.size(); cpi++)
 	{
@@ -704,13 +710,13 @@ void Level::UpdateMinimap()
 	m_LevelUI->m_Minimap.MinimapData.texture->Load(miniMapScratchData, m_LevelUI->m_Minimap.MinimapData.height * m_LevelUI->m_Minimap.MinimapData.width * 4);
 }
 
-void Themp::Level::SpawnCreature(uint8_t player)
+void Themp::Level::SpawnCreature(PlayerID player)
 {
 	
 	std::vector<LevelData::Room*> entrances;
 	for (auto& room : m_LevelData->m_Rooms[player])
 	{
-		if (room.second.roomType == Type_Portal)
+		if (room.second.roomType ==TileType::Portal)
 		{
 			entrances.push_back(&room.second);
 		}
@@ -722,7 +728,7 @@ void Themp::Level::SpawnCreature(uint8_t player)
 		for (auto& tile : room->tiles)
 		{
 			//find the middle tile (naive method atm)
-			if (tile.first->type == (tile.first->GetType() + (5 << 8)))
+			if (tile.first->GetType() == tile.first->GetType() && tile.first->tile.variant == 5)
 			{
 				std::vector<int> available;
 				for (int i = 0; i < m_AvailableCreatures.size(); i++)
@@ -739,7 +745,7 @@ void Themp::Level::SpawnCreature(uint8_t player)
 				int selectedindex = rand() % available.size();
 				Creature* c = new Creature(m_AvailableCreatures[available[selectedindex]].type);
 				m_Players[player]->AddCreature(player,c);
-				c->m_Renderable->SetPosition(tile.second.x*3 + 1,tile.first->pathSubTiles[1][1].height+1,tile.second.y*3 + 1);
+				c->m_Renderable->SetPosition(tile.second.x * 3.0f + 1, tile.first->pathSubTiles[1][1].height + 1.0f, tile.second.y * 3.0f + 1);
 				m_AvailableCreatures[available[selectedindex]].amount--;
 				break;
 			}

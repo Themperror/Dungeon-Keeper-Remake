@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#include <DirectXMath.h>
+
 namespace Themp
 {
 	class Object3D;
@@ -14,7 +16,6 @@ namespace Themp
 	class Game
 	{
 	public:
-		Game() {};
 		void Start();
 		void Update(double dt);
 		void LoadLevel(int levelIndex);
@@ -28,13 +29,13 @@ namespace Themp
 		std::vector<Themp::Creature*> m_Creatures;
 		std::vector<Themp::Entity*> m_Entities;
 		Camera* m_Camera = nullptr;
-		FileManager* m_FileManager;
+		FileManager* m_FileManager = nullptr;
 		MainMenu* m_MainMenu = nullptr;
 		Level* m_CurrentLevel = nullptr;
 
-		signed char m_Keys[258];//Keeping track of input;
-		POINT m_CursorPos;
-		float m_CursorWindowedX, m_CursorWindowedY;
-		float m_CursorDeltaX, m_CursorDeltaY;
+		signed char m_Keys[258]{};//Keeping track of input;
+		DirectX::XMINT2 m_CursorPos{};
+		float m_CursorWindowedX{}, m_CursorWindowedY{};
+		float m_CursorDeltaX{}, m_CursorDeltaY{};
 	};
 };

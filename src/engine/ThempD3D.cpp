@@ -12,11 +12,17 @@
 #include "ThempCamera.h"
 #include "ThempDebugDraw.h"
 #include "ThempFunctions.h"
+#include "utility/print.h"
 #include <imgui.h>
 #include <iostream>
 #include <fstream>
 
+#include "d3dincl.h"
+#include <d3d11.h>
+#include <d3d10_1.h>
+#include <DirectXMath.h>
 using namespace DirectX;
+extern HWND g_Window;
 
 namespace Themp
 {
@@ -59,7 +65,7 @@ namespace Themp
 		scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
 		RECT windowRect;
-		GetClientRect(Themp::System::tSys->m_Window, &windowRect);
+		GetClientRect(g_Window, &windowRect);
 
 		int windowWidth = windowRect.right;
 		int windowHeight = windowRect.bottom;
@@ -81,7 +87,7 @@ namespace Themp
 
 		}
 
-		scd.OutputWindow = Themp::System::tSys->m_Window;
+		scd.OutputWindow = g_Window;
 		scd.SampleDesc.Count = 1;
 		scd.SampleDesc.Quality = 0;
 		D3D_FEATURE_LEVEL featureLevels[] =
@@ -112,9 +118,9 @@ namespace Themp
 #endif 
 
 
-		if (result != S_OK) { System::Print("Could not create D3D11 Device and/or swapchain."); return false; }
+		if (result != S_OK) { Print("Could not create D3D11 Device and/or swapchain."); return false; }
 		int fl = m_Device->GetFeatureLevel();
-		System::Print("FeatureLevel: %s", (fl == D3D_FEATURE_LEVEL_11_1 ? "11_1" : fl == D3D_FEATURE_LEVEL_11_0 ? "11_0" : "10_1"));
+		Print("FeatureLevel: %s", (fl == D3D_FEATURE_LEVEL_11_1 ? "11_1" : fl == D3D_FEATURE_LEVEL_11_0 ? "11_0" : "10_1"));
 
 #ifdef _DEBUG	
 		result = m_Device->QueryInterface(&m_DebugInterface);
@@ -136,9 +142,9 @@ namespace Themp
 
 		int multisample = (int)Themp::System::tSys->m_SVars[SVAR_MULTISAMPLE];
 		if (multisample == 0) multisample = 1;
-		if (!CreateBackBuffer() || !CreateDepthStencil(m_ScreenWidth, m_ScreenHeight, multisample))
+		if (!CreateBackBuffer() || !CreateDepthStencil((int)m_ScreenWidth, (int)m_ScreenHeight, multisample))
 		{
-			System::Print("Could not initialise all required resources, shutting down");
+			Print("Could not initialise all required resources, shutting down");
 			return false;
 		}
 
@@ -206,7 +212,7 @@ namespace Themp
 		std::vector<uint8_t> defaultTypes = { 1,((uint8_t)(-1)),((uint8_t)(-1)),((uint8_t)(-1)) };
 		D3D::DefaultMaterial = Resources::TRes->GetMaterial("G-Buffer", defaultTextures, defaultTypes, "",  false);
 
-		System::Print("D3D11 Initialisation success!");
+		Print("D3D11 Initialisation success!");
 		
 #ifdef _DEBUG
 		DebugDraw::DefaultLineMaterial = Resources::TRes->GetMaterial("DebugLine", "", "DebugLine", false, DebugDraw::DefaultLineInputLayoutDesc, 2, false);
@@ -231,7 +237,7 @@ namespace Themp
 			hr = m_Swapchain->ResizeBuffers(0, newX, newY, DXGI_FORMAT_UNKNOWN, 0);
 			if (hr != S_OK)
 			{
-				System::Print("failed to resize buffers");
+				Print("failed to resize buffers");
 			}
 
 			// Get buffer and create a render-target-view.
@@ -240,13 +246,13 @@ namespace Themp
 				(void**)&pBuffer);
 			if (hr != S_OK)
 			{
-				System::Print("failed to obtain backbuffer texture");
+				Print("failed to obtain backbuffer texture");
 			}
 
 			hr = m_Device->CreateRenderTargetView(pBuffer, NULL, &m_BackBuffer);
 			if (hr != S_OK)
 			{
-				System::Print("failed to create rendertarget view from backbuffer");
+				Print("failed to create rendertarget view from backbuffer");
 			}
 			pBuffer->Release();
 			
@@ -270,7 +276,7 @@ namespace Themp
 			hr = m_Device->CreateTexture2D(&depthBufferDesc, NULL, &m_DepthStencil);
 			if (hr != S_OK)
 			{
-				System::Print("failed to create depth texture");
+				Print("failed to create depth texture");
 			}
 
 			D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
@@ -285,7 +291,7 @@ namespace Themp
 				&m_DepthStencilView);  // [out] Depth stencil view
 			if (hr != S_OK)
 			{
-				System::Print("Could not create Depthstencil view");
+				Print("Could not create Depthstencil view");
 				return;
 			}
 
@@ -483,7 +489,7 @@ namespace Themp
 	}
 	void D3D::VSUploadConstantBuffersToGPU()
 	{
-		if (D3D::ConstantBuffers[1] == nullptr) System::Print("No Camera active in scene");
+		if (D3D::ConstantBuffers[1] == nullptr) Print("No Camera active in scene");
 		m_DevCon->VSSetConstantBuffers(0, 5, D3D::ConstantBuffers);
 	}
 	void D3D::VSUploadConstantBuffersToGPUNull()
@@ -519,14 +525,14 @@ namespace Themp
 		////get back buffer
 		ID3D11Texture2D *pBackBuffer;
 		result = m_Swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-		if (result != S_OK) { System::Print("Could not obtain BackBuffer"); return false; }
+		if (result != S_OK) { Print("Could not obtain BackBuffer"); return false; }
 		// use the back buffer address to create the render target
 		D3D11_RENDER_TARGET_VIEW_DESC RTVDesc;
 		ZeroMemory(&RTVDesc, sizeof(D3D11_RENDER_TARGET_VIEW_DESC));
 		RTVDesc.Format = DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
 		RTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 		result = m_Device->CreateRenderTargetView(pBackBuffer, NULL, &m_BackBuffer);
-		if (result != S_OK) { System::Print("Could not create Render target (BackBuffer)"); return false; }
+		if (result != S_OK) { Print("Could not create Render target (BackBuffer)"); return false; }
 		pBackBuffer->Release();
 		return true;
 	}
@@ -562,7 +568,7 @@ namespace Themp
 		result = m_Device->CreateDepthStencilState(&dsDesc, &m_DepthStencilState);
 		if (result != S_OK)
 		{
-			System::Print("Could not create Depthstencil state");
+			Print("Could not create Depthstencil state");
 			return false;
 		}
 		m_DevCon->OMSetDepthStencilState(m_DepthStencilState, 1);

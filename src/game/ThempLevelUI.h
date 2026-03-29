@@ -1,7 +1,7 @@
 #pragma once
 #include "ThempFileManager.h"
 #include <vector>
-#include <d3d11.h>
+#include <d3dfwd.h>
 #include <DirectXMath.h>
 namespace Themp
 {
@@ -76,7 +76,7 @@ namespace Themp
 		std::string m_GoldText = "0";
 		std::vector< Object2D*> m_GoldNumbers;
 		Font* BuildingInfo = nullptr;
-		BYTE* m_MiniMapScratchData = nullptr;
+		uint8_t* m_MiniMapScratchData = nullptr;
 
 		BasePanel m_BasePanel;
 		Minimap m_Minimap;

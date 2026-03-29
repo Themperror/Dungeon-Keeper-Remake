@@ -6,7 +6,7 @@ namespace Themp
 	class CPUPlayer : public PlayerBase
 	{
 	public:
-		CPUPlayer(uint8_t playerID);
+		CPUPlayer(PlayerID playerID);
 		~CPUPlayer();
 		virtual void Update(float delta);
 	};

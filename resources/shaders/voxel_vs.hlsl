@@ -3,10 +3,14 @@
 struct VS_OUTPUT
 {
 	float4 position : SV_POSITION;
+	float3 localPos : LOCALPOSITION;
 	float3 normal : NORMAL;
 	float2 uv : UV;
 	float visible : VISIBLE;
-    float lightIntensity : LIGHTINTENSITY;
+	//uint4 lightIndices : LIGHTINDICES;
+	//float lightIntensity : LIGHTINTENSITY;
+	uint tileIndex : TILEINDEX;
+	uint numLights : LIGHTNUM;
 };
 struct VS_INPUT
 {
@@ -15,7 +19,8 @@ struct VS_INPUT
 	float2 uv : UV;
 	float visible : VISIBLE;
 	uint doAnimate : ANIMATE;
-	uint4 lightIndices : LIGHTINDICES;
+	uint tileIndex : TILEINDEX;
+	uint numLights : LIGHTNUM;
 };
 cbuffer ObjectBuffer : register(b0)
 {
@@ -38,31 +43,7 @@ cbuffer ConstantBuffer : register(b2)
 	float _time;
 };
 
-struct Light
-{
-	uint range;
-	uint lightIntensity;
-	uint x;
-	uint y;
-	uint z;
-	uint lightIndex;
-};
-StructuredBuffer<Light> lights : register(t8);
 
-float GetLightStrength(VS_INPUT input, uint index)
-{
-	if(index == -1)
-    {
-        return 0.0f;
-    }
-
-    Light light = lights[index];
-    float xPos = input.position.x;
-    float yPos = input.position.z;
-    //float distance = sqrt(pow(light.x - xPos, 2) + pow(light.y - yPos, 2));
-    float dist = distance(float2(light.x, light.y), float2(xPos, yPos));
-    return 1.0 / ((dist * dist) / (light.lightIntensity / 3.0));
-}
 
 VS_OUTPUT VShader(VS_INPUT input)
 {
@@ -73,20 +54,16 @@ VS_OUTPUT VShader(VS_INPUT input)
 	{
 		pos.y += sin(_time*2.0 + pos.x * 1.33) * 0.25;
 	}
+	output.localPos = input.position.xyz;
 
 	output.position = mul(pos, mul(_modelMatrix, mul(_viewMatrix, _projectionMatrix)));
 	output.uv = input.uv;
 	output.normal = input.normal;
 	output.visible = input.visible;
+	output.tileIndex = input.tileIndex;
+	output.numLights = input.numLights;
+	//output.lightIndices = input.lightIndices;
 	
-    output.lightIntensity = 0.0;
-
-    output.lightIntensity += GetLightStrength(input,input.lightIndices.x);
-    output.lightIntensity += GetLightStrength(input,input.lightIndices.y);
-    output.lightIntensity += GetLightStrength(input,input.lightIndices.z);
-    output.lightIntensity += GetLightStrength(input,input.lightIndices.w);
-
-    output.lightIntensity = clamp(output.lightIntensity, 0.3f, 1.0f);
 	return output;
 }
 

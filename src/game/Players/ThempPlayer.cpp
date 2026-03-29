@@ -7,7 +7,7 @@
 #include <imgui.h>
 using namespace Themp;
 
-Themp::Player::Player(uint8_t playerID)
+Themp::Player::Player(PlayerID playerID)
 {
 	m_PlayerID = playerID;
 }
@@ -19,7 +19,7 @@ Themp::Player::~Player()
 
 void Themp::Player::Update(float delta)
 {
-	m_GoldAmount = LevelScript::GameValues[Owner_PlayerRed]["MONEY"];
+	m_GoldAmount = LevelScript::GameValues[(int)PlayerID::Red]["MONEY"];
 
 
 #ifdef _DEBUG

@@ -2,7 +2,12 @@
 #include "ThempMaterial.h"
 #include "ThempD3D.h"
 #include "ThempResources.h"
-#include <d3d10.h>
+#include "utility/print.h"
+#include <assert.h>
+
+#include "d3dincl.h"
+#include <d3d11.h>
+#include <d3d10_1.h>
 #include <istream>
 #include <fstream>
 #include <iostream>
@@ -66,7 +71,7 @@ namespace Themp
 		numTextures = (uint32_t)textures.size();
 		if (textures.size() > MAX_TEXTURES)
 		{
-			System::Print("Found more than %i textures for a material, this is not supported yet!", MAX_TEXTURES);
+			Print("Found more than %i textures for a material, this is not supported yet!", MAX_TEXTURES);
 			numTextures = MAX_TEXTURES;
 		}
 		std::string defaultTextures[4] = {
@@ -138,6 +143,29 @@ namespace Themp
 	//		Themp::System::tSys->m_D3D->m_DevCon->Unmap(m_MaterialConstantBuffer, NULL);
 	//	}
 	//}
+
+	Texture::~Texture()
+	{
+		if (m_Resource)
+		{
+			m_Resource->Release();
+			m_Resource = nullptr;
+		}
+		if (m_View)
+		{
+			m_View->Release();
+			m_View = nullptr;
+		}
+		if (m_Texture2D)
+		{
+			m_Texture2D->Release();
+			m_Texture2D = nullptr;
+		}
+		m_SamplerState = nullptr;
+
+		if (m_Data)delete m_Data, m_Data = nullptr;
+	}
+
 	void Texture::Create(const int width, const int height, const DXGI_FORMAT format, const bool keepCPUTexture, const void* data)
 	{
 		m_Width = width;
@@ -188,7 +216,7 @@ namespace Themp
 		}
 		else
 		{
-			System::Print("Could not load texture");
+			Print("Could not load texture");
 		}
 	}
 	void Texture::Load(const void* data, const int size)

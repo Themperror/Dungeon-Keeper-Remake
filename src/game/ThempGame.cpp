@@ -4,6 +4,7 @@
 #include "ThempMainMenu.h"
 #include "ThempLevel.h"
 #include "Creature/ThempCreature.h"
+#include "utility/print.h"
 #include "ThempEntity.h"
 #include "ThempResources.h"
 #include "ThempLevelConfig.h"
@@ -12,6 +13,10 @@
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempD3D.h"
 #include "../Engine/ThempDebugDraw.h"
+
+
+
+#include "d3dincl.h"
 
 float totalMouseX = 0, totalMouseY = 0;
 float oldMouseX=0, oldMouseY = 0;
@@ -29,20 +34,20 @@ void Themp::Game::Start()
 	m_Camera->SetNear(0.1f);
 	m_Camera->SetFar(1000.0f);
 
-	System::Print("Creating Filemanager!");
+	Print("Creating Filemanager!");
 	m_FileManager = new FileManager();
-	System::Print("Creating MainMenu!");
+	Print("Creating MainMenu!");
 	m_MainMenu = new MainMenu();
 
-	System::Print("Loading Creature.txt!");
+	Print("Loading Creature.txt!");
 	if (!LevelConfig::LoadConfiguration())
 	{
-		System::Print("Game::Start || Was not able to load data\\creature.txt!");
+		Print("Game::Start || Was not able to load data\\creature.txt!");
 		Stop();
 		return;
 	}
 
-	System::Print("Starting MainMenu!");
+	Print("Starting MainMenu!");
 	m_MainMenu->Start();
 }
 void Themp::Game::TranslateMousePos(int inX, int inY, float& outX, float& outY)

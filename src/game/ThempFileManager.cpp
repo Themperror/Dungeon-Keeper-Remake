@@ -3,6 +3,7 @@
 #include "ThempGame.h"
 #include "ThempResources.h"
 #include "ThempAudio.h"
+#include "utility/print.h"
 #include "../Engine/ThempObject3D.h"
 #include "../Engine/ThempMesh.h"
 #include "../Engine/ThempMaterial.h"
@@ -12,10 +13,11 @@
 #define DR_WAV_IMPLEMENTATION
 
 #include <WavLoader.h>
-
-
 #include <DirectXMath.h>
 #include <lbrncbase.h>
+#include <d3d11.h>
+
+extern HWND g_Window;
 
 #define MKTAG(a0,a1,a2,a3) ((uint32_t)((a3) | ((a2) << 8) | ((a1) << 16) | ((a0) << 24)))
 
@@ -100,60 +102,60 @@ FileManager::FileManager()
 	DWORD dataFType = GetFileAttributesA("data");
 	if (dataFType == INVALID_FILE_ATTRIBUTES)
 	{
-		System::Print("\"\\data\\\" folder not found!");
-		MessageBox(Themp::System::tSys->m_Window, L"data\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\data\\\" folder not found!");
+		MessageBox(g_Window, L"data\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	if (!(dataFType & FILE_ATTRIBUTE_DIRECTORY))
 	{
-		System::Print("\"\\data\\\" is a file not a folder!");
-		MessageBox(Themp::System::tSys->m_Window, L"data\\ folder not found, data is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\data\\\" is a file not a folder!");
+		MessageBox(g_Window, L"data\\ folder not found, data is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	dataFType = GetFileAttributesA("ldata");
 	if (dataFType == INVALID_FILE_ATTRIBUTES)
 	{
-		System::Print("\"\\ldata\\\" folder not found!");
-		MessageBox(Themp::System::tSys->m_Window, L"ldata\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\ldata\\\" folder not found!");
+		MessageBox(g_Window, L"ldata\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	if (!(dataFType & FILE_ATTRIBUTE_DIRECTORY))
 	{
-		System::Print("\"\\ldata\\\" is a file not a folder!");
-		MessageBox(Themp::System::tSys->m_Window, L"ldata\\ folder not found, ldata is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\ldata\\\" is a file not a folder!");
+		MessageBox(g_Window, L"ldata\\ folder not found, ldata is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	dataFType = GetFileAttributesA("sound");
 	if (dataFType == INVALID_FILE_ATTRIBUTES)
 	{
-		System::Print("\"\\sound\\\" folder not found!");
-		MessageBox(Themp::System::tSys->m_Window, L"sound\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\sound\\\" folder not found!");
+		MessageBox(g_Window, L"sound\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	if (!(dataFType & FILE_ATTRIBUTE_DIRECTORY))
 	{
-		System::Print("\"\\sound\\\" is a file not a folder!");
-		MessageBox(Themp::System::tSys->m_Window, L"sound\\ folder not found, sound is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\sound\\\" is a file not a folder!");
+		MessageBox(g_Window, L"sound\\ folder not found, sound is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	dataFType = GetFileAttributesA("levels");
 	if (dataFType == INVALID_FILE_ATTRIBUTES)
 	{
-		System::Print("\"\\levels\\\" folder not found!");
-		MessageBox(Themp::System::tSys->m_Window, L"levels\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\levels\\\" folder not found!");
+		MessageBox(g_Window, L"levels\\ folder not found, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
 	if (!(dataFType & FILE_ATTRIBUTE_DIRECTORY))
 	{
-		System::Print("\"\\levels\\\" is a file not a folder!");
-		MessageBox(Themp::System::tSys->m_Window, L"levels\\ folder not found, levels is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("\"\\levels\\\" is a file not a folder!");
+		MessageBox(g_Window, L"levels\\ folder not found, levels is a file not a folder, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 		return;
 	}
@@ -161,7 +163,7 @@ FileManager::FileManager()
 	//load all the files
 	LoadFilesFromDirectory(L"DATA\\");
 	//These folders might not be present depending on whether the game was properly installed or copied over from disc
-	System::Print("Loading language specific data files, These might not exist depending on installation, any errors here are fine!");
+	Print("Loading language specific data files, These might not exist depending on installation, any errors here are fine!");
 	LoadFilesFromDirectory(L"DATA\\DUTCH\\");
 	LoadFilesFromDirectory(L"DATA\\ENGLISH\\");
 	LoadFilesFromDirectory(L"DATA\\FRENCH\\");
@@ -170,7 +172,7 @@ FileManager::FileManager()
 	LoadFilesFromDirectory(L"DATA\\POLISH\\");
 	LoadFilesFromDirectory(L"DATA\\SPANISH\\");
 	LoadFilesFromDirectory(L"DATA\\SWEDISH\\");
-	System::Print("End Loading language specific data files! Errors matter again!");
+	Print("End Loading language specific data files! Errors matter again!");
 
 	LoadFilesFromDirectory(L"LDATA\\");
 	LoadFilesFromDirectory(L"SOUND\\");
@@ -335,8 +337,8 @@ FileManager::FileManager()
 	LoadStrings(L"DATA\\SWEDISH\\TEXT.DAT", L"SWEDISH");
 	if (Localized_Strings.size() == 0)
 	{
-		System::Print("Could not load any text files!");
-		MessageBox(Themp::System::tSys->m_Window, L"Missing text.dat files, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
+		Print("Could not load any text files!");
+		MessageBox(g_Window, L"Missing text.dat files, Please copy over all the Dungeon Keeper assets", L"Missing Assets", MB_OK);
 		System::tSys->m_Quitting = true;
 	}
 
@@ -353,7 +355,7 @@ void FileManager::LoadFilesFromDirectory(std::wstring dir)
 	HANDLE hFind = FindFirstFile((dir + L"*").c_str(), &ffd);
 	if (hFind == INVALID_HANDLE_VALUE) 
 	{
-		System::Print("Something went wrong %S", dir.c_str());
+		Print("Something went wrong %S", dir.c_str());
 	} 
 	while (FindNextFile(hFind, &ffd) != 0)
 	{
@@ -393,7 +395,7 @@ FileData FileManager::LoadFileData(std::wstring& path)
 	}
 	else
 	{
-		System::Print("Could not open File: %S", path.c_str());
+		Print("Could not open File: %S", path.c_str());
 		return filedata;
 	}
 	if (rawData && rawFileSize != 0)
@@ -405,7 +407,7 @@ FileData FileManager::LoadFileData(std::wstring& path)
 			filedata.data = (BYTE*)malloc(uncompressed_size);
 			if (rnc_unpack(rawData, filedata.data, RNC_IGNORE_NONE) < 0)
 			{
-				System::Print("Failed to unpack %S", path.c_str());
+				Print("Failed to unpack %S", path.c_str());
 			}
 			free(rawData);
 		}
@@ -496,20 +498,20 @@ Texture* Themp::FileManager::GetBlockTexture(int index)
 }
 Sound* Themp::FileManager::GetSoundByIndex(int index)
 {
-	auto& it = Sounds.begin();
+	auto it = Sounds.cbegin();
 	for (size_t i = 0; i < index; i++)
 	{
 		it++;
-		if (it == Sounds.end())
+		if (it == Sounds.cend())
 		{
-			it = Sounds.begin();
+			it = Sounds.cbegin();
 		}
 	}
 	return it->second;
 }
 Sound* Themp::FileManager::GetSound(std::string name)
 {
-	auto&& it = Sounds.find(name);
+	const auto& it = Sounds.find(name);
 	if (it == Sounds.end())
 	{
 		return nullptr;
@@ -781,7 +783,7 @@ void FileManager::LoadCreatures()
 		free(textureData);
 		CreatureSprites.push_back(sprite);
 	}
-	System::Print("Done Creating Sprites!!");
+	Print("Done Creating Sprites!!");
 }
 void FileManager::LoadGUITextures(std::wstring datFile, std::wstring tabFile, std::vector<GUITexture>& guiTexVector, bool keepCPUData)
 {
